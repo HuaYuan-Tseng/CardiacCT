@@ -341,7 +341,6 @@ void* CCTDoc::new2Dmatrix(int h, int w, int size)
 {
 	// °ÊºA°t¸m¤Gºû¯x°}
 	//
-
 	int i;
 	void** p;
 
