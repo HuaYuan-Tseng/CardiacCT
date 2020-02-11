@@ -16,6 +16,14 @@ class C3DProcess : public CDialogEx
 {
 	DECLARE_DYNAMIC(C3DProcess)
 
+	// 物件旋轉模式
+	//
+	enum class MoveModes 
+	{
+		MoveNone, MoveView, MoveObject, MoveTexture
+	};
+	enum class MoveModes mode = MoveModes::MoveNone;
+
 //================//
 //   Attributes   //
 //================//
@@ -39,7 +47,14 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 	int				Mat_Offset;			// 影像矩陣置中的偏移量
 	int				ImageFrame;			// 影像框數(1個時序1個)
+
+	float			angle;
+	float			pAngle;
+	float			axis[3];
+	float			pAxis[3];
+	float			viewDistance;		// 控制視線位移(Translation)
 	float**			glVertexPt;			// openGL繪圖點
+
 unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 	
 
@@ -47,14 +62,16 @@ unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 //   Operations   //
 //================//
 public:
-	BOOL	SetupPixelFormat(HDC hDC);				// 設置hDC像素格式
+	BOOL	SetupPixelFormat(HDC hDC);					// 設置hDC像素格式
 	BOOL	ExtensionSupported(const char* exten);
 
-	void	GLInitialization();						// openGL建構初始化
-	void	PerspectiveBuild();						// 建立透視空間
-	void	Draw2DImage(unsigned short &slice);		// 繪製二維影像
-	void*	new2Dmatrix(int h, int w, int size);	// 動態配置二維矩陣
-	void	LoadVolume(unsigned int texName[10]);
+	void	GLInitialization();							// openGL建構初始化
+	void	PerspectiveBuild();							// 建立透視空間
+	void	Draw3DImage(BOOL which);					// 繪製三維影像
+	void	Draw2DImage(unsigned short &slice);			// 繪製二維影像
+	void*	new2Dmatrix(int h, int w, int size);		// 動態配置二維矩陣
+	void	PrepareVolume(unsigned int texName[10]);
+	void	getRamp(GLubyte* color, float t, int n);	// 上色
 
 //================//
 // Implementation //

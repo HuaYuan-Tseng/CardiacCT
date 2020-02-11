@@ -5,6 +5,7 @@
 #include "pch.h"
 #include "CardiacCT.h"
 #include "C3DProcess.h"
+#include "CProgress.h"
 #include "afxdialogex.h"
 
 #define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
@@ -36,8 +37,10 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 
 	gl_3DTexture = FALSE;
 
+	Mat_Offset = 0;
 	ImageFrame = 1;
 	DisplaySlice = 0;
+	viewDistance = -4.0f;
 
 	glVertexPt = New2Dmatrix(64, 3, float);
 }
@@ -52,10 +55,14 @@ C3DProcess::~C3DProcess()
 	if (gl_3DTexture != FALSE)
 		gl_3DTexture = FALSE;
 
+	if (Mat_Offset != 0)
+		Mat_Offset = 0;
 	if (ImageFrame != 1)
 		ImageFrame = 1;
 	if (DisplaySlice != 0)
 		DisplaySlice = 0;
+	if (viewDistance != -4.0f)
+		viewDistance = -4.0f;
 
 	glDeleteTextures(10, textureName);
 }
@@ -150,7 +157,7 @@ void C3DProcess::OnPaint()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	Draw2DImage(DisplaySlice);
-
+	Draw3DImage(TRUE);
 
 }
 
@@ -347,7 +354,7 @@ void C3DProcess::GLInitialization()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	// 建立3D紋理
+	// 建立3D紋理儲存空間
 	//
 	glGenTextures(ImageFrame, textureName);					// 告訴 openGL 配置一塊記憶體空間存放材質
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);					// 控制 讀取(or傳輸) 像素數據對齊方式 ↓
@@ -355,7 +362,7 @@ void C3DProcess::GLInitialization()
 
 	// 載入紋理
 	//
-	LoadVolume(textureName);
+	PrepareVolume(textureName);
 
 	// 指定紋理座標(建立openGL繪圖時，glVertex()所需要的點)
 	//
@@ -383,8 +390,228 @@ void C3DProcess::GLInitialization()
 	}
 }
 
-void C3DProcess::LoadVolume(unsigned int texName[10])
+void C3DProcess::PrepareVolume(unsigned int texName[10])
 {
+	// DO : 建立紋理
+	//
+	int max = 255;
+	float pixel = 0.0f;
+	register int i, j, k;
+
+	// 預備要用來建立紋理的資料矩陣
+	//
+	int Row = ROW;
+	int Col = COL;
+	int TotalSlice = Total_Slice;
+	BYTE img1[256][256][256][4] = {0};
+
+	Mat_Offset = (512 - Total_Slice) / 2;
+
+	CProgress* m_progress = new CProgress();
+	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
+	m_progress->ShowWindow(SW_NORMAL);
+	m_progress->Set(Total_Slice/2, 0);
+	m_progress->SetStatic("Construct 3D Image...");
+
+	i = 0;	j = 0;	k = 0;
+	if (m_pDoc->m_img != NULL)
+	{
+		while (k < TotalSlice)
+		{
+			for (j = 0; j < Row; j += 2)
+			{
+				for (i = 0; i < Col; i += 2)
+				{
+					if (i == 0 || i >= 510/2 || j == 0 || j >= 510/2)
+						pixel = 0;
+					else
+						pixel = m_pDoc->m_img[k][j*Col + i];
+
+					getRamp(img1[i/2][j/2][k/2], (float)pixel / (float)max / 2, 0);
+				}
+			}
+			k += 2;
+			m_progress->GetPro(k);
+		}
+	}
+	m_progress->DestroyWindow();
+	delete m_progress;
+
+	//--------------------------------------------------------------------------//
+	// 建立紋理
+	//
+	if (gl_3DTexture)
+	{
+		float color[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+		// 紋理座標系統：S為橫軸、T為縱軸、R為插入螢幕的軸
+		// 設置紋理環繞模式
+		//
+		glBindTexture(GL_TEXTURE_3D, texName[0]);								// 綁定紋理（指定類型, 紋理對象ID）
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	// 紋理過濾函數（選擇濾鏡）
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R_EXT, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);		// 放大時的濾鏡方式
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);		// 縮小時的濾鏡方式
+		glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, color);
+		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 256, 256, 256, 0, GL_RGBA,
+			GL_UNSIGNED_BYTE, img1);											// 創建3D紋理
+	}
+
+}
+
+void C3DProcess::getRamp(GLubyte* color, float t, int n)
+{
+	// DO : 計算RGBA的數值
+	//
+	t *= 2.0f;
+	if (n == 0)				// Gray Scale
+	{
+		color[0] = 255 * t; // R
+		color[1] = 255 * t; // G
+		color[2] = 255 * t; // B
+		color[3] = 60 * t;	// A
+	}
+	else if (n == 1)		// Red
+	{
+		color[0] = 255 * t;
+		color[1] = 0;
+		color[2] = 0;
+		color[3] = 255 * t;
+	}
+	else if (n == 2)		// Green
+	{
+		color[0] = 0;
+		color[1] = 255 * t;
+		color[2] = 0;
+		color[3] = 255 * t;
+	}
+	else if (n == 3)		// Blue
+	{
+		color[0] = 0;
+		color[1] = 0;
+		color[2] = 255 * t;
+		color[3] = 255 * t;
+	}
+	else if (n == 4)		// Orange
+	{
+		color[0] = 255 * t;
+		color[1] = 100 * t;
+		color[2] = 50 * t;
+		color[3] = 255 * t;
+	}
+	else if (n == 5)		// Purple
+	{
+		color[0] = 255 * t;
+		color[1] = 0;
+		color[2] = 255 * t;
+		color[3] = 255 * t;
+	}
+	else if (n == 6)		// Water Blue
+	{
+		color[0] = 0;
+		color[1] = 255 * t;
+		color[2] = 255 * t;
+		color[3] = 255 * t;
+	}
+}
+
+void C3DProcess::Draw3DImage(BOOL which)
+{
+	// DO : 繪製 3D 影像
+	//
+	CClientDC dc(m_3D_frame);
+
+	// openGL 默認 4X4 矩陣與記憶體 1D 陣列關係
+	// ┌				 ┐
+	// ∣	 m0	 m4  m8  m12 ∣	
+	// ∣ m1	 m5  m9  m13 ∣
+	// ∣	 m2  m6  m10 m14 ∣
+	// ∣ m3  m7  m11 m15 ∣
+	// └				 ┘
+	// (m12, m13, m14)是用作 Translation，(m15)是齊次座標（用作 Projection），
+	// 左上 9 個元素用作 Rotate 和 Scale。
+
+	// xform matrices(暫存旋轉後的模型矩陣?????)
+	static float objectXform[16] =
+	{
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+	static float planeXform[16] =
+	{
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	};
+
+	// clip planes equation（A, B, C, Z）
+	// Ax + By + Cz = 0，如果是(0, -1, 0, 0)，
+	// 意思是 y<0 的才能顯示，最後一個參數為"從z=0平面開始"
+	double clip0[] = { -1.0,  0.0,  0.0, 1.0 };
+	double clip1[] = { 1.0,  0.0,  0.0, 1.0 };
+	double clip2[] = { 0.0, -1.0,  0.0, 1.0 };
+	double clip3[] = { 0.0,  1.0,  0.0, 1.0 };
+	double clip4[] = { 0.0,  0.0, -1.0, 1.0 };
+	double clip5[] = { 0.0,  0.0,  1.0, 1.0 };
+
+	// texgen planes
+	float xPlane[] = { 1.0f, 0.0f, 0.0f, 0.0f };
+	float yPlane[] = { 0.0f, 1.0f, 0.0f, 0.0f };
+	float zPlane[] = { 0.0f, 0.0f, 1.0f, 0.0f };
+
+	float mat[16];
+	float temp[3];
+	float plane[12];
+	int ii, gg, hh;
+	int clip;
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);								// 啟動深度測試(沒有開啟的話，整個物件會有點透明)
+
+	// 建立觀看物件(心臟)的 透明視景體 與 視角方向、距離(viewDistance)
+	//
+	gluPerspective(90, 1, 1, 700);							// 關掉(註解掉)這個，3d seed的效果就會不好啊～QQ
+	glMatrixMode(GL_MODELVIEW);								// 模型視圖矩陣
+		//	glGetFloatv(GL_MODELVIEW_MATRIX, testmat);
+	glLoadIdentity();										// testmat[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]
+		//	glGetFloatv(GL_MODELVIEW_MATRIX, testmat);
+	glTranslatef(0.0f, 0.0f, viewDistance);					// testmat[1,0,0,0, 0,1,0,0, 0,0,1,-4, 0,0,0,1] (一開始的狀態)
+		//	glGetFloatv(GL_MODELVIEW_MATRIX, testmat);
+
+	// 控制物件(心臟)旋轉
+	if (mode == MoveModes::MoveObject || mode == MoveModes::MoveView)
+	{
+		// Have OpenGL compute the new transformation (simple but slow)
+		glPushMatrix();
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glRotatef(angle, axis[0], axis[1], axis[2]);
+		glMultMatrixf((GLfloat *)objectXform);
+		glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *)objectXform);
+		glPopMatrix();
+	}
+	glMultMatrixf((GLfloat *)objectXform);		// 關於物體(心臟)旋轉，刪除後就沒有辦法旋轉了
+
+	// 控制物件(辣個平面)旋轉
+	if (gbPlaneMove)
+	{
+		// handle the plane rotations
+		temp[0] = objectXform[0] * pAxis[0] + objectXform[4] * pAxis[1] + objectXform[8] * pAxis[2];
+		temp[1] = objectXform[1] * pAxis[0] + objectXform[5] * pAxis[1] + objectXform[9] * pAxis[2];
+		temp[2] = objectXform[2] * pAxis[0] + objectXform[6] * pAxis[1] + objectXform[10] * pAxis[2];
+
+		glPushMatrix();
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glRotatef(pAngle, temp[0], temp[1], temp[2]);
+		glMultMatrixf(planeXform);
+		glGetFloatv(GL_MODELVIEW_MATRIX, planeXform);
+		glPopMatrix();
+	}
 
 }
 
