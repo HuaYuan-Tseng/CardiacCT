@@ -37,10 +37,34 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 
 	gl_3DTexture = FALSE;
 
+	gbPlane = false;
+	gbPlaneMove = false;
+	resetPlane = false;
+	savePlane = false;
+	loadangle = false;
+
+	intensity = 0.8125f;
+	density = 0.0f;
+	slices = 512;
+	scale_x = 0.3;					
+	scale_y = 0.5;
+	scale_z = 0.5;
+
+	angle = 0.0f;
+	pAngle = 0.0f;
 	Mat_Offset = 0;
 	ImageFrame = 1;
 	DisplaySlice = 0;
 	viewDistance = -4.0f;
+	axis = new float[3]{0.0f, 0.0f, 0.0f};
+	pAxis = new float[3]{0.0f, 0.0f, 0.0f};
+	user = new double[4]{1.0, 0.0, 0.0, 1.0};
+	planeset = new float[10]{0.0f, 0.0f, 0.0f,  0.0f,  0.0f,  
+							0.0f,  0.0f,  0.0f,  0.0f,  0.0f};
+	planeangle = new float[12]{0.0f, 0.0f, 0.0f,  0.0f,  0.0f, 0.0f,
+								0.0f,  0.0f,  0.0f,  0.0f,  0.0f, 0.0f};
+	Xform = new float[10]{0.0f, 0.0f, 0.0f,  0.0f,  0.0f,
+							0.0f,  0.0f,  0.0f,  0.0f,  0.0f};
 
 	glVertexPt = New2Dmatrix(64, 3, float);
 }
@@ -51,10 +75,34 @@ C3DProcess::~C3DProcess()
 		delete  m_2D_dib;
 	if (glVertexPt != nullptr)
 		delete[] glVertexPt;
+	if (axis != nullptr)
+		delete[] axis;
+	if (pAxis != nullptr)
+		delete[] pAxis;
+	if (planeset != nullptr)
+		delete[] planeset;
+	if (planeangle != nullptr)
+		delete[] planeangle;
+	if (Xform != nullptr)
+		delete[] Xform;
 
 	if (gl_3DTexture != FALSE)
 		gl_3DTexture = FALSE;
+	if (gbPlane != false)
+		gbPlane = false;
+	if (gbPlaneMove != false)
+		gbPlaneMove = false;
+	if (resetPlane != false)
+		resetPlane = false;
+	if (savePlane != false)
+		savePlane = false;
+	if (loadangle != false)
+		loadangle = false;
 
+	if (angle != 0.0f)
+		angle = 0.0f;
+	if (pAngle != 0.0f)
+		pAngle = 0.0f;
 	if (Mat_Offset != 0)
 		Mat_Offset = 0;
 	if (ImageFrame != 1)
@@ -533,6 +581,7 @@ void C3DProcess::Draw3DImage(BOOL which)
 	// 左上 9 個元素用作 Rotate 和 Scale。
 
 	// xform matrices(暫存旋轉後的模型矩陣?????)
+	//
 	static float objectXform[16] =
 	{
 		1.0f, 0.0f, 0.0f, 0.0f,
@@ -551,6 +600,7 @@ void C3DProcess::Draw3DImage(BOOL which)
 	// clip planes equation（A, B, C, Z）
 	// Ax + By + Cz = 0，如果是(0, -1, 0, 0)，
 	// 意思是 y<0 的才能顯示，最後一個參數為"從z=0平面開始"
+	//
 	double clip0[] = { -1.0,  0.0,  0.0, 1.0 };
 	double clip1[] = { 1.0,  0.0,  0.0, 1.0 };
 	double clip2[] = { 0.0, -1.0,  0.0, 1.0 };
@@ -558,7 +608,8 @@ void C3DProcess::Draw3DImage(BOOL which)
 	double clip4[] = { 0.0,  0.0, -1.0, 1.0 };
 	double clip5[] = { 0.0,  0.0,  1.0, 1.0 };
 
-	// texgen planes
+	// Texgen planes
+	//
 	float xPlane[] = { 1.0f, 0.0f, 0.0f, 0.0f };
 	float yPlane[] = { 0.0f, 1.0f, 0.0f, 0.0f };
 	float zPlane[] = { 0.0f, 0.0f, 1.0f, 0.0f };
@@ -572,31 +623,29 @@ void C3DProcess::Draw3DImage(BOOL which)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);								// 啟動深度測試(沒有開啟的話，整個物件會有點透明)
 
-	// 建立觀看物件(心臟)的 透明視景體 與 視角方向、距離(viewDistance)
+	// 建立觀看物件的 透明視景體 與 視角方向、距離(viewDistance)
 	//
 	gluPerspective(90, 1, 1, 700);							// 關掉(註解掉)這個，3d seed的效果就會不好啊～QQ
 	glMatrixMode(GL_MODELVIEW);								// 模型視圖矩陣
-		//	glGetFloatv(GL_MODELVIEW_MATRIX, testmat);
 	glLoadIdentity();										// testmat[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]
-		//	glGetFloatv(GL_MODELVIEW_MATRIX, testmat);
 	glTranslatef(0.0f, 0.0f, viewDistance);					// testmat[1,0,0,0, 0,1,0,0, 0,0,1,-4, 0,0,0,1] (一開始的狀態)
-		//	glGetFloatv(GL_MODELVIEW_MATRIX, testmat);
 
 	// 控制物件(心臟)旋轉
+	//
 	if (mode == MoveModes::MoveObject || mode == MoveModes::MoveView)
 	{
-		// Have OpenGL compute the new transformation (simple but slow)
 		glPushMatrix();
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glRotatef(angle, axis[0], axis[1], axis[2]);
-		glMultMatrixf((GLfloat *)objectXform);
-		glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *)objectXform);
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity();
+			glRotatef(angle, axis[0], axis[1], axis[2]);
+			glMultMatrixf((GLfloat *)objectXform);
+			glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *)objectXform);
 		glPopMatrix();
 	}
 	glMultMatrixf((GLfloat *)objectXform);		// 關於物體(心臟)旋轉，刪除後就沒有辦法旋轉了
 
 	// 控制物件(辣個平面)旋轉
+	//
 	if (gbPlaneMove)
 	{
 		// handle the plane rotations
@@ -605,14 +654,285 @@ void C3DProcess::Draw3DImage(BOOL which)
 		temp[2] = objectXform[2] * pAxis[0] + objectXform[6] * pAxis[1] + objectXform[10] * pAxis[2];
 
 		glPushMatrix();
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glRotatef(pAngle, temp[0], temp[1], temp[2]);
-		glMultMatrixf(planeXform);
-		glGetFloatv(GL_MODELVIEW_MATRIX, planeXform);
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity();
+			glRotatef(pAngle, temp[0], temp[1], temp[2]);
+			glMultMatrixf(planeXform);
+			glGetFloatv(GL_MODELVIEW_MATRIX, planeXform);
 		glPopMatrix();
 	}
 
+	// 只需要 Rotation，所以將 Translation 設為 0
+	glGetFloatv(GL_MODELVIEW_MATRIX, mat);
+	InvertMat(&mat[0]);
+
+	mat[12] = 0.0f;
+	mat[13] = 0.0f;
+	mat[14] = 0.0f;
+
+	// get the eqn for the user plane
+	// 讓 辣個平面 在自身坐標系的x軸方向位移時，
+	// 讓 物件(心臟) 隨 辣個平面 的 x軸 移動方向解剖（切平面）。
+	user[0] = -planeXform[0];
+	user[1] = -planeXform[1];
+	user[2] = -planeXform[2];
+
+	// setup the texture coord generation（自動生成紋理座標）
+	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
+	glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
+	glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
+
+	// create the points for the corners of the clip plane；
+	// 計算 clip plane 四個角落的點 plane[16]={1,-1,-1, 1,-1,1, 1,1,-1, 1,1,1}
+	// use to glVertex3f();
+	for (ii = 0; ii < 4; ii++)
+	{
+		if (resetPlane == true)
+		{
+			planeXform[0] = planeset[0];
+			planeXform[1] = planeset[1];
+			planeXform[2] = planeset[2];
+			planeXform[4] = planeset[3];
+			planeXform[5] = planeset[4];
+			planeXform[6] = planeset[5];
+			planeXform[8] = planeset[6];
+			planeXform[9] = planeset[7];
+			planeXform[10] = planeset[8];
+			user[3] = planeset[9];
+		}
+		if (savePlane == true)
+		{
+			planeset[0] = planeXform[0];
+			planeset[1] = planeXform[1];
+			planeset[2] = planeXform[2];
+			planeset[3] = planeXform[4];
+			planeset[4] = planeXform[5];
+			planeset[5] = planeXform[6];
+			planeset[6] = planeXform[8];
+			planeset[7] = planeXform[9];
+			planeset[8] = planeXform[10];
+			planeset[9] = user[3];
+			savePlane = false;
+		}
+		plane[ii * 3 + 0] = planeXform[0] * user[3];
+		plane[ii * 3 + 1] = planeXform[1] * user[3];
+		plane[ii * 3 + 2] = planeXform[2] * user[3];
+		plane[ii * 3 + 0] += planeXform[4] * ((ii < 2) ? -1.0f : 1.0f);
+		plane[ii * 3 + 1] += planeXform[5] * ((ii < 2) ? -1.0f : 1.0f);
+		plane[ii * 3 + 2] += planeXform[6] * ((ii < 2) ? -1.0f : 1.0f);
+		plane[ii * 3 + 0] += planeXform[8] * ((ii & 0x1) ? 1.0f : -1.0f);
+		plane[ii * 3 + 1] += planeXform[9] * ((ii & 0x1) ? 1.0f : -1.0f);
+		plane[ii * 3 + 2] += planeXform[10] * ((ii & 0x1) ? 1.0f : -1.0f);
+	}
+
+	for (int k = 0; k < 12; k++)
+		planeangle[k] = plane[k];
+
+	if (resetPlane == true)
+		resetPlane = false;
+
+	if (loadangle == false)
+	{
+		Xform[0] = planeXform[0];
+		Xform[1] = planeXform[1];
+		Xform[2] = planeXform[2];
+		Xform[3] = planeXform[4];
+		Xform[4] = planeXform[5];
+		Xform[5] = planeXform[6];
+		Xform[6] = planeXform[8];
+		Xform[7] = planeXform[9];
+		Xform[8] = planeXform[10];
+		Xform[9] = user[3];
+		loadangle = FALSE;
+	}
+
+	// find the clip plane oppostie the viewer
+	if (fabs(objectXform[2]) > fabs(objectXform[6]))
+	{
+		if (fabs(objectXform[2]) > fabs(objectXform[10]))
+		{
+			// X is largest
+			if (objectXform[2] > 0.0f)
+				clip = 1;	// positive
+			else
+				clip = 0;	// negative
+		}
+		else
+		{
+			// Z is largest
+			if (objectXform[10] > 0.0f)
+				clip = 5;	// positive
+
+			else
+				clip = 4;	// negative
+		}
+	}
+	else
+	{
+		if (fabs(objectXform[6]) > fabs(objectXform[10]))
+		{
+			// Y is largest
+			if (objectXform[6] > 0.0f)
+				clip = 3;	// positive
+
+			else
+				clip = 2;	// negative
+		}
+		else
+		{
+			//Z is largest
+			if (objectXform[10] > 0.0f)
+				clip = 4;	// positive
+			else
+				clip = 5;	// negative
+		}
+	}
+
+	// configure the clip planes
+	glClipPlane(GL_CLIP_PLANE0, clip0);
+	glClipPlane(GL_CLIP_PLANE1, clip1);
+	glClipPlane(GL_CLIP_PLANE2, clip2);
+	glClipPlane(GL_CLIP_PLANE3, clip3);
+	glClipPlane(GL_CLIP_PLANE4, clip4);
+	glClipPlane(GL_CLIP_PLANE5, clip5);
+
+	// replace the plane opposite the viewer with the user controlled one
+	glClipPlane(GL_CLIP_PLANE0 + clip, user);
+
+	glEnable(GL_CLIP_PLANE0);
+	glEnable(GL_CLIP_PLANE1);
+	glEnable(GL_CLIP_PLANE2);
+	glEnable(GL_CLIP_PLANE3);
+	glEnable(GL_CLIP_PLANE4);
+	glEnable(GL_CLIP_PLANE5);
+
+	// set the color for the slices（R, G, B, Alpha）
+	glColor4f(1.0f, 1.0f, 1.0f, intensity);
+
+	// enable the alpha/blending test
+	glEnable(GL_ALPHA_TEST);							// 啟用 Alpha 測試
+	glAlphaFunc(GL_GREATER, density*intensity);			// 設定 Alpha 測試的參考值
+
+	glEnable(GL_BLEND);									// 啟用 顏色混合
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	// 設定 顏色混合(Source and Target)
+
+	// set up the texture matrix
+	glMatrixMode(GL_TEXTURE);
+	glLoadIdentity();
+	glEnable(GL_TEXTURE_3D);
+
+	glTranslatef(0.5f, 0.5f, 0.5f);						// 將物件(心臟)移到正中心
+	glScalef(scale_x, scale_y, scale_z);				// 將物件(心臟)縮放
+
+	glMultMatrixf(mat);
+	glTranslatef(0.0f, 0.0f, -viewDistance);
+
+	// set modelView to identity
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
+
+	// setup the texture coord generation
+	glTexGenfv(GL_S, GL_EYE_PLANE, xPlane);
+	glTexGenfv(GL_T, GL_EYE_PLANE, yPlane);
+	glTexGenfv(GL_R, GL_EYE_PLANE, zPlane);
+
+	glEnable(GL_TEXTURE_GEN_S);
+	glEnable(GL_TEXTURE_GEN_T);
+	glEnable(GL_TEXTURE_GEN_R);
+
+	glBindTexture(GL_TEXTURE_3D, textureName[0]);
+
+	glTranslatef(0.0f, 0.0f, viewDistance);
+
+	float zmin, zmax;
+
+	// draw the slices
+	for (ii = 0; ii < slices; ii++)
+	{
+		glPushMatrix();
+		// glGetFloatv(GL_MODELVIEW_MATRIX,testmat);
+		glTranslatef(0.0f, 0.0f, -1.0f + (float)ii * (2.0f / (float)(slices - 1)));
+		// glGetFloatv(GL_MODELVIEW_MATRIX,testmat);
+		glBegin(GL_QUADS);
+		for (hh = 0; hh < (8 - 1); hh++)
+		{
+			for (gg = 0; gg < (8 - 1); gg++)
+			{
+				glVertex3fv(glVertexPt[hh * 8 + gg]);
+				glVertex3fv(glVertexPt[hh * 8 + (gg + 1)]);
+				glVertex3fv(glVertexPt[(hh + 1) * 8 + (gg + 1)]);
+				glVertex3fv(glVertexPt[(hh + 1) * 8 + gg]);
+			}
+		}
+		glEnd();
+		glPopMatrix();
+		// glGetFloatv(GL_MODELVIEW_MATRIX,testmat);
+	}
+
+	glDisable(GL_CLIP_PLANE0);
+	glDisable(GL_CLIP_PLANE1);
+	glDisable(GL_CLIP_PLANE2);
+	glDisable(GL_CLIP_PLANE3);
+	glDisable(GL_CLIP_PLANE4);
+	glDisable(GL_CLIP_PLANE5);
+	glPopMatrix();
+
+	// draw the slice plane across to get a better image
+	glDepthMask(GL_FALSE);
+	glBegin(GL_QUADS);
+	glVertex3fv(&plane[0]);
+	glVertex3fv(&plane[3]);
+	glVertex3fv(&plane[6]);
+	glVertex3fv(&plane[9]);
+	glEnd();
+	glDepthMask(GL_TRUE);
+
+	glDisable(GL_ALPHA_TEST);
+	glDisable(GL_TEXTURE_3D);
+	glDisable(GL_TEXTURE_GEN_S);
+	glDisable(GL_TEXTURE_GEN_T);
+	glDisable(GL_TEXTURE_GEN_R);
+
+	// draw the box framing everything，畫邊框
+	glLineWidth(3);
+	glBegin(GL_LINES);
+	{
+		glColor3f(0.0f, 0.0f, 1.0f);
+
+		glVertex3f(1.0f, 1.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, -1.0f);
+		glVertex3f(1.0f, -1.0f, 1.0f);
+		glVertex3f(1.0f, -1.0f, -1.0f);
+
+		glVertex3f(-1.0f, 1.0f, 1.0f);
+		glVertex3f(-1.0f, 1.0f, -1.0f);
+		glVertex3f(-1.0f, -1.0f, 1.0f);
+		glVertex3f(-1.0f, -1.0f, -1.0f);
+
+		glVertex3f(1.0f, 1.0f, 1.0f);
+		glVertex3f(1.0f, -1.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, -1.0f);
+		glVertex3f(1.0f, -1.0f, -1.0f);
+
+		glVertex3f(-1.0f, 1.0f, 1.0f);
+		glVertex3f(-1.0f, -1.0f, 1.0f);
+		glVertex3f(-1.0f, 1.0f, -1.0f);
+		glVertex3f(-1.0f, -1.0f, -1.0f);
+
+		glVertex3f(1.0f, 1.0f, 1.0f);
+		glVertex3f(-1.0f, 1.0f, 1.0f);
+		glVertex3f(1.0f, 1.0f, -1.0f);
+		glVertex3f(-1.0f, 1.0f, -1.0f);
+
+		glVertex3f(1.0f, -1.0f, 1.0f);
+		glVertex3f(-1.0f, -1.0f, 1.0f);
+		glVertex3f(1.0f, -1.0f, -1.0f);
+		glVertex3f(-1.0f, -1.0f, -1.0f);
+	}
+	glEnd();
+
+	SwapBuffers(m_hDC);
 }
 
 void C3DProcess::Draw2DImage(unsigned short &slice)
@@ -636,6 +956,27 @@ void C3DProcess::Draw2DImage(unsigned short &slice)
 	dc.SetBkMode(TRANSPARENT);
 	dc.TextOutA(1, 1, str);
 
+}
+
+void C3DProcess::InvertMat(float* mat)
+{
+	float temp;
+
+	temp = *(mat + 1);
+	*(mat + 1) = *(mat + 4);
+	*(mat + 4) = temp;
+
+	temp = *(mat + 2);
+	*(mat + 2) = *(mat + 8);
+	*(mat + 8) = temp;
+
+	temp = *(mat + 6);
+	*(mat + 6) = *(mat + 9);
+	*(mat + 9) = temp;
+
+	*(mat + 12) = -*(mat + 12);
+	*(mat + 13) = -*(mat + 13);
+	*(mat + 14) = -*(mat + 14);
 }
 
 void* C3DProcess::new2Dmatrix(int h, int w, int size)

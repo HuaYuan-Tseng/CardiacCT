@@ -47,13 +47,30 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 	int				Mat_Offset;			// 影像矩陣置中的偏移量
 	int				ImageFrame;			// 影像框數(1個時序1個)
+	int				slices;
 
-	float			angle;
-	float			pAngle;
-	float			axis[3];
-	float			pAxis[3];
-	float			viewDistance;		// 控制視線位移(Translation)
+	bool			gbPlane;
+	bool			gbPlaneMove;
+	bool			resetPlane;
+	bool			savePlane;
+	bool			loadangle;
+
+	float*			axis;				// 控制 物件 旋轉軸
+	float*			pAxis;				// 控制 物件 旋轉軸
+	float			angle;				// 控制 物件 旋轉角度(Rotation)
+	float			pAngle;				// 控制 平面 旋轉角度(Rotation)
+	float			viewDistance;		// 控制 視線 位移(Translation)
 	float**			glVertexPt;			// openGL繪圖點
+	float*			planeangle;
+	float*			planeset;
+	float*			Xform;
+	float			scale_x;			// 可以改顯示比例的神奇參數
+	float			scale_y;
+	float			scale_z;
+	float			density;
+	float			intensity;
+	
+	double*			user;
 
 unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 	
@@ -67,6 +84,7 @@ public:
 
 	void	GLInitialization();							// openGL建構初始化
 	void	PerspectiveBuild();							// 建立透視空間
+	void	InvertMat(float* mat);
 	void	Draw3DImage(BOOL which);					// 繪製三維影像
 	void	Draw2DImage(unsigned short &slice);			// 繪製二維影像
 	void*	new2Dmatrix(int h, int w, int size);		// 動態配置二維矩陣
