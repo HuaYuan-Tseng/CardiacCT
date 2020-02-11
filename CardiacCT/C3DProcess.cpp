@@ -106,17 +106,23 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	// TODO: Add your message handler code here and/or call default
 	// ·Æ¹«ºu½ü¨Æ¥ó
 	//
+	POINT mpt;
+	GetCursorPos(&mpt);
+	ScreenToClient(&mpt);
 	int TotalSlice = Total_Slice;
 
-	if (zDelta < 0)
-		DisplaySlice += 1;
-	else if (zDelta > 0 && DisplaySlice > 0)
-		DisplaySlice -= 1;
+	if (mpt.x < m_2D_rect.right && mpt.x > m_2D_rect.left && mpt.y < m_2D_rect.bottom && mpt.y > m_2D_rect.top)
+	{
+		if (zDelta < 0)
+			DisplaySlice += 1;
+		else if (zDelta > 0 && DisplaySlice > 0)
+			DisplaySlice -= 1;
 
-	if (DisplaySlice >= TotalSlice)
-		DisplaySlice = TotalSlice - 1;
-	else if (DisplaySlice < 0)
-		DisplaySlice = 0;
+		if (DisplaySlice >= TotalSlice)
+			DisplaySlice = TotalSlice - 1;
+		else if (DisplaySlice < 0)
+			DisplaySlice = 0;
+	}
 
 	Draw2DImage(DisplaySlice);
 	m_ScrollBar.SetScrollPos(DisplaySlice);

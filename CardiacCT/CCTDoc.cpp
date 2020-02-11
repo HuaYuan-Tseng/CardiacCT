@@ -291,7 +291,7 @@ void CCTDoc::BuildDataMatrix()
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
 	m_progress->ShowWindow(SW_NORMAL);
-	m_progress->Set(TotalSlice, 0);
+	m_progress->Set(TotalSlice, slice);
 	m_progress->SetStatic("Open DICOM Image...");
 
 	while (slice < TotalSlice)
