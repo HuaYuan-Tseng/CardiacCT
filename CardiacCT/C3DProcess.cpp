@@ -709,7 +709,7 @@ void C3DProcess::Draw3DImage(BOOL which)
 	// (m12, m13, m14)是用作 Translation，(m15)是齊次座標（用作 Projection），
 	// 左上 9 個元素用作 Rotate 和 Scale。
 
-	// xform matrices(暫存旋轉後的模型矩陣?????)
+	// xform matrices(旋轉後的模型矩陣?????)
 	//
 	static float objectXform[16] =
 	{
