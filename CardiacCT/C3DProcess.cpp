@@ -68,12 +68,13 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	pAxis = new float[3]{0.0f, 0.0f, 0.0f};
 	user = new double[4]{1.0, 0.0, 0.0, 1.0};
 	lastPos = new float[3]{0.0f, 0.0f, 0.0f};
-	planeset = new float[10]{0.0f, 0.0f, 0.0f,  0.0f,  0.0f,  
-							0.0f,  0.0f,  0.0f,  0.0f,  0.0f};
-	planeangle = new float[12]{0.0f, 0.0f, 0.0f,  0.0f,  0.0f, 0.0f,
-								0.0f,  0.0f,  0.0f,  0.0f,  0.0f, 0.0f};
-	Xform = new float[10]{0.0f, 0.0f, 0.0f,  0.0f,  0.0f,
-							0.0f,  0.0f,  0.0f,  0.0f,  0.0f};
+	Xform = new float[10]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+							0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	planeset = new float[10]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f,  
+								0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	planeangle = new float[12]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+								0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	
 
 	glVertexPt = New2Dmatrix(64, 3, float);
 }
@@ -200,6 +201,10 @@ BOOL C3DProcess::OnInitDialog()
 		glTexImage3D = (PFNGLTEXIMAGE3DPROC)wglGetProcAddress("glTexImage3D");
 
 		GLInitialization();
+	}
+	else
+	{
+		AfxMessageBox("This program requires 3D Texture support!");
 	}
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -374,7 +379,6 @@ void C3DProcess::OnRButtonUp(UINT nFlags, CPoint point)
 			trackingTranslation = GL_FALSE;
 			Draw3DImage(TRUE);
 		}
-		Draw3DImage(TRUE);
 	}
 	CDialogEx::OnRButtonUp(nFlags, point);
 }
@@ -397,7 +401,6 @@ void C3DProcess::OnRButtonDblClk(UINT nFlags, CPoint point)
 			m_plane = false;
 			gbPlane = false;
 		}
-		Draw3DImage(TRUE);
 	}
 	
 	CDialogEx::OnRButtonDblClk(nFlags, point);
@@ -758,7 +761,7 @@ void C3DProcess::Draw3DImage(BOOL which)
 
 	// 控制物件(心臟)旋轉
 	//
-	if (mode == MoveModes::MoveObject || mode == MoveModes::MoveView)
+	if (mode == MoveObject || mode == MoveView)
 	{
 		glPushMatrix();
 		{
@@ -1153,7 +1156,7 @@ void C3DProcess::StopMotion(int x, int y, int time)
 	}
 	else
 	{
-		if ((!gbPlaneMove) && (mode != MoveModes::MoveNone))
+		if ((!gbPlaneMove) && (mode != MoveNone))
 		{
 			angle = 0.0;
 			redrawContinued = GL_FALSE;
@@ -1165,7 +1168,7 @@ void C3DProcess::StopMotion(int x, int y, int time)
 		if (gbPlane)
 			gbPlaneMove = false;
 		else
-			mode = MoveModes::MoveNone;
+			mode = MoveNone;
 	}
 }
 

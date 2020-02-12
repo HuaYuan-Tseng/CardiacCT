@@ -18,11 +18,11 @@ class C3DProcess : public CDialogEx
 
 	// 物件旋轉模式
 	//
-	enum class MoveModes 
+	enum MoveModes 
 	{
 		MoveNone, MoveView, MoveObject, MoveTexture
 	};
-	enum class MoveModes mode;
+	enum MoveModes mode;
 
 //================//
 //   Attributes   //
