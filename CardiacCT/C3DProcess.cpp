@@ -1160,7 +1160,7 @@ void C3DProcess::StopMotion(int x, int y, int time)
 		{
 			angle = 0.0;
 			redrawContinued = GL_FALSE;
-			glutIdleFunc(0);
+			//glutIdleFunc(0);
 		}
 	}
 	if (!redrawContinued)
