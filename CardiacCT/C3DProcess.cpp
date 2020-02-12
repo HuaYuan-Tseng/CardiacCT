@@ -8,6 +8,7 @@
 #include "CProgress.h"
 #include "afxdialogex.h"
 
+#define M_PI 3.1415926f
 #define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
 
 #define Display_Series m_pDoc->displaySeries
@@ -30,6 +31,8 @@ IMPLEMENT_DYNAMIC(C3DProcess, CDialogEx)
 C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_3DPROCESS, pParent)
 {
+	mode = MoveModes::MoveNone;
+
 	m_pDoc = nullptr;
 	m_2D_dib = nullptr;
 	m_2D_frame = nullptr;
@@ -42,6 +45,11 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	resetPlane = false;
 	savePlane = false;
 	loadangle = false;
+	m_object = true;
+	m_plane = false;
+
+	trackingMotion = GL_FALSE;
+	trackingTranslation = GL_FALSE;
 
 	intensity = 0.8125f;
 	density = 0.0f;
@@ -59,6 +67,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	axis = new float[3]{0.0f, 0.0f, 0.0f};
 	pAxis = new float[3]{0.0f, 0.0f, 0.0f};
 	user = new double[4]{1.0, 0.0, 0.0, 1.0};
+	lastPos = new float[3]{0.0f, 0.0f, 0.0f};
 	planeset = new float[10]{0.0f, 0.0f, 0.0f,  0.0f,  0.0f,  
 							0.0f,  0.0f,  0.0f,  0.0f,  0.0f};
 	planeangle = new float[12]{0.0f, 0.0f, 0.0f,  0.0f,  0.0f, 0.0f,
@@ -83,6 +92,8 @@ C3DProcess::~C3DProcess()
 		delete[] planeset;
 	if (planeangle != nullptr)
 		delete[] planeangle;
+	if (lastPos != nullptr)
+		delete[] lastPos;
 	if (Xform != nullptr)
 		delete[] Xform;
 
@@ -125,6 +136,12 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_MOUSEWHEEL()
 	ON_WM_VSCROLL()
+	ON_WM_MOUSEMOVE()
+	ON_WM_RBUTTONDBLCLK()
+	ON_WM_RBUTTONDOWN()
+	ON_WM_RBUTTONUP()
+	ON_WM_LBUTTONUP()
+	ON_WM_LBUTTONDOWN()
 END_MESSAGE_MAP()
 
 //=================================//
@@ -286,6 +303,104 @@ void C3DProcess::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	Draw2DImage(DisplaySlice);
 
 	CDialogEx::OnVScroll(nSBCode, nPos, pScrollBar);
+}
+
+void C3DProcess::OnMouseMove(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	//
+	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
+	{
+		if (nFlags == MK_LBUTTON || nFlags == MK_RBUTTON)
+		{
+			TrackMotion(point.x - m_3D_rect.left, point.y - m_3D_rect.top);
+
+			Draw3DImage(TRUE);
+		}
+	}
+	CDialogEx::OnMouseMove(nFlags, point);
+}
+
+void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	//
+	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
+	{
+		StartMotion(point.x - m_3D_rect.left, point.y - m_3D_rect.top, glutGet(GLUT_ELAPSED_TIME));
+
+		Draw3DImage(TRUE);
+	}
+	CDialogEx::OnLButtonDown(nFlags, point);
+}
+
+void C3DProcess::OnLButtonUp(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	//
+	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
+	{
+		StopMotion(point.x - m_3D_rect.left, point.y - m_3D_rect.top, glutGet(GLUT_ELAPSED_TIME));
+
+		Draw3DImage(TRUE);
+	}
+	CDialogEx::OnLButtonUp(nFlags, point);
+}
+
+void C3DProcess::OnRButtonDown(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	//
+	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
+	{
+		if (!trackingTranslation)
+		{
+			trackingTranslation = GL_TRUE;
+			transPosY = point.y - m_3D_rect.top;
+		}
+		Draw3DImage(TRUE);
+	}
+	CDialogEx::OnRButtonDown(nFlags, point);
+}
+
+void C3DProcess::OnRButtonUp(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	//
+	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
+	{
+		if (!trackingTranslation)
+		{
+			trackingTranslation = GL_FALSE;
+			Draw3DImage(TRUE);
+		}
+		Draw3DImage(TRUE);
+	}
+	CDialogEx::OnRButtonUp(nFlags, point);
+}
+
+void C3DProcess::OnRButtonDblClk(UINT nFlags, CPoint point)
+{
+	// TODO: Add your message handler code here and/or call default
+	//
+	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
+	{
+		if (m_object)
+		{
+			m_object = false;
+			m_plane = true;
+			gbPlane = true;
+		}
+		else
+		{
+			m_object = true;
+			m_plane = false;
+			gbPlane = false;
+		}
+		Draw3DImage(TRUE);
+	}
+	
+	CDialogEx::OnRButtonDblClk(nFlags, point);
 }
 
 //==========================//
@@ -679,7 +794,7 @@ void C3DProcess::Draw3DImage(BOOL which)
 
 	// 只需要 Rotation，所以將 Translation 設為 0
 	glGetFloatv(GL_MODELVIEW_MATRIX, mat);
-	InvertMat(&mat[0]);
+	InvertMat(mat);
 
 	mat[12] = 0.0f;
 	mat[13] = 0.0f;
@@ -859,8 +974,6 @@ void C3DProcess::Draw3DImage(BOOL which)
 
 		glTranslatef(0.0f, 0.0f, viewDistance);
 
-		//float zmin, zmax;
-
 		// draw the slices
 		for (ii = 0; ii < slices; ii++)
 		{
@@ -949,6 +1062,27 @@ void C3DProcess::Draw3DImage(BOOL which)
 	}
 	glEnd();
 
+	glLineWidth(1);
+	glBegin(GL_LINES);
+	{
+		glColor3f(1.0f, 0.0f, 0.0f);
+		glVertex3fv(&plane[0]);
+		glVertex3fv(&plane[3]);
+
+		glColor3f(0.0f, 1.0f, 0.0f);
+		glVertex3fv(&plane[3]);
+		glVertex3fv(&plane[9]);
+
+		glColor3f(0.0f, 0.0f, 1.0f);
+		glVertex3fv(&plane[9]);
+		glVertex3fv(&plane[6]);
+
+		glColor3f(1.0f, 1.0f, 0.0f);
+		glVertex3fv(&plane[6]);
+		glVertex3fv(&plane[0]);
+	}
+	glEnd();
+
 	SwapBuffers(m_hDC);
 }
 
@@ -975,25 +1109,139 @@ void C3DProcess::Draw2DImage(unsigned short &slice)
 
 }
 
-void C3DProcess::InvertMat(float* mat)
+void C3DProcess::pointToVector(int x, int y, int width, int height, float vec[3])
 {
+	// DO : project x,y onto a hemi-sphere centered within width, height
+	//
+	float d, a;
+
+	vec[0] = (2.0*x - width) / width;
+	vec[1] = (height - 2.0*y) / height;
+	vec[1] = (!gbPlane) ? vec[1] : -vec[1];							//v1
+	d = sqrt(vec[0] * vec[0] + vec[1] * vec[1]);
+	
+	vec[2] = cos((M_PI / 2.0) * ((d < 1.0) ? d : 1.0));
+	vec[2] = (!gbPlane) ? vec[2] : -vec[2];							//v2, just for moving plane normal
+	a = 1.0 / sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+	
+	vec[0] *= a;
+	vec[1] *= a;
+	vec[2] *= a;
+}
+
+void C3DProcess::StartMotion(int x, int y, int time)
+{
+	if (gbPlane)
+		gbPlaneMove = true;
+	else
+		mode = MoveModes::MoveView;
+
+	trackingMotion = GL_TRUE;
+	redrawContinued = GL_FALSE;
+	lastTime = time;
+	pointToVector(x, y, m_3D_rect.right - m_3D_rect.left, m_3D_rect.bottom - m_3D_rect.top, lastPos);
+}
+
+void C3DProcess::StopMotion(int x, int y, int time)
+{
+	trackingMotion = GL_FALSE;
+
+	if (time == lastTime)
+	{
+		redrawContinued = GL_TRUE;
+		//glutIdleFunc(draw);
+	}
+	else
+	{
+		if ((!gbPlaneMove) && (mode != MoveModes::MoveNone))
+		{
+			angle = 0.0;
+			redrawContinued = GL_FALSE;
+			glutIdleFunc(0);
+		}
+	}
+	if (!redrawContinued)
+	{
+		if (gbPlane)
+			gbPlaneMove = false;
+		else
+			mode = MoveModes::MoveNone;
+	}
+}
+
+void C3DProcess::TrackMotion(int x, int y)
+{
+	if (trackingMotion)
+	{
+		float curPos[3], dx, dy, dz;
+		pointToVector(x, y, m_3D_rect.right - m_3D_rect.left, m_3D_rect.bottom - m_3D_rect.top, curPos);
+
+		dx = curPos[0] - lastPos[0];
+		dy = curPos[1] - lastPos[1];
+		dz = curPos[2] - lastPos[2];
+
+		if (!gbPlane)
+		{
+			angle = 90.0 * sqrt(dx*dx + dy * dy + dz * dz);
+
+			axis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
+			axis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
+			axis[2] = lastPos[0] * curPos[1] - lastPos[1] * curPos[0];
+		}
+		else
+		{
+			pAngle = 90.0 * sqrt(dx*dx + dy * dy + dz * dz);
+
+			pAxis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
+			pAxis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
+			pAxis[2] = lastPos[0] * curPos[1] - lastPos[1] * curPos[0];
+		}
+
+		lastTime = glutGet(GLUT_ELAPSED_TIME);
+		lastPos[0] = curPos[0];
+		lastPos[1] = curPos[1];
+		lastPos[2] = curPos[2];
+
+		UpdateWindow();
+	}
+	if (trackingTranslation)
+	{
+		if (!gbPlane)
+		{
+			viewDistance += 0.01f * (y - transPosY);
+			transPosY = y;
+		}
+		else
+		{
+			user[3] -= 0.01f * (y - transPosY);
+			transPosY = y;
+		}
+	}
+	UpdateData(false);
+	UpdateWindow();
+}
+
+void C3DProcess::InvertMat(float m[16])
+{
+	// DO : Invert Matrix
+	//
 	float temp;
 
-	temp = *(mat + 1);
-	*(mat + 1) = *(mat + 4);
-	*(mat + 4) = temp;
+	temp = m[1];
+	m[1] = m[4];
+	m[4] = temp;
 
-	temp = *(mat + 2);
-	*(mat + 2) = *(mat + 8);
-	*(mat + 8) = temp;
+	temp = m[2];
+	m[2] = m[8];
+	m[8] = temp;
 
-	temp = *(mat + 6);
-	*(mat + 6) = *(mat + 9);
-	*(mat + 9) = temp;
+	temp = m[6];
+	m[6] = m[9];
+	m[9] = temp;
 
-	*(mat + 12) = -*(mat + 12);
-	*(mat + 13) = -*(mat + 13);
-	*(mat + 14) = -*(mat + 14);
+	m[12] = -m[12];
+	m[13] = -m[13];
+	m[14] = -m[14];
 }
 
 void* C3DProcess::new2Dmatrix(int h, int w, int size)

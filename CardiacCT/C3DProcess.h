@@ -9,8 +9,8 @@
 #pragma once
 #include "CDIB.h"
 #include "CCTDoc.h"
-#include "glut.h"
-#include "glext.h"
+#include "glew.h"
+#include "freeglut.h"
 
 class C3DProcess : public CDialogEx
 {
@@ -22,7 +22,7 @@ class C3DProcess : public CDialogEx
 	{
 		MoveNone, MoveView, MoveObject, MoveTexture
 	};
-	enum class MoveModes mode = MoveModes::MoveNone;
+	enum class MoveModes mode;
 
 //================//
 //   Attributes   //
@@ -44,16 +44,22 @@ public:
 PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	
 	GLuint			textureName[10];	// 記載紋理名稱
+	GLboolean		redrawContinued;
+	GLboolean		trackingMotion;
+	GLboolean		trackingTranslation;
 
 	int				Mat_Offset;			// 影像矩陣置中的偏移量
 	int				ImageFrame;			// 影像框數(1個時序1個)
 	int				slices;
+	int				lastTime;
 
 	bool			gbPlane;
 	bool			gbPlaneMove;
 	bool			resetPlane;
 	bool			savePlane;
 	bool			loadangle;
+	bool			m_object;
+	bool			m_plane;
 
 	float*			axis;				// 控制 物件 旋轉軸
 	float*			pAxis;				// 控制 物件 旋轉軸
@@ -63,7 +69,9 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	float**			glVertexPt;			// openGL繪圖點
 	float*			planeangle;
 	float*			planeset;
+	float*			lastPos;
 	float*			Xform;
+	float			transPosY;
 	float			scale_x;			// 可以改顯示比例的神奇參數
 	float			scale_y;
 	float			scale_z;
@@ -84,12 +92,17 @@ public:
 
 	void	GLInitialization();							// openGL建構初始化
 	void	PerspectiveBuild();							// 建立透視空間
-	void	InvertMat(float* mat);
+	void	InvertMat(float m[16]);
 	void	Draw3DImage(BOOL which);					// 繪製三維影像
 	void	Draw2DImage(unsigned short &slice);			// 繪製二維影像
 	void*	new2Dmatrix(int h, int w, int size);		// 動態配置二維矩陣
-	void	PrepareVolume(unsigned int texName[10]);
+	void	PrepareVolume(unsigned int texName[10]);	// 建立紋理座標的資料矩陣
 	void	getRamp(GLubyte* color, float t, int n);	// 上色
+
+	void	TrackMotion(int x, int y);
+	void	StopMotion(int x, int y, int time);
+	void	StartMotion(int x, int y, int time);
+	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
 //================//
 // Implementation //
@@ -114,4 +127,10 @@ public:
 	afx_msg void OnPaint();
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnRButtonDblClk(UINT nFlags, CPoint point);
+	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 };

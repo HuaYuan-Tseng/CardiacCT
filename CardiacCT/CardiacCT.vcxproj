@@ -119,12 +119,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)Library\openGL;$(SolutionDir)Library\dcmtk-3.6.3\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Library\openGL\FreeGLUT\include;$(SolutionDir)Library\openGL\GLEW\include;$(SolutionDir)Library\dcmtk-3.6.3\include;$(IncludePath);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalLibraryDirectories>$(SolutionDir)Library\openGL;$(SolutionDir)Library\dcmtk-3.6.3\lib;$(SolutionDir)Library\dcmtk-3.6.3-support\zlib-1.2.11\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Iphlpapi.lib;ws2_32.lib;wsock32.lib;netapi32.lib;ofstd.lib;oflog.lib;dcmdata.lib;dcmdsig.lib;dcmnet.lib;dcmsr.lib;dcmimgle.lib;dcmqrdb.lib;dcmtls.lib;dcmwlm.lib;dcmpstat.lib;dcmjpls.lib;dcmjpeg.lib;dcmimage.lib;charls.lib;ijg8.lib;ijg12.lib;ijg16.lib;i2d.lib;zlib_d.lib;glut.lib;glut32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Library\openGL\FreeGLUT\lib;$(SolutionDir)Library\openGL\GLEW\lib;$(SolutionDir)Library\dcmtk-3.6.3\lib;$(SolutionDir)Library\dcmtk-3.6.3-support\zlib-1.2.11\lib;$(LibraryPath);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Iphlpapi.lib;ws2_32.lib;wsock32.lib;netapi32.lib;ofstd.lib;oflog.lib;dcmdata.lib;dcmdsig.lib;dcmnet.lib;dcmsr.lib;dcmimgle.lib;dcmqrdb.lib;dcmtls.lib;dcmwlm.lib;dcmpstat.lib;dcmjpls.lib;dcmjpeg.lib;dcmimage.lib;charls.lib;ijg8.lib;ijg12.lib;ijg16.lib;i2d.lib;zlib_d.lib;opengl32.lib;glew32.lib;freeglut.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>DebugFastLink</GenerateDebugInformation>
       <StackReserveSize>102400000</StackReserveSize>
     </Link>
@@ -138,6 +138,9 @@
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
+    <PostBuildEvent>
+      <Command>xcopy $(SolutionDir)Library\openGL\FreeGLUT\bin\$(PlatformTarget)\*.dll $(OutputPath) /Y</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
