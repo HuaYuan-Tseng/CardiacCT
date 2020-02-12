@@ -445,15 +445,17 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	int max = 255;
 	float pixel = 0.0f;
 	register int i, j, k;
+	Mat_Offset = (512 - Total_Slice) / 2;
 
 	// 預備要用來建立紋理的資料矩陣
 	//
 	int Row = ROW;
 	int Col = COL;
 	int TotalSlice = Total_Slice;
-	BYTE img1[256][256][256][4] = {0};
+	int Sample_start = 0 + Mat_Offset;
+	int Sample_end = 0 + Mat_Offset + TotalSlice;
+	BYTE image0[256][256][256][4] = {0};
 
-	Mat_Offset = (512 - Total_Slice) / 2;
 
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
@@ -464,18 +466,27 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	i = 0;	j = 0;	k = 0;
 	if (m_pDoc->m_img != NULL)
 	{
-		while (k < TotalSlice)
+		while (k < 512)
 		{
-			for (j = 0; j < Row; j += 2)
+			if (k <= Sample_start || k > Sample_end)
 			{
-				for (i = 0; i < Col; i += 2)
+				for (j = 0; j < Row; j += 2)
 				{
-					if (i == 0 || i >= 510/2 || j == 0 || j >= 510/2)
-						pixel = 0;
-					else
-						pixel = m_pDoc->m_img[k][j*Col + i];
-
-					getRamp(img1[i/2][j/2][k/2], (float)pixel / (float)max / 2, 0);
+					for (i = 0; i < Col; i += 2)
+					{
+						getRamp(image0[i / 2][j / 2][k / 2], 0, 0);
+					}
+				}
+			}
+			else
+			{
+				for (j = 0; j < Row; j += 2)
+				{
+					for (i = 0; i < Col; i += 2)
+					{
+						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
+						getRamp(image0[i / 2][j / 2][k / 2], (float)pixel / (float)max / 2, 0);
+					}
 				}
 			}
 			k += 2;
@@ -503,7 +514,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);		// 縮小時的濾鏡方式
 		glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, color);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 256, 256, 256, 0, GL_RGBA,
-			GL_UNSIGNED_BYTE, img1);											// 創建3D紋理
+			GL_UNSIGNED_BYTE, image0);											// 創建3D紋理
 	}
 
 }
@@ -601,7 +612,7 @@ void C3DProcess::Draw3DImage(BOOL which)
 	// Ax + By + Cz = 0，如果是(0, -1, 0, 0)，
 	// 意思是 y<0 的才能顯示，最後一個參數為"從z=0平面開始"
 	//
-	double clip0[] = { -1.0,  0.0,  0.0, 1.0 };
+	double clip0[] = {-1.0,  0.0,  0.0, 1.0 };
 	double clip1[] = { 1.0,  0.0,  0.0, 1.0 };
 	double clip2[] = { 0.0, -1.0,  0.0, 1.0 };
 	double clip3[] = { 0.0,  1.0,  0.0, 1.0 };
@@ -635,11 +646,13 @@ void C3DProcess::Draw3DImage(BOOL which)
 	if (mode == MoveModes::MoveObject || mode == MoveModes::MoveView)
 	{
 		glPushMatrix();
+		{
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
 			glRotatef(angle, axis[0], axis[1], axis[2]);
 			glMultMatrixf((GLfloat *)objectXform);
 			glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *)objectXform);
+		}
 		glPopMatrix();
 	}
 	glMultMatrixf((GLfloat *)objectXform);		// 關於物體(心臟)旋轉，刪除後就沒有辦法旋轉了
@@ -654,11 +667,13 @@ void C3DProcess::Draw3DImage(BOOL which)
 		temp[2] = objectXform[2] * pAxis[0] + objectXform[6] * pAxis[1] + objectXform[10] * pAxis[2];
 
 		glPushMatrix();
+		{
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
 			glRotatef(pAngle, temp[0], temp[1], temp[2]);
 			glMultMatrixf(planeXform);
 			glGetFloatv(GL_MODELVIEW_MATRIX, planeXform);
+		}
 		glPopMatrix();
 	}
 
@@ -743,7 +758,7 @@ void C3DProcess::Draw3DImage(BOOL which)
 		Xform[7] = planeXform[9];
 		Xform[8] = planeXform[10];
 		Xform[9] = user[3];
-		loadangle = FALSE;
+		loadangle = false;
 	}
 
 	// find the clip plane oppostie the viewer
@@ -762,7 +777,6 @@ void C3DProcess::Draw3DImage(BOOL which)
 			// Z is largest
 			if (objectXform[10] > 0.0f)
 				clip = 5;	// positive
-
 			else
 				clip = 4;	// negative
 		}
@@ -774,7 +788,6 @@ void C3DProcess::Draw3DImage(BOOL which)
 			// Y is largest
 			if (objectXform[6] > 0.0f)
 				clip = 3;	// positive
-
 			else
 				clip = 2;	// negative
 		}
@@ -830,61 +843,65 @@ void C3DProcess::Draw3DImage(BOOL which)
 	// set modelView to identity
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
-	glLoadIdentity();
-
-	// setup the texture coord generation
-	glTexGenfv(GL_S, GL_EYE_PLANE, xPlane);
-	glTexGenfv(GL_T, GL_EYE_PLANE, yPlane);
-	glTexGenfv(GL_R, GL_EYE_PLANE, zPlane);
-
-	glEnable(GL_TEXTURE_GEN_S);
-	glEnable(GL_TEXTURE_GEN_T);
-	glEnable(GL_TEXTURE_GEN_R);
-
-	glBindTexture(GL_TEXTURE_3D, textureName[0]);
-
-	glTranslatef(0.0f, 0.0f, viewDistance);
-
-	float zmin, zmax;
-
-	// draw the slices
-	for (ii = 0; ii < slices; ii++)
 	{
-		glPushMatrix();
-		// glGetFloatv(GL_MODELVIEW_MATRIX,testmat);
-		glTranslatef(0.0f, 0.0f, -1.0f + (float)ii * (2.0f / (float)(slices - 1)));
-		// glGetFloatv(GL_MODELVIEW_MATRIX,testmat);
-		glBegin(GL_QUADS);
-		for (hh = 0; hh < (8 - 1); hh++)
-		{
-			for (gg = 0; gg < (8 - 1); gg++)
-			{
-				glVertex3fv(glVertexPt[hh * 8 + gg]);
-				glVertex3fv(glVertexPt[hh * 8 + (gg + 1)]);
-				glVertex3fv(glVertexPt[(hh + 1) * 8 + (gg + 1)]);
-				glVertex3fv(glVertexPt[(hh + 1) * 8 + gg]);
-			}
-		}
-		glEnd();
-		glPopMatrix();
-		// glGetFloatv(GL_MODELVIEW_MATRIX,testmat);
-	}
+		glLoadIdentity();
 
-	glDisable(GL_CLIP_PLANE0);
-	glDisable(GL_CLIP_PLANE1);
-	glDisable(GL_CLIP_PLANE2);
-	glDisable(GL_CLIP_PLANE3);
-	glDisable(GL_CLIP_PLANE4);
-	glDisable(GL_CLIP_PLANE5);
+		// setup the texture coord generation
+		glTexGenfv(GL_S, GL_EYE_PLANE, xPlane);
+		glTexGenfv(GL_T, GL_EYE_PLANE, yPlane);
+		glTexGenfv(GL_R, GL_EYE_PLANE, zPlane);
+
+		glEnable(GL_TEXTURE_GEN_S);
+		glEnable(GL_TEXTURE_GEN_T);
+		glEnable(GL_TEXTURE_GEN_R);
+
+		glBindTexture(GL_TEXTURE_3D, textureName[0]);
+
+		glTranslatef(0.0f, 0.0f, viewDistance);
+
+		//float zmin, zmax;
+
+		// draw the slices
+		for (ii = 0; ii < slices; ii++)
+		{
+			glPushMatrix();
+			{
+				glTranslatef(0.0f, 0.0f, -1.0f + (float)ii * (2.0f / (float)(slices - 1)));
+				glBegin(GL_QUADS);
+				{
+					for (hh = 0; hh < (8 - 1); hh++)
+					{
+						for (gg = 0; gg < (8 - 1); gg++)
+						{
+							glVertex3fv(glVertexPt[hh * 8 + gg]);
+							glVertex3fv(glVertexPt[hh * 8 + (gg + 1)]);
+							glVertex3fv(glVertexPt[(hh + 1) * 8 + (gg + 1)]);
+							glVertex3fv(glVertexPt[(hh + 1) * 8 + gg]);
+						}
+					}
+				}
+				glEnd();
+			}
+			glPopMatrix();
+		}
+		glDisable(GL_CLIP_PLANE0);
+		glDisable(GL_CLIP_PLANE1);
+		glDisable(GL_CLIP_PLANE2);
+		glDisable(GL_CLIP_PLANE3);
+		glDisable(GL_CLIP_PLANE4);
+		glDisable(GL_CLIP_PLANE5);
+	}
 	glPopMatrix();
 
 	// draw the slice plane across to get a better image
 	glDepthMask(GL_FALSE);
 	glBegin(GL_QUADS);
-	glVertex3fv(&plane[0]);
-	glVertex3fv(&plane[3]);
-	glVertex3fv(&plane[6]);
-	glVertex3fv(&plane[9]);
+	{
+		glVertex3fv(&plane[0]);
+		glVertex3fv(&plane[3]);
+		glVertex3fv(&plane[6]);
+		glVertex3fv(&plane[9]);
+	}
 	glEnd();
 	glDepthMask(GL_TRUE);
 
