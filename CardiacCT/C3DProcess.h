@@ -16,13 +16,13 @@ class C3DProcess : public CDialogEx
 {
 	DECLARE_DYNAMIC(C3DProcess)
 
-	// 物件旋轉模式
-	//
-	enum MoveModes 
+	enum class MoveModes				// 物件操作模式
 	{
-		MoveNone, MoveView, MoveObject, MoveTexture
-	};
-	enum MoveModes mode;
+		MoveNone, 
+		MoveView, 
+		MoveObject, 
+		MoveTexture
+	}	mode;
 
 //================//
 //   Attributes   //
@@ -55,8 +55,6 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 	bool			gbPlane;
 	bool			gbPlaneMove;
-	bool			resetPlane;
-	bool			savePlane;
 	bool			loadangle;
 	bool			m_object;
 	bool			m_plane;
@@ -92,13 +90,13 @@ public:
 
 	void	GLInitialization();							// openGL建構初始化
 	void	PerspectiveBuild();							// 建立透視空間
-	void	InvertMat(float m[16]);
-	void	Draw3DImage(BOOL which);					// 繪製三維影像
+	void	Draw3DImage(bool which);					// 繪製三維影像
 	void	Draw2DImage(unsigned short &slice);			// 繪製二維影像
 	void*	new2Dmatrix(int h, int w, int size);		// 動態配置二維矩陣
 	void	PrepareVolume(unsigned int texName[10]);	// 建立紋理座標的資料矩陣
 	void	getRamp(GLubyte* color, float t, int n);	// 上色
 
+	void	InvertMat(float (&m)[16]);
 	void	TrackMotion(int x, int y);
 	void	StopMotion(int x, int y, int time);
 	void	StartMotion(int x, int y, int time);

@@ -38,25 +38,22 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	m_2D_frame = nullptr;
 	m_3D_frame = nullptr;
 
-	gl_3DTexture = FALSE;
-
 	gbPlane = false;
 	gbPlaneMove = false;
-	resetPlane = false;
-	savePlane = false;
 	loadangle = false;
 	m_object = true;
 	m_plane = false;
 
+	gl_3DTexture = FALSE;
 	trackingMotion = GL_FALSE;
 	trackingTranslation = GL_FALSE;
 
 	intensity = 0.8125f;
 	density = 0.0f;
-	slices = 512;
 	scale_x = 0.3;					
 	scale_y = 0.5;
 	scale_z = 0.5;
+	slices = 512;
 
 	angle = 0.0f;
 	pAngle = 0.0f;
@@ -64,6 +61,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	ImageFrame = 1;
 	DisplaySlice = 0;
 	viewDistance = -4.0f;
+
 	axis = new float[3]{0.0f, 0.0f, 0.0f};
 	pAxis = new float[3]{0.0f, 0.0f, 0.0f};
 	user = new double[4]{1.0, 0.0, 0.0, 1.0};
@@ -104,10 +102,6 @@ C3DProcess::~C3DProcess()
 		gbPlane = false;
 	if (gbPlaneMove != false)
 		gbPlaneMove = false;
-	if (resetPlane != false)
-		resetPlane = false;
-	if (savePlane != false)
-		savePlane = false;
 	if (loadangle != false)
 		loadangle = false;
 
@@ -171,7 +165,7 @@ BOOL C3DProcess::OnInitDialog()
 	m_3D_frame = GetDlgItem(IDC_STATIC_3D);
 	m_3D_frame->GetWindowRect(&m_3D_rect);
 	ScreenToClient(&m_3D_rect);
-	m_3D_frame->MoveWindow(m_3D_rect.left, m_3D_rect.top, COL, ROW, false);
+	m_3D_frame->MoveWindow(m_3D_rect.left, m_3D_rect.top, COL, ROW, true);
 
 	m_2D_dib = new CDIB();							
 	m_2D_dib->InitDIB(COL, ROW);							// 初始化畫框
@@ -180,7 +174,7 @@ BOOL C3DProcess::OnInitDialog()
 	//
 	m_ScrollBar.SetScrollRange(0, Total_Slice-1);
 
-	//------------------------------------------------------------------------------------//
+	//-------------------------------------------------------------------------------------//
 	// openGL空間建立
 	//
 	m_hDC = ::GetDC(m_3D_frame->m_hWnd);					// 獲得畫布物件DC的HANDLE（hDC）
@@ -188,14 +182,16 @@ BOOL C3DProcess::OnInitDialog()
 	if ((m_hRC = ::wglCreateContext(m_hDC)) == 0)			// 產生 openGL 所需的畫布（hRC）
 	{
 		AfxMessageBox("Fail to create hRC context!");
+		return FALSE;
 	}
 	if (::wglMakeCurrent(m_hDC, m_hRC) == FALSE)			// 建立 hDC 與 hRC 之間的連結
 	{
 		AfxMessageBox("Fail to make current!");
+		return FALSE;
 	}
-	PerspectiveBuild();
+	PerspectiveBuild();										// 建立openGL透視空間
 	gl_3DTexture = ExtensionSupported("GL_EXT_texture3D");	// 確認是否支援3D紋理
-	if (gl_3DTexture)
+	if (gl_3DTexture == TRUE)
 	{
 		// Return the address of an openGL extension function.
 		glTexImage3D = (PFNGLTEXIMAGE3DPROC)wglGetProcAddress("glTexImage3D");
@@ -205,6 +201,7 @@ BOOL C3DProcess::OnInitDialog()
 	else
 	{
 		AfxMessageBox("This program requires 3D Texture support!");
+		return FALSE;
 	}
 
 	return TRUE;  // return TRUE unless you set the focus to a control
@@ -221,13 +218,14 @@ void C3DProcess::OnPaint()
 	if (::wglMakeCurrent(m_hDC, m_hRC) == FALSE)
 	{
 		AfxMessageBox("Fail to make current!");
+		return;
 	}
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	Draw2DImage(DisplaySlice);
-	Draw3DImage(TRUE);
+	Draw3DImage(true);
 
 }
 
@@ -320,7 +318,7 @@ void C3DProcess::OnMouseMove(UINT nFlags, CPoint point)
 		{
 			TrackMotion(point.x - m_3D_rect.left, point.y - m_3D_rect.top);
 
-			Draw3DImage(TRUE);
+			Draw3DImage(true);
 		}
 	}
 	CDialogEx::OnMouseMove(nFlags, point);
@@ -334,7 +332,7 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 	{
 		StartMotion(point.x - m_3D_rect.left, point.y - m_3D_rect.top, glutGet(GLUT_ELAPSED_TIME));
 
-		Draw3DImage(TRUE);
+		Draw3DImage(true);
 	}
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
@@ -347,7 +345,7 @@ void C3DProcess::OnLButtonUp(UINT nFlags, CPoint point)
 	{
 		StopMotion(point.x - m_3D_rect.left, point.y - m_3D_rect.top, glutGet(GLUT_ELAPSED_TIME));
 
-		Draw3DImage(TRUE);
+		Draw3DImage(true);
 	}
 	CDialogEx::OnLButtonUp(nFlags, point);
 }
@@ -358,12 +356,12 @@ void C3DProcess::OnRButtonDown(UINT nFlags, CPoint point)
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
-		if (!trackingTranslation)
+		if (trackingTranslation == GL_FALSE)
 		{
 			trackingTranslation = GL_TRUE;
 			transPosY = point.y - m_3D_rect.top;
 		}
-		Draw3DImage(TRUE);
+		Draw3DImage(true);
 	}
 	CDialogEx::OnRButtonDown(nFlags, point);
 }
@@ -374,11 +372,9 @@ void C3DProcess::OnRButtonUp(UINT nFlags, CPoint point)
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
-		if (!trackingTranslation)
-		{
-			trackingTranslation = GL_FALSE;
-			Draw3DImage(TRUE);
-		}
+		trackingTranslation = GL_FALSE;
+		
+		Draw3DImage(true);
 	}
 	CDialogEx::OnRButtonUp(nFlags, point);
 }
@@ -525,7 +521,6 @@ void C3DProcess::GLInitialization()
 	glGenTextures(ImageFrame, textureName);					// 告訴 openGL 配置一塊記憶體空間存放材質
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);					// 控制 讀取(or傳輸) 像素數據對齊方式 ↓
 															// 預設 4 bytes，設成 1 byte 避免 padding
-
 	// 載入紋理
 	//
 	PrepareVolume(textureName);
@@ -574,7 +569,6 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	int Sample_end = 0 + Mat_Offset + TotalSlice;
 	BYTE image0[256][256][256][4] = {0};
 
-
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
 	m_progress->ShowWindow(SW_NORMAL);
@@ -586,21 +580,11 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	{
 		while (k < 512)
 		{
-			if (k <= Sample_start || k > Sample_end)
+			if (k > Sample_start && k <= Sample_end)
 			{
-				for (j = 0; j < Row; j += 2)
+				for (j = 2; j < Row - 2; j += 2)
 				{
-					for (i = 0; i < Col; i += 2)
-					{
-						getRamp(image0[i / 2][j / 2][k / 2], 0, 0);
-					}
-				}
-			}
-			else
-			{
-				for (j = 0; j < Row; j += 2)
-				{
-					for (i = 0; i < Col; i += 2)
+					for (i = 2; i < Col - 2; i += 2)
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
 						getRamp(image0[i / 2][j / 2][k / 2], (float)pixel / (float)max / 2, 0);
@@ -615,7 +599,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	delete m_progress;
 
 	//--------------------------------------------------------------------------//
-	// 建立紋理
+	// 建立3D紋理
 	//
 	if (gl_3DTexture)
 	{
@@ -693,7 +677,7 @@ void C3DProcess::getRamp(GLubyte* color, float t, int n)
 	}
 }
 
-void C3DProcess::Draw3DImage(BOOL which)
+void C3DProcess::Draw3DImage(bool which)
 {
 	// DO : 繪製 3D 影像
 	//
@@ -709,7 +693,7 @@ void C3DProcess::Draw3DImage(BOOL which)
 	// (m12, m13, m14)是用作 Translation，(m15)是齊次座標（用作 Projection），
 	// 左上 9 個元素用作 Rotate 和 Scale。
 
-	// xform matrices(旋轉後的模型矩陣?????)
+	// Xform matrices(旋轉後的模型矩陣)
 	//
 	static float objectXform[16] =
 	{
@@ -752,16 +736,16 @@ void C3DProcess::Draw3DImage(BOOL which)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);								// 啟動深度測試(沒有開啟的話，整個物件會有點透明)
 
-	// 建立觀看物件的 透明視景體 與 視角方向、距離(viewDistance)
+	// 建立觀看物件的 透明視景體、視角方向、距離(viewDistance)
 	//
-	gluPerspective(90, 1, 1, 700);							// 關掉(註解掉)這個，3d seed的效果就會不好啊～QQ
+	gluPerspective(90, 1, 1, 700);							// 關掉(註解掉)這個，3D seed 的效果就會不好啊~
 	glMatrixMode(GL_MODELVIEW);								// 模型視圖矩陣
 	glLoadIdentity();										// testmat[1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]
-	glTranslatef(0.0f, 0.0f, viewDistance);					// testmat[1,0,0,0, 0,1,0,0, 0,0,1,-4, 0,0,0,1] (一開始的狀態)
+	glTranslatef(0.0f, 0.0f, viewDistance);					// testmat[1,0,0,0, 0,1,0,0, 0,0,1,-4, 0,0,0,1]
 
-	// 控制物件(心臟)旋轉
+	// 控制 心臟 旋轉
 	//
-	if (mode == MoveObject || mode == MoveView)
+	if (mode == MoveModes::MoveObject || mode == MoveModes::MoveView)
 	{
 		glPushMatrix();
 		{
@@ -775,7 +759,7 @@ void C3DProcess::Draw3DImage(BOOL which)
 	}
 	glMultMatrixf((GLfloat *)objectXform);		// 關於物體(心臟)旋轉，刪除後就沒有辦法旋轉了
 
-	// 控制物件(辣個平面)旋轉
+	// 控制 辣個平面 旋轉
 	//
 	if (gbPlaneMove)
 	{
@@ -789,8 +773,8 @@ void C3DProcess::Draw3DImage(BOOL which)
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
 			glRotatef(pAngle, temp[0], temp[1], temp[2]);
-			glMultMatrixf(planeXform);
-			glGetFloatv(GL_MODELVIEW_MATRIX, planeXform);
+			glMultMatrixf((GLfloat *)planeXform);
+			glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *)planeXform);
 		}
 		glPopMatrix();
 	}
@@ -817,36 +801,9 @@ void C3DProcess::Draw3DImage(BOOL which)
 
 	// create the points for the corners of the clip plane；
 	// 計算 clip plane 四個角落的點 plane[16]={1,-1,-1, 1,-1,1, 1,1,-1, 1,1,1}
-	// use to glVertex3f();
+	//
 	for (ii = 0; ii < 4; ii++)
 	{
-		if (resetPlane == true)
-		{
-			planeXform[0] = planeset[0];
-			planeXform[1] = planeset[1];
-			planeXform[2] = planeset[2];
-			planeXform[4] = planeset[3];
-			planeXform[5] = planeset[4];
-			planeXform[6] = planeset[5];
-			planeXform[8] = planeset[6];
-			planeXform[9] = planeset[7];
-			planeXform[10] = planeset[8];
-			user[3] = planeset[9];
-		}
-		if (savePlane == true)
-		{
-			planeset[0] = planeXform[0];
-			planeset[1] = planeXform[1];
-			planeset[2] = planeXform[2];
-			planeset[3] = planeXform[4];
-			planeset[4] = planeXform[5];
-			planeset[5] = planeXform[6];
-			planeset[6] = planeXform[8];
-			planeset[7] = planeXform[9];
-			planeset[8] = planeXform[10];
-			planeset[9] = user[3];
-			savePlane = false;
-		}
 		plane[ii * 3 + 0] = planeXform[0] * user[3];
 		plane[ii * 3 + 1] = planeXform[1] * user[3];
 		plane[ii * 3 + 2] = planeXform[2] * user[3];
@@ -861,25 +818,8 @@ void C3DProcess::Draw3DImage(BOOL which)
 	for (int k = 0; k < 12; k++)
 		planeangle[k] = plane[k];
 
-	if (resetPlane == true)
-		resetPlane = false;
-
-	if (loadangle == false)
-	{
-		Xform[0] = planeXform[0];
-		Xform[1] = planeXform[1];
-		Xform[2] = planeXform[2];
-		Xform[3] = planeXform[4];
-		Xform[4] = planeXform[5];
-		Xform[5] = planeXform[6];
-		Xform[6] = planeXform[8];
-		Xform[7] = planeXform[9];
-		Xform[8] = planeXform[10];
-		Xform[9] = user[3];
-		loadangle = false;
-	}
-
 	// find the clip plane oppostie the viewer
+	//
 	if (fabs(objectXform[2]) > fabs(objectXform[6]))
 	{
 		if (fabs(objectXform[2]) > fabs(objectXform[10]))
@@ -1134,7 +1074,7 @@ void C3DProcess::pointToVector(int x, int y, int width, int height, float vec[3]
 
 void C3DProcess::StartMotion(int x, int y, int time)
 {
-	if (gbPlane)
+	if (gbPlane == true)
 		gbPlaneMove = true;
 	else
 		mode = MoveModes::MoveView;
@@ -1152,15 +1092,13 @@ void C3DProcess::StopMotion(int x, int y, int time)
 	if (time == lastTime)
 	{
 		redrawContinued = GL_TRUE;
-		//glutIdleFunc(draw);
 	}
 	else
 	{
-		if ((!gbPlaneMove) && (mode != MoveNone))
+		if ((!gbPlaneMove) && (mode != MoveModes::MoveNone))
 		{
 			angle = 0.0;
 			redrawContinued = GL_FALSE;
-			//glutIdleFunc(0);
 		}
 	}
 	if (!redrawContinued)
@@ -1168,7 +1106,7 @@ void C3DProcess::StopMotion(int x, int y, int time)
 		if (gbPlane)
 			gbPlaneMove = false;
 		else
-			mode = MoveNone;
+			mode = MoveModes::MoveNone;
 	}
 }
 
@@ -1224,7 +1162,7 @@ void C3DProcess::TrackMotion(int x, int y)
 	UpdateWindow();
 }
 
-void C3DProcess::InvertMat(float m[16])
+void C3DProcess::InvertMat(float (&m)[16])
 {
 	// DO : Invert Matrix
 	//
