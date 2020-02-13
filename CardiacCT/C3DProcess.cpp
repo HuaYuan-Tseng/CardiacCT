@@ -567,9 +567,9 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	int TotalSlice = Total_Slice;
 	int Sample_start = 0 + Mat_Offset;
 	int Sample_end = 0 + Mat_Offset + TotalSlice;
-	//BYTE**** image0 = New4Dmatrix(256, 256, 256, 4, BYTE);
+	m_image0 = New2Dmatrix((256*256*256), 4, BYTE);
 
-	m_image0 = new BYTE ***[256];
+	/*m_image0 = new BYTE ***[256];
 	for (i = 0; i < 512/2; i++)
 	{
 		m_image0[i] = new BYTE **[256];
@@ -581,7 +581,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 				m_image0[i][j][k] = new BYTE[4];
 			}
 		}
-	}
+	}*/
 
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
@@ -601,7 +601,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 					for (i = 2; i < Col - 2; i += 2)
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
-						getRamp(m_image0[i / 2][j / 2][k / 2], (float)pixel / (float)max / 2, 0);
+						getRamp(m_image0[(k/2)*256*256+(j/2)*256+(i/2)], (float)pixel / (float)max / 2, 0);
 					}
 				}
 			}
@@ -611,7 +611,8 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 				{
 					for (i = 2; i < Col - 2; i += 2)
 					{
-						getRamp(m_image0[i / 2][j / 2][k / 2], 0, 0);
+						//getRamp(m_image0[i / 2][j / 2][k / 2], 0, 0);
+						getRamp(m_image0[(k / 2) * 256 * 256 + (j / 2) * 256 + (i / 2)], 0, 0);
 					}
 				}
 			}
@@ -643,9 +644,9 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 			GL_UNSIGNED_BYTE, m_image0);										// ³Ð«Ø3D¯¾²z
 	}
 
-	//delete[] image0;
+	delete[] m_image0;
 
-	for (i = 0; i < 512 / 2; i++)
+	/*for (i = 0; i < 512 / 2; i++)
 	{
 		for (j = 0; j < 512 / 2; j++)
 		{
@@ -657,7 +658,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 		}
 		delete[] m_image0[i];
 	}
-	delete[] m_image0;
+	delete[] m_image0;*/
 
 }
 

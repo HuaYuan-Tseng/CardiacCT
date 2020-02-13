@@ -29,7 +29,6 @@ class C3DProcess : public CDialogEx
 //================//
 public:
 	CCTDoc*			m_pDoc;				// 紀錄Doc的物件指標
-	BYTE****		m_image0;
 	
 	CScrollBar		m_ScrollBar;
 
@@ -81,6 +80,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 	
+	BYTE**		m_image0;
 
 //================//
 //   Operations   //
