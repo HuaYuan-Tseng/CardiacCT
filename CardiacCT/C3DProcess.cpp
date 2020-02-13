@@ -9,7 +9,7 @@
 #include "afxdialogex.h"
 
 #define M_PI 3.1415926f
-#define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
+#define New2Dmatrix(L, W, TYPE)	(TYPE**)new2Dmatrix(L, W, sizeof(TYPE))
 
 #define Display_Series m_pDoc->displaySeries
 #define Total_Slice m_pDoc->m_dir->SeriesList[0]->TotalSliceCount
@@ -567,7 +567,21 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	int TotalSlice = Total_Slice;
 	int Sample_start = 0 + Mat_Offset;
 	int Sample_end = 0 + Mat_Offset + TotalSlice;
-	BYTE image0[256][256][256][4] = {0};
+	//BYTE**** image0 = New4Dmatrix(256, 256, 256, 4, BYTE);
+
+	m_image0 = new BYTE ***[256];
+	for (i = 0; i < 512/2; i++)
+	{
+		m_image0[i] = new BYTE **[256];
+		for (j = 0; j < 512/2; j++)
+		{
+			m_image0[i][j] = new BYTE *[256];
+			for (k = 0; k < 512/2; k++)
+			{
+				m_image0[i][j][k] = new BYTE[4];
+			}
+		}
+	}
 
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
@@ -587,7 +601,17 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 					for (i = 2; i < Col - 2; i += 2)
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
-						getRamp(image0[i / 2][j / 2][k / 2], (float)pixel / (float)max / 2, 0);
+						getRamp(m_image0[i / 2][j / 2][k / 2], (float)pixel / (float)max / 2, 0);
+					}
+				}
+			}
+			else
+			{
+				for (j = 2; j < Row - 2; j += 2)
+				{
+					for (i = 2; i < Col - 2; i += 2)
+					{
+						getRamp(m_image0[i / 2][j / 2][k / 2], 0, 0);
 					}
 				}
 			}
@@ -616,8 +640,24 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);		// 縮小時的濾鏡方式
 		glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, color);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 256, 256, 256, 0, GL_RGBA,
-			GL_UNSIGNED_BYTE, image0);											// 創建3D紋理
+			GL_UNSIGNED_BYTE, m_image0);										// 創建3D紋理
 	}
+
+	//delete[] image0;
+
+	for (i = 0; i < 512 / 2; i++)
+	{
+		for (j = 0; j < 512 / 2; j++)
+		{
+			for (k = 0; k < 512 / 2; k++)
+			{
+				delete[] m_image0[i][j][k];
+			}
+			delete[] m_image0[i][j];
+		}
+		delete[] m_image0[i];
+	}
+	delete[] m_image0;
 
 }
 
@@ -1185,17 +1225,18 @@ void C3DProcess::InvertMat(float (&m)[16])
 	m[14] = -m[14];
 }
 
-void* C3DProcess::new2Dmatrix(int h, int w, int size)
+void* C3DProcess::new2Dmatrix(int l, int w, int size)
 {
 	// DO : 動態配置二維矩陣
 	//
 	int i;
 	void** p;
 
-	p = (void**) new char[h * sizeof(void*) + h * w*size];
-	for (i = 0; i < h; i++)
-		p[i] = ((char*)(p + h)) + i * w * size;
+	p = (void**)new char[l * sizeof(void*) + l * w * size];
 
+	for (i = 0; i < l; i++)
+	{
+		p[i] = ((char*)(p + l)) + i * w * size;
+	}
 	return p;
 }
-
