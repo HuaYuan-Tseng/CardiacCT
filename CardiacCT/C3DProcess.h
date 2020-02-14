@@ -79,8 +79,6 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	double*			user;
 
 unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
-	
-	BYTE**		m_image0;
 
 //================//
 //   Operations   //
