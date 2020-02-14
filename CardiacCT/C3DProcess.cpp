@@ -9,7 +9,9 @@
 #include "afxdialogex.h"
 
 #define M_PI 3.1415926f
-#define New2Dmatrix(L, W, TYPE)	(TYPE**)new2Dmatrix(L, W, sizeof(TYPE))
+#define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
+#define New3Dmatrix(H, W, L, TYPE) (TYPE***)new3Dmatrix(H, W, L, sizeof(TYPE))
+#define New4Dmatrix(H, W, L, V, TYPE) (TYPE****)new4Dmatrix(H, W, L, V, sizeof(TYPE))
 
 #define Display_Series m_pDoc->displaySeries
 #define Total_Slice m_pDoc->m_dir->SeriesList[0]->TotalSliceCount
@@ -62,6 +64,8 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	DisplaySlice = 0;
 	viewDistance = -4.0f;
 
+	glVertexPt = New2Dmatrix(64, 3, float);
+
 	axis = new float[3]{0.0f, 0.0f, 0.0f};
 	pAxis = new float[3]{0.0f, 0.0f, 0.0f};
 	user = new double[4]{1.0, 0.0, 0.0, 1.0};
@@ -72,9 +76,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 								0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
 	planeangle = new float[12]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
 								0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-	
 
-	glVertexPt = New2Dmatrix(64, 3, float);
 }
 
 C3DProcess::~C3DProcess()
@@ -567,8 +569,8 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	int Sample_start = 0 + Mat_Offset;
 	int Sample_end = 0 + Mat_Offset + TotalSlice;
 	
-	BYTE m_image0[256][256][256][4] = {0};
-	//m_image0 = New2Dmatrix((256*256*256), 4, BYTE);
+	//BYTE m_image0[256][256][256][4] = {0};
+	int**** m_image0 = New4Dmatrix(256, 256, 256, 4, int);
 
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
@@ -588,22 +590,23 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 					for (i = 2; i < Col - 2; i += 2)
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
+
 						getRamp(m_image0[i / 2][j / 2][k / 2], (float)pixel / 255.0f / 2, 0);
 						//getRamp(m_image0[(k/2)*256*256+(j/2)*256+(i/2)], (float)pixel / 255.0f / 2, 0);
 					}
 				}
 			}
-			else
-			{
-				for (j = 2; j < Row - 2; j += 2)
-				{
-					for (i = 2; i < Col - 2; i += 2)
-					{
-						getRamp(m_image0[i / 2][j / 2][k / 2], 0, 0);
-						//getRamp(m_image0[(k / 2) * 256 * 256 + (j / 2) * 256 + (i / 2)], 0, 0);
-					}
-				}
-			}
+			//else
+			//{
+			//	for (j = 2; j < Row - 2; j += 2)
+			//	{
+			//		for (i = 2; i < Col - 2; i += 2)
+			//		{
+			//			getRamp(m_image0[i / 2][j / 2][k / 2], 0, 0);
+			//			//getRamp(m_image0[(k / 2) * 256 * 256 + (j / 2) * 256 + (i / 2)], 0, 0);
+			//		}
+			//	}
+			//}
 			k += 2;
 			m_progress->GetPro(k);
 		}
@@ -632,11 +635,11 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 			GL_UNSIGNED_BYTE, m_image0);										// 創建3D紋理
 	}
 
-	//delete[] m_image0;
+	delete[] m_image0;
 
 }
 
-void C3DProcess::getRamp(GLubyte* color, float t, int n)
+void C3DProcess::getRamp(int* color, float t, int n)
 {
 	// DO : 計算RGBA的數值
 	//
@@ -1200,18 +1203,56 @@ void C3DProcess::InvertMat(float (&m)[16])
 	m[14] = -m[14];
 }
 
-void* C3DProcess::new2Dmatrix(int l, int w, int size)
+void* C3DProcess::new2Dmatrix(int h, int w, int size)
 {
-	// DO : 動態配置二維矩陣
-	//
 	int i;
 	void** p;
 
-	p = (void**)new char[l * sizeof(void*) + l * w * size];
+	p = (void**) new char[h * sizeof(void*) + h * w * size];
 
-	for (i = 0; i < l; i++)
+	for (i = 0; i < h; i++)
 	{
-		p[i] = ((char*)(p + l)) + i * w * size;
+		p[i] = ((char*)(p + h)) + i * w * size;
+	}
+	return p;
+}
+
+void* C3DProcess::new3Dmatrix(int h, int w, int l, int size)
+{
+	int i, j;
+	void*** p;
+
+	p = (void***)new char[h * sizeof(void**) + h * w * sizeof(void*) + h * w * l * size];
+
+	for (j = 0; j < h; j++)
+	{
+		p[j] = ((void**)(p + h)) + j * w;
+		for (i = 0; i < w; i++)
+		{
+			p[j][i] = ((char*)(p + h + h * w + j * w * l)) + i * l * size;
+		}
+	}
+	return p;
+}
+
+void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
+{
+	int i, j, k;
+	void**** p;
+
+	p = (void****)new char[h * sizeof(void***) + h * w * sizeof(void**) + h * w * l * sizeof(void*) + h * w * l * v * size];
+
+	for (k = 0; k < h; k++)
+	{
+		p[k] = ((void***)(p + h)) + k * w;
+		for (j = 0; j < w; j++)
+		{
+			p[k][j] = ((void**)(p + h + h * w + k * w * l)) + j * l;
+			for (i = 0; i < l; i++)
+			{
+				p[k][j][i] = ((char*)(p + h + h * w + h * w * l + k * w * l * v + j * l * v)) + i * v * size;
+			}
+		}
 	}
 	return p;
 }

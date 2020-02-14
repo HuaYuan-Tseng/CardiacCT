@@ -90,11 +90,13 @@ public:
 	void	GLInitialization();							// openGL建構初始化
 	void	PerspectiveBuild();							// 建立透視空間
 	void	PrepareVolume(unsigned int texName[10]);	// 建立紋理座標的資料矩陣
-	void	getRamp(GLubyte* color, float t, int n);	// 上色
+	void	getRamp(int* color, float t, int n);	// 上色
 
 	void	Draw3DImage(bool which);					// 繪製三維影像
 	void	Draw2DImage(unsigned short &slice);			// 繪製二維影像
-	void*	new2Dmatrix(int l, int w, int size);		// 動態配置二維矩陣
+	void*	new2Dmatrix(int h, int w, int size);		// 動態配置二維矩陣
+	void*	new3Dmatrix(int h, int w, int l, int size);
+	void*	new4Dmatrix(int h, int w, int l, int v, int size);
 
 	void	InvertMat(float (&m)[16]);
 	void	TrackMotion(int x, int y);
