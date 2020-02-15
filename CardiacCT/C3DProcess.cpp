@@ -570,7 +570,8 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	int Sample_end = 0 + Mat_Offset + TotalSlice;
 	
 	//BYTE m_image0[256][256][256][4] = {0};
-	int**** m_image0 = New4Dmatrix(256, 256, 256, 4, int);
+	BYTE m_image0[256 * 256 * 256][4] = {0};
+	//BYTE** m_image0 = New2Dmatrix(256*256*256, 4, BYTE);
 
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
@@ -591,7 +592,8 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
 
-						getRamp(m_image0[i / 2][j / 2][k / 2], (float)pixel / 255.0f / 2, 0);
+						getRamp(m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)], (float)pixel / 255.0f / 2, 0);
+						//getRamp(m_image0[i / 2][j / 2][k / 2], (float)pixel / 255.0f / 2, 0);
 						//getRamp(m_image0[(k/2)*256*256+(j/2)*256+(i/2)], (float)pixel / 255.0f / 2, 0);
 					}
 				}
@@ -632,23 +634,24 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);		// 縮小時的濾鏡方式
 		glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, color);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 256, 256, 256, 0, GL_RGBA,
-			GL_UNSIGNED_BYTE, m_image0);										// 創建3D紋理
+					GL_UNSIGNED_BYTE, m_image0);								// 創建3D紋理
 	}
 
-	delete[] m_image0;
-
+	//delete[] m_image0;
+	
 }
 
-void C3DProcess::getRamp(int* color, float t, int n)
+void C3DProcess::getRamp(GLubyte* color, float t, int n)
 {
 	// DO : 計算RGBA的數值
 	//
 	t *= 2.0f;
+
 	if (n == 0)				// Gray Scale
 	{
-		color[0] = 255 * t; // R
-		color[1] = 255 * t; // G
-		color[2] = 255 * t; // B
+		color[0] = 255 * t;	// R
+		color[1] = 255 * t;	// G
+		color[2] = 255 * t;	// B
 		color[3] = 60 * t;	// A
 	}
 	else if (n == 1)		// Red
