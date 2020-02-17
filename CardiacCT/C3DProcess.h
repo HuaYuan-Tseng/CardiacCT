@@ -16,11 +16,11 @@ class C3DProcess : public CDialogEx
 {
 	DECLARE_DYNAMIC(C3DProcess)
 
-	enum class MoveModes				// 物件操作模式
+	enum class ControlModes				// 物件操作模式
 	{
-		MoveNone, 
-		MoveView, 
-		MoveObject
+		ControlNone,					// 不執行任何操作
+		ControlObject,					// 物件(心臟)操作 : 觀看、旋轉、位移
+		ControlPlane,					// 平面操作：觀看、旋轉
 	}	mode;
 
 //================//
@@ -43,19 +43,14 @@ public:
 PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	
 	GLuint			textureName[10];	// 記載紋理名稱
-	GLboolean		redrawContinued;
-	GLboolean		trackingMotion;
-	GLboolean		trackingTranslation;
-
+	
 	int				Mat_Offset;			// 影像矩陣置中的偏移量
 	int				ImageFrame;			// 影像框數(1個時序1個)
 	int				slices;
-	int				lastTime;
 
-	bool			m_object;
-	bool			m_plane;
-	bool			gbPlane;
-	bool			gbPlaneMove;
+	bool			LR_Button;			// true:滑鼠左鍵；false:滑鼠右鍵
+	bool			Act_Rotate;
+	bool			Act_Translate;
 
 	float*			axis;				// 控制 物件 旋轉軸
 	float*			pAxis;				// 控制 物件 旋轉軸
@@ -97,9 +92,9 @@ public:
 	void*	new4Dmatrix(int h, int w, int l, int v, int size);
 
 	void	InvertMat(float (&m)[16]);
-	void	TrackMotion(int x, int y);
-	void	StopMotion(int x, int y, int time);
-	void	StartMotion(int x, int y, int time);
+	void	ActTracking(int x, int y);					// 物件操作的追蹤(包含旋轉與位移)
+	void	ActStop(UINT nFlags, int x, int y);			// 「結束旋轉」的動作設定
+	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
 //================//

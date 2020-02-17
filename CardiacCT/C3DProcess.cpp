@@ -33,21 +33,17 @@ IMPLEMENT_DYNAMIC(C3DProcess, CDialogEx)
 C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_3DPROCESS, pParent)
 {
-	mode = MoveModes::MoveNone;
+	mode = ControlModes::ControlObject;
 
 	m_pDoc = nullptr;
 	m_2D_dib = nullptr;
 	m_2D_frame = nullptr;
 	m_3D_frame = nullptr;
 
-	gbPlane = false;
-	gbPlaneMove = false;
-	m_object = true;
-	m_plane = false;
-
 	gl_3DTexture = FALSE;
-	trackingMotion = GL_FALSE;
-	trackingTranslation = GL_FALSE;
+
+	Act_Rotate = false;
+	Act_Translate = false;
 
 	intensity = 0.8125f;
 	density = 0.0f;
@@ -99,10 +95,6 @@ C3DProcess::~C3DProcess()
 
 	if (gl_3DTexture != FALSE)
 		gl_3DTexture = FALSE;
-	if (gbPlane != false)
-		gbPlane = false;
-	if (gbPlaneMove != false)
-		gbPlaneMove = false;
 
 	if (angle != 0.0f)
 		angle = 0.0f;
@@ -315,7 +307,7 @@ void C3DProcess::OnMouseMove(UINT nFlags, CPoint point)
 	{
 		if (nFlags == MK_LBUTTON || nFlags == MK_RBUTTON)
 		{
-			TrackMotion(point.x - m_3D_rect.left, point.y - m_3D_rect.top);
+			ActTracking(point.x - m_3D_rect.left, point.y - m_3D_rect.top);
 
 			Draw3DImage(true);
 		}
@@ -329,7 +321,7 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
-		StartMotion(point.x - m_3D_rect.left, point.y - m_3D_rect.top, glutGet(GLUT_ELAPSED_TIME));
+		ActStart(nFlags, point.x - m_3D_rect.left, point.y - m_3D_rect.top);
 
 		Draw3DImage(true);
 	}
@@ -342,7 +334,7 @@ void C3DProcess::OnLButtonUp(UINT nFlags, CPoint point)
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
-		StopMotion(point.x - m_3D_rect.left, point.y - m_3D_rect.top, glutGet(GLUT_ELAPSED_TIME));
+		ActStop(nFlags, point.x - m_3D_rect.left, point.y - m_3D_rect.top);
 
 		Draw3DImage(true);
 	}
@@ -355,11 +347,8 @@ void C3DProcess::OnRButtonDown(UINT nFlags, CPoint point)
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
-		if (trackingTranslation == GL_FALSE)
-		{
-			trackingTranslation = GL_TRUE;
-			transPosY = point.y - m_3D_rect.top;
-		}
+		ActStart(nFlags, point.x - m_3D_rect.left, point.y - m_3D_rect.top);
+		
 		Draw3DImage(true);
 	}
 	CDialogEx::OnRButtonDown(nFlags, point);
@@ -371,7 +360,7 @@ void C3DProcess::OnRButtonUp(UINT nFlags, CPoint point)
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
-		trackingTranslation = GL_FALSE;
+		ActStop(nFlags, point.x - m_3D_rect.left, point.y - m_3D_rect.top);
 		
 		Draw3DImage(true);
 	}
@@ -384,17 +373,13 @@ void C3DProcess::OnRButtonDblClk(UINT nFlags, CPoint point)
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
-		if (m_object)
+		if (mode == ControlModes::ControlObject)
 		{
-			m_object = false;
-			m_plane = true;
-			gbPlane = true;
+			mode = ControlModes::ControlPlane;
 		}
 		else
 		{
-			m_object = true;
-			m_plane = false;
-			gbPlane = false;
+			mode = ControlModes::ControlObject;
 		}
 	}
 	
@@ -750,7 +735,7 @@ void C3DProcess::Draw3DImage(bool which)
 
 	// 控制 心臟 旋轉
 	//
-	if (mode == MoveModes::MoveObject || mode == MoveModes::MoveView)
+	if (mode == ControlModes::ControlObject)
 	{
 		glPushMatrix();
 		{
@@ -766,7 +751,7 @@ void C3DProcess::Draw3DImage(bool which)
 
 	// 控制 辣個平面 旋轉
 	//
-	if (gbPlaneMove)
+	if ((mode == ControlModes::ControlPlane) && (Act_Rotate == true))
 	{
 		// handle the plane rotations
 		temp[0] = objectXform[0] * pAxis[0] + objectXform[4] * pAxis[1] + objectXform[8] * pAxis[2];
@@ -1063,13 +1048,15 @@ void C3DProcess::pointToVector(int x, int y, int width, int height, float vec[3]
 	//
 	float d, a;
 
-	vec[0] = (2.0*x - width) / width;
-	vec[1] = (height - 2.0*y) / height;
-	vec[1] = (!gbPlane) ? vec[1] : -vec[1];							//v1
+	vec[0] = (2.0 * x - width) / width;
+	vec[1] = (height - 2.0 * y) / height;
+	vec[1] = (mode == ControlModes::ControlObject) ? vec[1] : -vec[1];		//v1
+	
 	d = sqrt(vec[0] * vec[0] + vec[1] * vec[1]);
 	
 	vec[2] = cos((M_PI / 2.0) * ((d < 1.0) ? d : 1.0));
-	vec[2] = (!gbPlane) ? vec[2] : -vec[2];							//v2, just for moving plane normal
+	vec[2] = (mode == ControlModes::ControlObject) ? vec[2] : -vec[2];		//v2, just for moving plane normal
+	
 	a = 1.0 / sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
 	
 	vec[0] *= a;
@@ -1077,47 +1064,42 @@ void C3DProcess::pointToVector(int x, int y, int width, int height, float vec[3]
 	vec[2] *= a;
 }
 
-void C3DProcess::StartMotion(int x, int y, int time)
+void C3DProcess::ActStart(UINT nFlags, int x, int y)
 {
-	if (gbPlane == true)
-		gbPlaneMove = true;
-	else
-		mode = MoveModes::MoveView;
+	if (nFlags == MK_LBUTTON)
+	{
+		Act_Rotate = true;
+		LR_Button = true;
 
-	trackingMotion = GL_TRUE;
-	redrawContinued = GL_FALSE;
-	lastTime = time;
-	pointToVector(x, y, m_3D_rect.right - m_3D_rect.left, m_3D_rect.bottom - m_3D_rect.top, lastPos);
+		pointToVector(x, y, m_3D_rect.right - m_3D_rect.left, m_3D_rect.bottom - m_3D_rect.top, lastPos);
+	} 
+	else if (nFlags == MK_RBUTTON)
+	{
+		Act_Translate = true;
+		LR_Button = false;
+
+		transPosY = y;
+	}
 }
 
-void C3DProcess::StopMotion(int x, int y, int time)
+void C3DProcess::ActStop(UINT nFlags, int x, int y)
 {
-	trackingMotion = GL_FALSE;
+	if (LR_Button == true)
+	{
+		Act_Rotate = false;
 
-	if (time == lastTime)
-	{
-		redrawContinued = GL_TRUE;
-	}
-	else
-	{
-		if ((!gbPlaneMove) && (mode != MoveModes::MoveNone))
-		{
+		if (mode == ControlModes::ControlObject)
 			angle = 0.0;
-			redrawContinued = GL_FALSE;
-		}
 	}
-	if (!redrawContinued)
+	else if (LR_Button == false)
 	{
-		if (gbPlane)
-			gbPlaneMove = false;
-		else
-			mode = MoveModes::MoveNone;
+		Act_Translate = false;
 	}
 }
 
-void C3DProcess::TrackMotion(int x, int y)
+void C3DProcess::ActTracking(int x, int y)
 {
-	if (trackingMotion)
+	if (Act_Rotate)
 	{
 		float curPos[3], dx, dy, dz;
 		pointToVector(x, y, m_3D_rect.right - m_3D_rect.left, m_3D_rect.bottom - m_3D_rect.top, curPos);
@@ -1126,44 +1108,40 @@ void C3DProcess::TrackMotion(int x, int y)
 		dy = curPos[1] - lastPos[1];
 		dz = curPos[2] - lastPos[2];
 
-		if (!gbPlane)
+		if (mode == ControlModes::ControlObject)
 		{
-			angle = 90.0 * sqrt(dx*dx + dy * dy + dz * dz);
+			angle = 90.0 * sqrt(dx * dx + dy * dy + dz * dz);
 
 			axis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
 			axis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
 			axis[2] = lastPos[0] * curPos[1] - lastPos[1] * curPos[0];
 		}
-		else
+		else if (mode == ControlModes::ControlPlane)
 		{
-			pAngle = 90.0 * sqrt(dx*dx + dy * dy + dz * dz);
+			pAngle = 90.0 * sqrt(dx * dx + dy * dy + dz * dz);
 
 			pAxis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
 			pAxis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
 			pAxis[2] = lastPos[0] * curPos[1] - lastPos[1] * curPos[0];
 		}
 
-		lastTime = glutGet(GLUT_ELAPSED_TIME);
 		lastPos[0] = curPos[0];
 		lastPos[1] = curPos[1];
 		lastPos[2] = curPos[2];
-
-		UpdateWindow();
 	}
-	if (trackingTranslation)
+	if (Act_Translate)
 	{
-		if (!gbPlane)
+		if (mode == ControlModes::ControlObject)
 		{
 			viewDistance += 0.01f * (y - transPosY);
 			transPosY = y;
 		}
-		else
+		else if (mode == ControlModes::ControlPlane)
 		{
 			user[3] -= 0.01f * (y - transPosY);
 			transPosY = y;
 		}
 	}
-	UpdateData(false);
 	UpdateWindow();
 }
 
