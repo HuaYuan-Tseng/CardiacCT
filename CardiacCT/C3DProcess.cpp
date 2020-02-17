@@ -32,7 +32,7 @@ IMPLEMENT_DYNAMIC(C3DProcess, CDialogEx)
 
 C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_3DPROCESS, pParent)
-	, m_object(FALSE)
+	, m_object(TRUE)
 	, m_plane(FALSE)
 {
 	mode = ControlModes::ControlObject;
@@ -42,9 +42,6 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	m_2D_frame = nullptr;
 	m_3D_frame = nullptr;
 	gl_3DTexture = FALSE;
-
-	m_object = TRUE;
-	m_plane = FALSE;
 
 	Act_Rotate = false;
 	Act_Translate = false;
