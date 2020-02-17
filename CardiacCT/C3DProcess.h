@@ -109,6 +109,9 @@ public:
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_DIALOG_3DPROCESS };
 #endif
+public:
+	BOOL	m_object;
+	BOOL	m_plane;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
@@ -124,5 +127,8 @@ public:
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	
+	afx_msg void OnBnClickedCheckObject();
+	afx_msg void OnBnClickedCheckPlane();
 	
 };

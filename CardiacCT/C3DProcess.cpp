@@ -32,6 +32,8 @@ IMPLEMENT_DYNAMIC(C3DProcess, CDialogEx)
 
 C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_3DPROCESS, pParent)
+	, m_object(FALSE)
+	, m_plane(FALSE)
 {
 	mode = ControlModes::ControlObject;
 
@@ -40,6 +42,9 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	m_2D_frame = nullptr;
 	m_3D_frame = nullptr;
 	gl_3DTexture = FALSE;
+
+	m_object = TRUE;
+	m_plane = FALSE;
 
 	Act_Rotate = false;
 	Act_Translate = false;
@@ -81,10 +86,15 @@ C3DProcess::~C3DProcess()
 	if (lastPos != nullptr)
 		delete[] lastPos;
 
-	if (Act_Translate != false)
-		Act_Translate = false;
+	if (m_object != TRUE)
+		m_object = TRUE;
+	if (m_plane != FALSE)
+		m_plane = FALSE;
+
 	if (gl_3DTexture != FALSE)
 		gl_3DTexture = FALSE;
+	if (Act_Translate != false)
+		Act_Translate = false;
 	if (Act_Rotate != false)
 		Act_Rotate = false;
 	
@@ -123,6 +133,8 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_SCROLLBAR_2D, m_ScrollBar);
+	DDX_Check(pDX, IDC_CHECK_Object, m_object);
+	DDX_Check(pDX, IDC_CHECK_PLANE, m_plane);
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -135,6 +147,9 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_WM_LBUTTONDOWN()
 	ON_WM_RBUTTONDOWN()
 	ON_WM_RBUTTONDBLCLK()
+
+	ON_BN_CLICKED(IDC_CHECK_Object, &C3DProcess::OnBnClickedCheckObject)
+	ON_BN_CLICKED(IDC_CHECK_PLANE, &C3DProcess::OnBnClickedCheckPlane)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -389,14 +404,36 @@ void C3DProcess::OnRButtonDblClk(UINT nFlags, CPoint point)
 	{
 		if (mode == ControlModes::ControlObject)
 		{
-			mode = ControlModes::ControlPlane;
+			OnBnClickedCheckPlane();
 		}
 		else
 		{
-			mode = ControlModes::ControlObject;
+			OnBnClickedCheckObject();
 		}
 	}
 	CDialogEx::OnRButtonDblClk(nFlags, point);
+}
+
+void C3DProcess::OnBnClickedCheckObject()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : Object (m_object)
+	//
+	mode = ControlModes::ControlObject;
+	m_object = TRUE;
+	m_plane = FALSE;
+	UpdateData(FALSE);
+}
+
+void C3DProcess::OnBnClickedCheckPlane()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : Plane (m_plane)
+	//
+	mode = ControlModes::ControlPlane;
+	m_object = FALSE;
+	m_plane = TRUE;
+	UpdateData(FALSE);
 }
 
 //==========================//
@@ -628,54 +665,54 @@ void C3DProcess::getRamp(GLubyte* color, float t, int n)
 	//
 	t *= 2.0f;
 
-	if (n == 0)				// Gray Scale
+	if (n == 0)							// Gray Scale
 	{
-		color[0] = 255 * t;	// R
-		color[1] = 255 * t;	// G
-		color[2] = 255 * t;	// B
-		color[3] = 60 * t;	// A
+		color[0] = (GLubyte)(255 * t);	// R
+		color[1] = (GLubyte)(255 * t);	// G
+		color[2] = (GLubyte)(255 * t);	// B
+		color[3] = (GLubyte)(60 * t);	// A
 	}
-	else if (n == 1)		// Red
+	else if (n == 1)					// Red
 	{
-		color[0] = 255 * t;
+		color[0] = (GLubyte)(255 * t);
 		color[1] = 0;
 		color[2] = 0;
-		color[3] = 255 * t;
+		color[3] = (GLubyte)(255 * t);
 	}
-	else if (n == 2)		// Green
+	else if (n == 2)					// Green
 	{
 		color[0] = 0;
-		color[1] = 255 * t;
+		color[1] = (GLubyte)(255 * t);
 		color[2] = 0;
-		color[3] = 255 * t;
+		color[3] = (GLubyte)(255 * t);
 	}
-	else if (n == 3)		// Blue
+	else if (n == 3)					// Blue
 	{
 		color[0] = 0;
 		color[1] = 0;
-		color[2] = 255 * t;
-		color[3] = 255 * t;
+		color[2] = (GLubyte)(255 * t);
+		color[3] = (GLubyte)(255 * t);
 	}
-	else if (n == 4)		// Orange
+	else if (n == 4)					// Orange
 	{
-		color[0] = 255 * t;
-		color[1] = 100 * t;
-		color[2] = 50 * t;
-		color[3] = 255 * t;
+		color[0] = (GLubyte)(255 * t);
+		color[1] = (GLubyte)(100 * t);
+		color[2] = (GLubyte)(50 * t);
+		color[3] = (GLubyte)(255 * t);
 	}
-	else if (n == 5)		// Purple
+	else if (n == 5)					// Purple
 	{
-		color[0] = 255 * t;
+		color[0] = (GLubyte)(255 * t);
 		color[1] = 0;
-		color[2] = 255 * t;
-		color[3] = 255 * t;
+		color[2] = (GLubyte)(255 * t);
+		color[3] = (GLubyte)(255 * t);
 	}
-	else if (n == 6)		// Water Blue
+	else if (n == 6)					// Water Blue
 	{
 		color[0] = 0;
-		color[1] = 255 * t;
-		color[2] = 255 * t;
-		color[3] = 255 * t;
+		color[1] = (GLubyte)(255 * t);
+		color[2] = (GLubyte)(255 * t);
+		color[3] = (GLubyte)(255 * t);
 	}
 }
 
@@ -713,8 +750,8 @@ void C3DProcess::Draw3DImage(bool which)
 	};
 
 	// clip planes equation（A, B, C, Z）
-	// Ax + By + Cz = 0，如果是(0, -1, 0, 0)，
-	// 意思是 y<0 的才能顯示，最後一個參數為"從z=0平面開始"
+	// Ax + By + Cz + D = 0，如果是(0, -1, 0, 0)，
+	// 意思是 y<0 的才能顯示。
 	//
 	double clip0[] = {-1.0,  0.0,  0.0, 1.0 };
 	double clip1[] = { 1.0,  0.0,  0.0, 1.0 };
@@ -805,23 +842,23 @@ void C3DProcess::Draw3DImage(bool which)
 	glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
 	glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
 
-	// create the points for the corners of the clip plane；
+	// 建立裁剪平面(Clip plane)的四個角落的點
 	// 計算 clip plane 四個角落的點 plane[16]={1,-1,-1, 1,-1,1, 1,1,-1, 1,1,1}
 	//
 	for (i = 0; i < 4; i++)
 	{
-		plane[i * 3 + 0] = planeXform[0] * user_Plane[3];
-		plane[i * 3 + 1] = planeXform[1] * user_Plane[3];
-		plane[i * 3 + 2] = planeXform[2] * user_Plane[3];
-		plane[i * 3 + 0] += planeXform[4] * ((i < 2) ? -1.0f : 1.0f);
-		plane[i * 3 + 1] += planeXform[5] * ((i < 2) ? -1.0f : 1.0f);
-		plane[i * 3 + 2] += planeXform[6] * ((i < 2) ? -1.0f : 1.0f);
-		plane[i * 3 + 0] += planeXform[8] * ((i & 0x1) ? 1.0f : -1.0f);
-		plane[i * 3 + 1] += planeXform[9] * ((i & 0x1) ? 1.0f : -1.0f);
-		plane[i * 3 + 2] += planeXform[10] * ((i & 0x1) ? 1.0f : -1.0f);
+		plane[i * 3 + 0] = (float)(planeXform[0] * user_Plane[3]);
+		plane[i * 3 + 1] = (float)(planeXform[1] * user_Plane[3]);
+		plane[i * 3 + 2] = (float)(planeXform[2] * user_Plane[3]);
+		plane[i * 3 + 0] += (float)(planeXform[4] * ((i < 2) ? -1.0f : 1.0f));
+		plane[i * 3 + 1] += (float)(planeXform[5] * ((i < 2) ? -1.0f : 1.0f));
+		plane[i * 3 + 2] += (float)(planeXform[6] * ((i < 2) ? -1.0f : 1.0f));
+		plane[i * 3 + 0] += (float)(planeXform[8] * ((i & 0x1) ? 1.0f : -1.0f));
+		plane[i * 3 + 1] += (float)(planeXform[9] * ((i & 0x1) ? 1.0f : -1.0f));
+		plane[i * 3 + 2] += (float)(planeXform[10] * ((i & 0x1) ? 1.0f : -1.0f));
 	}
 
-	// find the clip plane oppostie the viewer
+	// 尋找與觀測者相反的裁剪平面
 	//
 	if (fabs(objectXform[2]) > fabs(objectXform[6]))
 	{
@@ -858,7 +895,8 @@ void C3DProcess::Draw3DImage(bool which)
 		}
 	}
 
-	// configure the clip planes
+	// 配置裁剪平面 0 ~ 5
+	//
 	glClipPlane(GL_CLIP_PLANE0, clip0);
 	glClipPlane(GL_CLIP_PLANE1, clip1);
 	glClipPlane(GL_CLIP_PLANE2, clip2);
@@ -866,7 +904,8 @@ void C3DProcess::Draw3DImage(bool which)
 	glClipPlane(GL_CLIP_PLANE4, clip4);
 	glClipPlane(GL_CLIP_PLANE5, clip5);
 
-	// replace the plane opposite the viewer with the user controlled one
+	// 將與觀測者相反的裁剪平面設定為觀測者操作的 辣個平面
+	//
 	glClipPlane(GL_CLIP_PLANE0 + clip, user_Plane);
 
 	glEnable(GL_CLIP_PLANE0);
@@ -876,17 +915,18 @@ void C3DProcess::Draw3DImage(bool which)
 	glEnable(GL_CLIP_PLANE4);
 	glEnable(GL_CLIP_PLANE5);
 
-	// set the color for the slices（R, G, B, Alpha）
-	glColor4f(1.0f, 1.0f, 1.0f, intensity);
+	glColor4f(1.0f, 1.0f, 1.0f, intensity);				// 設定openGL的slcies顏色（R, G, B, Alpha）
 
-	// enable the alpha/blending test
+	// 啟動 Alpha / 混合 測試
+	//
 	glEnable(GL_ALPHA_TEST);							// 啟用 Alpha 測試
 	glAlphaFunc(GL_GREATER, density*intensity);			// 設定 Alpha 測試的參考值
 
 	glEnable(GL_BLEND);									// 啟用 顏色混合
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);	// 設定 顏色混合(Source and Target)
 
-	// set up the texture matrix
+	// 設定紋理座標系統
+	//
 	glMatrixMode(GL_TEXTURE);
 	glLoadIdentity();
 	glEnable(GL_TEXTURE_3D);
@@ -898,12 +938,14 @@ void C3DProcess::Draw3DImage(bool which)
 	glTranslatef(0.0f, 0.0f, -viewDistance);
 
 	// set modelView to identity
+	//
 	glMatrixMode(GL_MODELVIEW);
 	glPushMatrix();
 	{
 		glLoadIdentity();
 
-		// setup the texture coord generation
+		// 設定紋理座標系統的生成
+		//
 		glTexGenfv(GL_S, GL_EYE_PLANE, xPlane);
 		glTexGenfv(GL_T, GL_EYE_PLANE, yPlane);
 		glTexGenfv(GL_R, GL_EYE_PLANE, zPlane);
@@ -916,7 +958,8 @@ void C3DProcess::Draw3DImage(bool which)
 
 		glTranslatef(0.0f, 0.0f, viewDistance);
 
-		// draw the slices
+		// 繪製openGL的每一層slices
+		//
 		for (k = 0; k < glSlices; k++)
 		{
 			glPushMatrix();
@@ -949,6 +992,7 @@ void C3DProcess::Draw3DImage(bool which)
 	glPopMatrix();
 
 	// draw the slice plane across to get a better image
+	//
 	glDepthMask(GL_FALSE);
 	glBegin(GL_QUADS);
 	{
@@ -966,7 +1010,8 @@ void C3DProcess::Draw3DImage(bool which)
 	glDisable(GL_TEXTURE_GEN_T);
 	glDisable(GL_TEXTURE_GEN_R);
 
-	// draw the box framing everything，畫邊框
+	// 繪製周圍藍色邊框
+	//
 	glLineWidth(3);
 	glBegin(GL_LINES);
 	{
@@ -1004,6 +1049,8 @@ void C3DProcess::Draw3DImage(bool which)
 	}
 	glEnd();
 
+	// 繪製觀測者的平面
+	//
 	glLineWidth(1);
 	glBegin(GL_LINES);
 	{
@@ -1057,16 +1104,16 @@ void C3DProcess::pointToVector(int x, int y, int width, int height, float vec[3]
 	//
 	float d, a;
 
-	vec[0] = (2.0 * x - width) / width;
-	vec[1] = (height - 2.0 * y) / height;
-	vec[1] = (mode == ControlModes::ControlObject) ? vec[1] : -vec[1];		//v1
+	vec[0] = (float)((2.0 * x - width) / width);
+	vec[1] = (float)((height - 2.0 * y) / height);
+	vec[1] = (float)((mode == ControlModes::ControlObject) ? vec[1] : -vec[1]);		//v1
 	
 	d = sqrt(vec[0] * vec[0] + vec[1] * vec[1]);
 	
-	vec[2] = cos((M_PI / 2.0) * ((d < 1.0) ? d : 1.0));
-	vec[2] = (mode == ControlModes::ControlObject) ? vec[2] : -vec[2];		//v2, just for moving plane normal
+	vec[2] = (float)(cos((M_PI / 2.0) * ((d < 1.0) ? d : 1.0)));
+	vec[2] = (float)((mode == ControlModes::ControlObject) ? vec[2] : -vec[2]);		//v2, just for moving plane normal
 	
-	a = 1.0 / sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+	a = (float)(1.0 / sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]));
 	
 	vec[0] *= a;
 	vec[1] *= a;
@@ -1089,7 +1136,7 @@ void C3DProcess::ActStart(UINT nFlags, int x, int y)
 		Act_Translate = true;
 		LR_Button = false;
 
-		transY = y;
+		transY = (float)y;
 	}
 }
 
@@ -1127,7 +1174,7 @@ void C3DProcess::ActTracking(int x, int y)
 
 		if (mode == ControlModes::ControlObject)
 		{
-			obj_angle = 90.0 * sqrt(dx * dx + dy * dy + dz * dz);
+			obj_angle = (float)(90.0 * sqrt(dx * dx + dy * dy + dz * dz));
 
 			obj_axis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
 			obj_axis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
@@ -1135,7 +1182,7 @@ void C3DProcess::ActTracking(int x, int y)
 		}
 		else if (mode == ControlModes::ControlPlane)
 		{
-			pln_angle = 90.0 * sqrt(dx * dx + dy * dy + dz * dz);
+			pln_angle = (float)(90.0 * sqrt(dx * dx + dy * dy + dz * dz));
 
 			pln_axis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
 			pln_axis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
@@ -1151,12 +1198,12 @@ void C3DProcess::ActTracking(int x, int y)
 		if (mode == ControlModes::ControlObject)
 		{
 			viewDistance += 0.01f * (y - transY);
-			transY = y;
+			transY = (float)y;
 		}
 		else if (mode == ControlModes::ControlPlane)
 		{
 			user_Plane[3] -= 0.01f * (y - transY);
-			transY = y;
+			transY = (float)y;
 		}
 	}
 	UpdateWindow();
@@ -1238,3 +1285,4 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	}
 	return p;
 }
+
