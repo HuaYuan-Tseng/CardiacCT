@@ -19,8 +19,8 @@ class C3DProcess : public CDialogEx
 	enum class ControlModes				// 物件操作模式
 	{
 		ControlNone,					// 不執行任何操作
-		ControlObject,					// 物件(心臟)操作 : 觀看、旋轉、位移
-		ControlPlane,					// 平面操作：觀看、旋轉
+		ControlObject,					//  -心臟- 操作
+		ControlPlane,					//  -平面- 操作
 	}	mode;
 
 //================//
@@ -31,14 +31,13 @@ public:
 	
 	CScrollBar		m_ScrollBar;
 
-	CWnd*			m_2D_frame;
-	CWnd*			m_3D_frame;
-	CRect			m_2D_rect;
-	CRect			m_3D_rect;
-	CDIB*			m_2D_dib;
-	HGLRC			m_hRC;				// openGL視窗DC
 	HDC				m_hDC;				// MFC視窗DC
-
+	HGLRC			m_hRC;				// openGL視窗DC
+	CDIB*			m_2D_dib;
+	CRect			m_3D_rect;
+	CRect			m_2D_rect;
+	CWnd*			m_3D_frame;
+	CWnd*			m_2D_frame;
 	BOOL			gl_3DTexture;		// 判斷是否支援3D紋理
 PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	
@@ -46,30 +45,29 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	
 	int				Mat_Offset;			// 影像矩陣置中的偏移量
 	int				ImageFrame;			// 影像框數(1個時序1個)
-	int				slices;
+	int				glSlices;			// openGL建立紋理層數
 
 	bool			LR_Button;			// true:滑鼠左鍵；false:滑鼠右鍵
 	bool			Act_Rotate;
 	bool			Act_Translate;
 
-	float*			axis;				// 控制 物件 旋轉軸
-	float*			pAxis;				// 控制 物件 旋轉軸
-	float			angle;				// 控制 物件 旋轉角度(Rotation)
-	float			pAngle;				// 控制 平面 旋轉角度(Rotation)
-	float			viewDistance;		// 控制 視線 位移(Translation)
-	float**			glVertexPt;			// openGL繪圖點
-	float*			planeangle;
-	float*			planeset;
-	float*			lastPos;
-	float*			Xform;
-	float			transPosY;
 	float			scale_x;			// 可以改顯示比例的神奇參數
 	float			scale_y;
 	float			scale_z;
 	float			density;
 	float			intensity;
+
+	float*			obj_axis;			// 控制 物件 旋轉軸
+	float*			pln_axis;			// 控制 平面 旋轉軸
+	float			obj_angle;			// 控制 物件 旋轉角度(Rotation)
+	float			pln_angle;			// 控制 平面 旋轉角度(Rotation)
+	float			viewDistance;		// 控制 視線 位移(Translation)
 	
-	double*			user;
+	float			transY;
+	float*			lastPos;
+	float**			glVertexPt;			// openGL繪圖點
+
+	double*			user_Plane;
 
 unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 

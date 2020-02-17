@@ -39,38 +39,29 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	m_2D_dib = nullptr;
 	m_2D_frame = nullptr;
 	m_3D_frame = nullptr;
-
 	gl_3DTexture = FALSE;
 
 	Act_Rotate = false;
 	Act_Translate = false;
-
-	intensity = 0.8125f;
-	density = 0.0f;
-	scale_x = 0.3;					
-	scale_y = 0.5;
-	scale_z = 0.5;
-	slices = 512;
-
-	angle = 0.0f;
-	pAngle = 0.0f;
-	Mat_Offset = 0;
+	
+	scale_x = 0.3F;					
+	scale_y = 0.5F;
+	scale_z = 0.5F;
+	glSlices = 512;
+	density = 0.0F;
+	intensity = 0.8125F;
+	viewDistance = -4.0F;
+	
 	ImageFrame = 1;
+	obj_angle = 0.0F;
+	pln_angle = 0.0F;
 	DisplaySlice = 0;
-	viewDistance = -4.0f;
 
 	glVertexPt = New2Dmatrix(64, 3, float);
-
-	axis = new float[3]{0.0f, 0.0f, 0.0f};
-	pAxis = new float[3]{0.0f, 0.0f, 0.0f};
-	user = new double[4]{1.0, 0.0, 0.0, 1.0};
-	lastPos = new float[3]{0.0f, 0.0f, 0.0f};
-	Xform = new float[10]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-							0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-	planeset = new float[10]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f,  
-								0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-	planeangle = new float[12]{0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-								0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	lastPos = new float[3]{ 0.0F, 0.0F, 0.0F };
+	obj_axis = new float[3]{ 0.0F, 0.0F, 0.0F };
+	pln_axis = new float[3]{ 0.0F, 0.0F, 0.0F };
+	user_Plane = new double[4]{ 1.0L, 0.0L, 0.0L, 1.0L };
 
 }
 
@@ -78,37 +69,50 @@ C3DProcess::~C3DProcess()
 {
 	if (m_2D_dib != nullptr)
 		delete  m_2D_dib;
+	if (user_Plane != nullptr)
+		delete[] user_Plane;
 	if (glVertexPt != nullptr)
 		delete[] glVertexPt;
-	if (axis != nullptr)
-		delete[] axis;
-	if (pAxis != nullptr)
-		delete[] pAxis;
-	if (planeset != nullptr)
-		delete[] planeset;
-	if (planeangle != nullptr)
-		delete[] planeangle;
+	if (obj_axis != nullptr)
+		delete[] obj_axis;
+	if (pln_axis != nullptr)
+		delete[] pln_axis;
 	if (lastPos != nullptr)
 		delete[] lastPos;
-	if (Xform != nullptr)
-		delete[] Xform;
 
+	if (Act_Translate != false)
+		Act_Translate = false;
 	if (gl_3DTexture != FALSE)
 		gl_3DTexture = FALSE;
-
-	if (angle != 0.0f)
-		angle = 0.0f;
-	if (pAngle != 0.0f)
-		pAngle = 0.0f;
-	if (Mat_Offset != 0)
-		Mat_Offset = 0;
-	if (ImageFrame != 1)
-		ImageFrame = 1;
-	if (DisplaySlice != 0)
-		DisplaySlice = 0;
+	if (Act_Rotate != false)
+		Act_Rotate = false;
+	
+	if (scale_x != 0.3F)
+		scale_x = 0.3F;
+	if (scale_y != 0.5F)
+		scale_y = 0.5F;
+	if (scale_z != 0.5F)
+		scale_z = 0.5F;
+	if (glSlices != 512)
+		glSlices = 512;
+	if (density != 0.0F)
+		density = 0.0F;
+	if (intensity != 0.8125F)
+		intensity = 0.8125F;
 	if (viewDistance != -4.0f)
 		viewDistance = -4.0f;
 
+	if (ImageFrame != 1)
+		ImageFrame = 1;
+	if (obj_angle != 0.0f)
+		obj_angle = 0.0f;
+	if (pln_angle != 0.0f)
+		pln_angle = 0.0f;
+	if (DisplaySlice != 0)
+		DisplaySlice = 0;
+	if (Mat_Offset != 0)
+		Mat_Offset = 0;
+	
 	glDeleteTextures(10, textureName);
 }
 
@@ -120,14 +124,14 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_WM_PAINT()
-	ON_WM_MOUSEWHEEL()
 	ON_WM_VSCROLL()
 	ON_WM_MOUSEMOVE()
-	ON_WM_RBUTTONDBLCLK()
-	ON_WM_RBUTTONDOWN()
-	ON_WM_RBUTTONUP()
+	ON_WM_MOUSEWHEEL()
 	ON_WM_LBUTTONUP()
+	ON_WM_RBUTTONUP()
 	ON_WM_LBUTTONDOWN()
+	ON_WM_RBUTTONDOWN()
+	ON_WM_RBUTTONDBLCLK()
 END_MESSAGE_MAP()
 
 //=================================//
@@ -186,7 +190,8 @@ BOOL C3DProcess::OnInitDialog()
 	{
 		// Return the address of an openGL extension function.
 		glTexImage3D = (PFNGLTEXIMAGE3DPROC)wglGetProcAddress("glTexImage3D");
-
+		Mat_Offset = (512 - Total_Slice) / 2;
+		
 		GLInitialization();
 	}
 	else
@@ -302,6 +307,7 @@ void C3DProcess::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 void C3DProcess::OnMouseMove(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
+	// 滑鼠移動事件
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
@@ -318,6 +324,7 @@ void C3DProcess::OnMouseMove(UINT nFlags, CPoint point)
 void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
+	// 滑鼠左鍵 按下 事件
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
@@ -331,6 +338,7 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 void C3DProcess::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
+	// 滑鼠左鍵 放開 事件
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
@@ -344,6 +352,7 @@ void C3DProcess::OnLButtonUp(UINT nFlags, CPoint point)
 void C3DProcess::OnRButtonDown(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
+	// 滑鼠右鍵 按下 事件
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
@@ -357,6 +366,7 @@ void C3DProcess::OnRButtonDown(UINT nFlags, CPoint point)
 void C3DProcess::OnRButtonUp(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
+	// 滑鼠右鍵 放開 事件
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
@@ -370,6 +380,7 @@ void C3DProcess::OnRButtonUp(UINT nFlags, CPoint point)
 void C3DProcess::OnRButtonDblClk(UINT nFlags, CPoint point)
 {
 	// TODO: Add your message handler code here and/or call default
+	// 滑鼠右鍵 按兩下 事件
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
@@ -382,7 +393,6 @@ void C3DProcess::OnRButtonDblClk(UINT nFlags, CPoint point)
 			mode = ControlModes::ControlObject;
 		}
 	}
-	
 	CDialogEx::OnRButtonDblClk(nFlags, point);
 }
 
@@ -544,7 +554,6 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	//
 	float pixel = 0.0f;
 	register int i, j, k;
-	Mat_Offset = (512 - Total_Slice) / 2;
 
 	// 預備要用來建立紋理的資料矩陣
 	//
@@ -741,28 +750,28 @@ void C3DProcess::Draw3DImage(bool which)
 		{
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
-			glRotatef(angle, axis[0], axis[1], axis[2]);
+			glRotatef(obj_angle, obj_axis[0], obj_axis[1], obj_axis[2]);
 			glMultMatrixf((GLfloat *)objectXform);
 			glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *)objectXform);
 		}
 		glPopMatrix();
 	}
-	glMultMatrixf((GLfloat *)objectXform);		// 關於物體(心臟)旋轉，刪除後就沒有辦法旋轉了
+	glMultMatrixf((GLfloat *)objectXform);					// 關於物體(心臟)旋轉，刪除後就沒有辦法旋轉了
 
 	// 控制 辣個平面 旋轉
 	//
 	if ((mode == ControlModes::ControlPlane) && (Act_Rotate == true))
 	{
 		// handle the plane rotations
-		temp[0] = objectXform[0] * pAxis[0] + objectXform[4] * pAxis[1] + objectXform[8] * pAxis[2];
-		temp[1] = objectXform[1] * pAxis[0] + objectXform[5] * pAxis[1] + objectXform[9] * pAxis[2];
-		temp[2] = objectXform[2] * pAxis[0] + objectXform[6] * pAxis[1] + objectXform[10] * pAxis[2];
+		temp[0] = objectXform[0] * pln_axis[0] + objectXform[4] * pln_axis[1] + objectXform[8] * pln_axis[2];
+		temp[1] = objectXform[1] * pln_axis[0] + objectXform[5] * pln_axis[1] + objectXform[9] * pln_axis[2];
+		temp[2] = objectXform[2] * pln_axis[0] + objectXform[6] * pln_axis[1] + objectXform[10] * pln_axis[2];
 
 		glPushMatrix();
 		{
 			glMatrixMode(GL_MODELVIEW);
 			glLoadIdentity();
-			glRotatef(pAngle, temp[0], temp[1], temp[2]);
+			glRotatef(pln_angle, temp[0], temp[1], temp[2]);
 			glMultMatrixf((GLfloat *)planeXform);
 			glGetFloatv(GL_MODELVIEW_MATRIX, (GLfloat *)planeXform);
 		}
@@ -780,9 +789,9 @@ void C3DProcess::Draw3DImage(bool which)
 	// get the eqn for the user plane
 	// 讓 辣個平面 在自身坐標系的x軸方向位移時，
 	// 讓 物件(心臟) 隨 辣個平面 的 x軸 移動方向解剖（切平面）。
-	user[0] = -planeXform[0];
-	user[1] = -planeXform[1];
-	user[2] = -planeXform[2];
+	user_Plane[0] = -planeXform[0];
+	user_Plane[1] = -planeXform[1];
+	user_Plane[2] = -planeXform[2];
 
 	// setup the texture coord generation（自動生成紋理座標）
 	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
@@ -794,9 +803,9 @@ void C3DProcess::Draw3DImage(bool which)
 	//
 	for (ii = 0; ii < 4; ii++)
 	{
-		plane[ii * 3 + 0] = planeXform[0] * user[3];
-		plane[ii * 3 + 1] = planeXform[1] * user[3];
-		plane[ii * 3 + 2] = planeXform[2] * user[3];
+		plane[ii * 3 + 0] = planeXform[0] * user_Plane[3];
+		plane[ii * 3 + 1] = planeXform[1] * user_Plane[3];
+		plane[ii * 3 + 2] = planeXform[2] * user_Plane[3];
 		plane[ii * 3 + 0] += planeXform[4] * ((ii < 2) ? -1.0f : 1.0f);
 		plane[ii * 3 + 1] += planeXform[5] * ((ii < 2) ? -1.0f : 1.0f);
 		plane[ii * 3 + 2] += planeXform[6] * ((ii < 2) ? -1.0f : 1.0f);
@@ -804,9 +813,6 @@ void C3DProcess::Draw3DImage(bool which)
 		plane[ii * 3 + 1] += planeXform[9] * ((ii & 0x1) ? 1.0f : -1.0f);
 		plane[ii * 3 + 2] += planeXform[10] * ((ii & 0x1) ? 1.0f : -1.0f);
 	}
-
-	for (int k = 0; k < 12; k++)
-		planeangle[k] = plane[k];
 
 	// find the clip plane oppostie the viewer
 	//
@@ -858,7 +864,7 @@ void C3DProcess::Draw3DImage(bool which)
 	glClipPlane(GL_CLIP_PLANE5, clip5);
 
 	// replace the plane opposite the viewer with the user controlled one
-	glClipPlane(GL_CLIP_PLANE0 + clip, user);
+	glClipPlane(GL_CLIP_PLANE0 + clip, user_Plane);
 
 	glEnable(GL_CLIP_PLANE0);
 	glEnable(GL_CLIP_PLANE1);
@@ -908,11 +914,11 @@ void C3DProcess::Draw3DImage(bool which)
 		glTranslatef(0.0f, 0.0f, viewDistance);
 
 		// draw the slices
-		for (ii = 0; ii < slices; ii++)
+		for (ii = 0; ii < glSlices; ii++)
 		{
 			glPushMatrix();
 			{
-				glTranslatef(0.0f, 0.0f, -1.0f + (float)ii * (2.0f / (float)(slices - 1)));
+				glTranslatef(0.0f, 0.0f, -1.0f + (float)ii * (2.0f / (float)(glSlices - 1)));
 				glBegin(GL_QUADS);
 				{
 					for (hh = 0; hh < (8 - 1); hh++)
@@ -1078,7 +1084,7 @@ void C3DProcess::ActStart(UINT nFlags, int x, int y)
 		Act_Translate = true;
 		LR_Button = false;
 
-		transPosY = y;
+		transY = y;
 	}
 }
 
@@ -1089,7 +1095,7 @@ void C3DProcess::ActStop(UINT nFlags, int x, int y)
 		Act_Rotate = false;
 
 		if (mode == ControlModes::ControlObject)
-			angle = 0.0;
+			obj_angle = 0.0;
 	}
 	else if (LR_Button == false)
 	{
@@ -1102,6 +1108,7 @@ void C3DProcess::ActTracking(int x, int y)
 	if (Act_Rotate)
 	{
 		float curPos[3], dx, dy, dz;
+		
 		pointToVector(x, y, m_3D_rect.right - m_3D_rect.left, m_3D_rect.bottom - m_3D_rect.top, curPos);
 
 		dx = curPos[0] - lastPos[0];
@@ -1110,19 +1117,19 @@ void C3DProcess::ActTracking(int x, int y)
 
 		if (mode == ControlModes::ControlObject)
 		{
-			angle = 90.0 * sqrt(dx * dx + dy * dy + dz * dz);
+			obj_angle = 90.0 * sqrt(dx * dx + dy * dy + dz * dz);
 
-			axis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
-			axis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
-			axis[2] = lastPos[0] * curPos[1] - lastPos[1] * curPos[0];
+			obj_axis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
+			obj_axis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
+			obj_axis[2] = lastPos[0] * curPos[1] - lastPos[1] * curPos[0];
 		}
 		else if (mode == ControlModes::ControlPlane)
 		{
-			pAngle = 90.0 * sqrt(dx * dx + dy * dy + dz * dz);
+			pln_angle = 90.0 * sqrt(dx * dx + dy * dy + dz * dz);
 
-			pAxis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
-			pAxis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
-			pAxis[2] = lastPos[0] * curPos[1] - lastPos[1] * curPos[0];
+			pln_axis[0] = lastPos[1] * curPos[2] - lastPos[2] * curPos[1];
+			pln_axis[1] = lastPos[2] * curPos[0] - lastPos[0] * curPos[2];
+			pln_axis[2] = lastPos[0] * curPos[1] - lastPos[1] * curPos[0];
 		}
 
 		lastPos[0] = curPos[0];
@@ -1133,13 +1140,13 @@ void C3DProcess::ActTracking(int x, int y)
 	{
 		if (mode == ControlModes::ControlObject)
 		{
-			viewDistance += 0.01f * (y - transPosY);
-			transPosY = y;
+			viewDistance += 0.01f * (y - transY);
+			transY = y;
 		}
 		else if (mode == ControlModes::ControlPlane)
 		{
-			user[3] -= 0.01f * (y - transPosY);
-			transPosY = y;
+			user_Plane[3] -= 0.01f * (y - transY);
+			transY = y;
 		}
 	}
 	UpdateWindow();

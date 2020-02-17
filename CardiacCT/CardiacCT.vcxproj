@@ -140,7 +140,8 @@
       <AdditionalIncludeDirectories>$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <PostBuildEvent>
-      <Command>copy "$(SolutionDir)Library\openGL\FreeGLUT\bin\$(PlatformTarget)\*.dll" "$(OutputPath)" /Y</Command>
+      <Command>copy "$(SolutionDir)Library\openGL\FreeGLUT\bin\$(PlatformTarget)\*.dll" "$(OutputPath)" /Y
+copy "$(SolutionDir)Library\openGL\GLEW\bin\Release\$(PlatformTarget)\*.dll" "$(OutputPath)" /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
