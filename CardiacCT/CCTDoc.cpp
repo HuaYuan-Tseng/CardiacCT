@@ -233,15 +233,16 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 
 		if (m_dir != nullptr)
 		{
-			CDirForm m_dirFormDlg;
-			m_dirFormDlg.m_pDoc = this;
-			m_dirFormDlg.m_clickItem = displaySeries;
-			m_dirFormDlg.m_checkItem = displaySeries;
+			CDirForm* m_dirFormDlg = new CDirForm();
+			m_dirFormDlg->m_pDoc = this;
+			m_dirFormDlg->m_clickItem = displaySeries;
+			m_dirFormDlg->m_checkItem = displaySeries;
 
-			if (m_dirFormDlg.DoModal() == IDOK)
+			if (m_dirFormDlg->DoModal() == IDOK)
 			{
 				BuildDataMatrix();
 			}
+			delete m_dirFormDlg;
 		}
 	}
 
@@ -255,17 +256,17 @@ void CCTDoc::OnToolButtonDirContents()
 
 	if (m_dir != nullptr)
 	{
-		CDirForm m_dirFormDlg;
-		m_dirFormDlg.m_pDoc = this;
-		m_dirFormDlg.m_clickItem = displaySeries;
-		m_dirFormDlg.m_checkItem = displaySeries;
+		CDirForm* m_dirFormDlg = new CDirForm();
+		m_dirFormDlg->m_pDoc = this;
+		m_dirFormDlg->m_clickItem = displaySeries;
+		m_dirFormDlg->m_checkItem = displaySeries;
 
-		if (m_dirFormDlg.DoModal() == IDOK)
+		if (m_dirFormDlg->DoModal() == IDOK)
 		{
 			BuildDataMatrix();
 		}
+		delete m_dirFormDlg;
 	}
-
 }
 
 void CCTDoc::OnToolButton3DProcess()
@@ -276,14 +277,14 @@ void CCTDoc::OnToolButton3DProcess()
 
 	if (m_dir != nullptr)
 	{
-		C3DProcess m_3DProcessDlg;
-		m_3DProcessDlg.m_pDoc = this;
+		C3DProcess* m_3DProcessDlg = new C3DProcess();
+		m_3DProcessDlg->m_pDoc = this;
 
-		if (m_3DProcessDlg.DoModal() == IDOK)
+		if (m_3DProcessDlg->DoModal() == IDOK)
 		{
 		}
+		delete m_3DProcessDlg;
 	}
-
 }
 
 //======================//

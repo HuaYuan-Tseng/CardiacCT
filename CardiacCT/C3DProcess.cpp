@@ -52,6 +52,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	intensity = 0.8125F;
 	viewDistance = -4.0F;
 	
+	transY = 0.0F;
 	ImageFrame = 1;
 	obj_angle = 0.0F;
 	pln_angle = 0.0F;
@@ -99,15 +100,17 @@ C3DProcess::~C3DProcess()
 		density = 0.0F;
 	if (intensity != 0.8125F)
 		intensity = 0.8125F;
-	if (viewDistance != -4.0f)
-		viewDistance = -4.0f;
+	if (viewDistance != -4.0F)
+		viewDistance = -4.0F;
 
+	if (transY != 0.0F)
+		transY = 0.0F;
 	if (ImageFrame != 1)
 		ImageFrame = 1;
-	if (obj_angle != 0.0f)
-		obj_angle = 0.0f;
-	if (pln_angle != 0.0f)
-		pln_angle = 0.0f;
+	if (obj_angle != 0.0F)
+		obj_angle = 0.0F;
+	if (pln_angle != 0.0F)
+		pln_angle = 0.0F;
 	if (DisplaySlice != 0)
 		DisplaySlice = 0;
 	if (Mat_Offset != 0)
@@ -729,8 +732,9 @@ void C3DProcess::Draw3DImage(bool which)
 	float mat[16];
 	float temp[3];
 	float plane[12];
-	int ii, gg, hh;
+
 	int clip;
+	register int i, j, k;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);								// 啟動深度測試(沒有開啟的話，整個物件會有點透明)
@@ -779,21 +783,24 @@ void C3DProcess::Draw3DImage(bool which)
 	}
 
 	// 只需要 Rotation，所以將 Translation 設為 0
+	//
 	glGetFloatv(GL_MODELVIEW_MATRIX, mat);
 	InvertMat(mat);
 
-	mat[12] = 0.0f;
-	mat[13] = 0.0f;
-	mat[14] = 0.0f;
+	mat[12] = 0.0F;
+	mat[13] = 0.0F;
+	mat[14] = 0.0F;
 
-	// get the eqn for the user plane
-	// 讓 辣個平面 在自身坐標系的x軸方向位移時，
-	// 讓 物件(心臟) 隨 辣個平面 的 x軸 移動方向解剖（切平面）。
+	// 獲得 user_Plane 的平面方程式係數
+	// 讓 辣個平面 在自身坐標系的 x 軸方向位移時，
+	// 讓 物件(心臟) 隨 辣個平面 的 x 軸 移動方向解剖（切平面）。
+	//
 	user_Plane[0] = -planeXform[0];
 	user_Plane[1] = -planeXform[1];
 	user_Plane[2] = -planeXform[2];
 
-	// setup the texture coord generation（自動生成紋理座標）
+	// 自動生成紋理座標系
+	//
 	glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
 	glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
 	glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_EYE_LINEAR);
@@ -801,17 +808,17 @@ void C3DProcess::Draw3DImage(bool which)
 	// create the points for the corners of the clip plane；
 	// 計算 clip plane 四個角落的點 plane[16]={1,-1,-1, 1,-1,1, 1,1,-1, 1,1,1}
 	//
-	for (ii = 0; ii < 4; ii++)
+	for (i = 0; i < 4; i++)
 	{
-		plane[ii * 3 + 0] = planeXform[0] * user_Plane[3];
-		plane[ii * 3 + 1] = planeXform[1] * user_Plane[3];
-		plane[ii * 3 + 2] = planeXform[2] * user_Plane[3];
-		plane[ii * 3 + 0] += planeXform[4] * ((ii < 2) ? -1.0f : 1.0f);
-		plane[ii * 3 + 1] += planeXform[5] * ((ii < 2) ? -1.0f : 1.0f);
-		plane[ii * 3 + 2] += planeXform[6] * ((ii < 2) ? -1.0f : 1.0f);
-		plane[ii * 3 + 0] += planeXform[8] * ((ii & 0x1) ? 1.0f : -1.0f);
-		plane[ii * 3 + 1] += planeXform[9] * ((ii & 0x1) ? 1.0f : -1.0f);
-		plane[ii * 3 + 2] += planeXform[10] * ((ii & 0x1) ? 1.0f : -1.0f);
+		plane[i * 3 + 0] = planeXform[0] * user_Plane[3];
+		plane[i * 3 + 1] = planeXform[1] * user_Plane[3];
+		plane[i * 3 + 2] = planeXform[2] * user_Plane[3];
+		plane[i * 3 + 0] += planeXform[4] * ((i < 2) ? -1.0f : 1.0f);
+		plane[i * 3 + 1] += planeXform[5] * ((i < 2) ? -1.0f : 1.0f);
+		plane[i * 3 + 2] += planeXform[6] * ((i < 2) ? -1.0f : 1.0f);
+		plane[i * 3 + 0] += planeXform[8] * ((i & 0x1) ? 1.0f : -1.0f);
+		plane[i * 3 + 1] += planeXform[9] * ((i & 0x1) ? 1.0f : -1.0f);
+		plane[i * 3 + 2] += planeXform[10] * ((i & 0x1) ? 1.0f : -1.0f);
 	}
 
 	// find the clip plane oppostie the viewer
@@ -820,38 +827,34 @@ void C3DProcess::Draw3DImage(bool which)
 	{
 		if (fabs(objectXform[2]) > fabs(objectXform[10]))
 		{
-			// X is largest
-			if (objectXform[2] > 0.0f)
-				clip = 1;	// positive
+			if (objectXform[2] > 0.0f)		// X is largest
+				clip = 1;					// positive
 			else
-				clip = 0;	// negative
+				clip = 0;					// negative
 		}
-		else
+		else 
 		{
-			// Z is largest
-			if (objectXform[10] > 0.0f)
-				clip = 5;	// positive
+			if (objectXform[10] > 0.0f)		// Z is largest
+				clip = 5;					// positive
 			else
-				clip = 4;	// negative
+				clip = 4;					// negative
 		}
 	}
 	else
 	{
 		if (fabs(objectXform[6]) > fabs(objectXform[10]))
 		{
-			// Y is largest
-			if (objectXform[6] > 0.0f)
-				clip = 3;	// positive
+			if (objectXform[6] > 0.0f)		// Y is largest
+				clip = 3;					// positive
 			else
-				clip = 2;	// negative
+				clip = 2;					// negative
 		}
 		else
 		{
-			//Z is largest
-			if (objectXform[10] > 0.0f)
-				clip = 4;	// positive
+			if (objectXform[10] > 0.0f)		// Z is largest
+				clip = 4;					// positive
 			else
-				clip = 5;	// negative
+				clip = 5;					// negative
 		}
 	}
 
@@ -914,21 +917,21 @@ void C3DProcess::Draw3DImage(bool which)
 		glTranslatef(0.0f, 0.0f, viewDistance);
 
 		// draw the slices
-		for (ii = 0; ii < glSlices; ii++)
+		for (k = 0; k < glSlices; k++)
 		{
 			glPushMatrix();
 			{
-				glTranslatef(0.0f, 0.0f, -1.0f + (float)ii * (2.0f / (float)(glSlices - 1)));
+				glTranslatef(0.0f, 0.0f, -1.0f + (float)k * (2.0f / (float)(glSlices - 1)));
 				glBegin(GL_QUADS);
 				{
-					for (hh = 0; hh < (8 - 1); hh++)
+					for (j = 0; j < (8 - 1); j++)
 					{
-						for (gg = 0; gg < (8 - 1); gg++)
+						for (i = 0; i < (8 - 1); i++)
 						{
-							glVertex3fv(glVertexPt[hh * 8 + gg]);
-							glVertex3fv(glVertexPt[hh * 8 + (gg + 1)]);
-							glVertex3fv(glVertexPt[(hh + 1) * 8 + (gg + 1)]);
-							glVertex3fv(glVertexPt[(hh + 1) * 8 + gg]);
+							glVertex3fv(glVertexPt[j * 8 + i]);
+							glVertex3fv(glVertexPt[j * 8 + (i + 1)]);
+							glVertex3fv(glVertexPt[(j + 1) * 8 + (i + 1)]);
+							glVertex3fv(glVertexPt[(j + 1) * 8 + i]);
 						}
 					}
 				}
@@ -1072,6 +1075,8 @@ void C3DProcess::pointToVector(int x, int y, int width, int height, float vec[3]
 
 void C3DProcess::ActStart(UINT nFlags, int x, int y)
 {
+	// DO : 按下滑鼠後開始的動作
+	//
 	if (nFlags == MK_LBUTTON)
 	{
 		Act_Rotate = true;
@@ -1090,6 +1095,9 @@ void C3DProcess::ActStart(UINT nFlags, int x, int y)
 
 void C3DProcess::ActStop(UINT nFlags, int x, int y)
 {
+	// DO : 放掉滑鼠後的動作
+	// 另外用一個bool的變數來判斷滑鼠按鍵是因為放掉滑鼠時，nFlags都是0。
+	//
 	if (LR_Button == true)
 	{
 		Act_Rotate = false;
@@ -1105,6 +1113,8 @@ void C3DProcess::ActStop(UINT nFlags, int x, int y)
 
 void C3DProcess::ActTracking(int x, int y)
 {
+	// DO : 按住滑鼠時所執行的動作
+	//
 	if (Act_Rotate)
 	{
 		float curPos[3], dx, dy, dz;
