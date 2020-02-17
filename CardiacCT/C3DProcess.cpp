@@ -42,7 +42,6 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 
 	gbPlane = false;
 	gbPlaneMove = false;
-	loadangle = false;
 	m_object = true;
 	m_plane = false;
 
@@ -104,8 +103,6 @@ C3DProcess::~C3DProcess()
 		gbPlane = false;
 	if (gbPlaneMove != false)
 		gbPlaneMove = false;
-	if (loadangle != false)
-		loadangle = false;
 
 	if (angle != 0.0f)
 		angle = 0.0f;
@@ -527,7 +524,7 @@ void C3DProcess::GLInitialization()
 	//
 	PrepareVolume(textureName);
 
-	// 指定紋理座標(建立openGL繪圖時，glVertex()所需要的點)
+	// 建立頂點座標(建立openGL繪圖時，glVertex()所需要的點)
 	//
 	register int i, j;
 	float temp = 0.0f;
@@ -539,13 +536,16 @@ void C3DProcess::GLInitialization()
 			glVertexPt[i * 8 + j][0] = (float)(j / 7.0f) - 0.5f;
 			glVertexPt[i * 8 + j][1] = (float)(i / 7.0f) - 0.5f;
 			glVertexPt[i * 8 + j][2] = -0.5f;
+			
 			temp = glVertexPt[i * 8 + j][0] * glVertexPt[i * 8 + j][0] +
 				glVertexPt[i * 8 + j][1] * glVertexPt[i * 8 + j][1] +
 				glVertexPt[i * 8 + j][2] * glVertexPt[i * 8 + j][2];
 			temp = 1.0f / (float)sqrt(temp);
+			
 			glVertexPt[i * 8 + j][0] *= temp;
 			glVertexPt[i * 8 + j][1] *= temp;
 			glVertexPt[i * 8 + j][2] *= temp;
+			
 			glVertexPt[i * 8 + j][0] *= 2.0f;
 			glVertexPt[i * 8 + j][1] *= 2.0f;
 			glVertexPt[i * 8 + j][2] += 1.0f;
@@ -569,9 +569,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	int Sample_start = 0 + Mat_Offset;
 	int Sample_end = 0 + Mat_Offset + TotalSlice;
 	
-	//BYTE m_image0[256][256][256][4] = {0};
-	BYTE m_image0[256 * 256 * 256][4] = {0};
-	//BYTE** m_image0 = New2Dmatrix(256*256*256, 4, BYTE);
+	BYTE m_image0[256 * 256 * 256][4] = {0};					// 萬惡的佔用記憶體
 
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
@@ -592,23 +590,11 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
 
-						getRamp(m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)], (float)pixel / 255.0f / 2, 0);
-						//getRamp(m_image0[i / 2][j / 2][k / 2], (float)pixel / 255.0f / 2, 0);
-						//getRamp(m_image0[(k/2)*256*256+(j/2)*256+(i/2)], (float)pixel / 255.0f / 2, 0);
+						getRamp(m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)], 
+							(float)pixel / 255.0f / 2, 0);
 					}
 				}
 			}
-			//else
-			//{
-			//	for (j = 2; j < Row - 2; j += 2)
-			//	{
-			//		for (i = 2; i < Col - 2; i += 2)
-			//		{
-			//			getRamp(m_image0[i / 2][j / 2][k / 2], 0, 0);
-			//			//getRamp(m_image0[(k / 2) * 256 * 256 + (j / 2) * 256 + (i / 2)], 0, 0);
-			//		}
-			//	}
-			//}
 			k += 2;
 			m_progress->GetPro(k);
 		}
@@ -636,8 +622,6 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 256, 256, 256, 0, GL_RGBA,
 					GL_UNSIGNED_BYTE, m_image0);								// 創建3D紋理
 	}
-
-	//delete[] m_image0;
 	
 }
 
@@ -1208,15 +1192,15 @@ void C3DProcess::InvertMat(float (&m)[16])
 
 void* C3DProcess::new2Dmatrix(int h, int w, int size)
 {
+	// 動態配置二維矩陣
+	//
 	int i;
 	void** p;
 
 	p = (void**) new char[h * sizeof(void*) + h * w * size];
-
 	for (i = 0; i < h; i++)
-	{
 		p[i] = ((char*)(p + h)) + i * w * size;
-	}
+
 	return p;
 }
 

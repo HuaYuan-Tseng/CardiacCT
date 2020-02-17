@@ -21,7 +21,7 @@ public:
 	short**		m_HUimg;				// 紀錄HU的影像矩陣
 	BYTE**		m_img;					// 紀錄pixel的影像矩陣
 	
-	int			displaySeries;			// 整個程式要顯示的時序
+unsigned int	displaySeries;			// 整個程式要顯示的時序
 
 //================//
 //   Operations   //

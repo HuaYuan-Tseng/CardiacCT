@@ -12,8 +12,8 @@
 
 #include "CCTDoc.h"
 #include "CDirForm.h"
-#include "C3DProcess.h"
 #include "CProgress.h"
+#include "C3DProcess.h"
 #include "dcmtk/dcmimgle/dcmimage.h"
 #include <propkey.h>
 
@@ -182,7 +182,11 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 	// TODO: Add your command handler code here
 	// ID : ID_TOOLBTN_OPENDICOMDIR
 	// DO : 開啟DICOMDIR檔案
-
+	
+	FILE* file;
+	errno_t err;
+	char prefix[4];								// 確認檔案格式的4個字元
+	
 	BOOL isOpen = TRUE;							// TRUE:Open；FALSE:Save
 	CString initName = "";						// 初始開檔文件名
 	CString initDir = "C:\\";					// 初始開檔路徑
@@ -192,6 +196,26 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 
 	if (openDirDlg.DoModal() == IDOK)
 	{
+		// 確認檔案格式是否為DICOM
+		//
+		if ((err = fopen_s(&file, openDirDlg.GetPathName(), "rb")) == 0)
+		{
+			fseek(file, 128, SEEK_SET);
+			fread_s(prefix, 4, sizeof(char), 4, file);
+			if (prefix[0] != 0x44 || prefix[1] != 0x49 || prefix[2] != 0x43 || prefix[3] != 0x4D)
+			{
+				AfxMessageBox("The format of this file is not DICOM!!");
+				return;
+			}
+		}
+		else
+		{
+			AfxMessageBox("This file can not be opened!!");
+			return;
+		}
+
+		// 建立檔案前進行初始化
+		//
 		if (m_dir != nullptr)
 		{
 			delete	m_dir;
@@ -344,7 +368,8 @@ void* CCTDoc::new2Dmatrix(int h, int w, int size)
 	int i;
 	void** p;
 
-	p = (void**) new char[h * sizeof(void*) + h * w*size];
+	p = (void**) new char[h * sizeof(void*) + h * w * size];
+	
 	for (i = 0; i < h; i++)
 		p[i] = ((char*)(p + h)) + i * w * size;
 

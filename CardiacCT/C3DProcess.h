@@ -20,8 +20,7 @@ class C3DProcess : public CDialogEx
 	{
 		MoveNone, 
 		MoveView, 
-		MoveObject, 
-		MoveTexture
+		MoveObject
 	}	mode;
 
 //================//
@@ -53,11 +52,10 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	int				slices;
 	int				lastTime;
 
-	bool			gbPlane;
-	bool			gbPlaneMove;
-	bool			loadangle;
 	bool			m_object;
 	bool			m_plane;
+	bool			gbPlane;
+	bool			gbPlaneMove;
 
 	float*			axis;				// 控制 物件 旋轉軸
 	float*			pAxis;				// 控制 物件 旋轉軸
