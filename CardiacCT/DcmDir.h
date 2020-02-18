@@ -59,6 +59,9 @@ public:
 	int			Window_1_Width;
 	int			Window_2_Width;
 
+	int			HU_max;
+	int			HU_min;
+
 	double		X_Spacing;
 	double		Y_Spacing;
 

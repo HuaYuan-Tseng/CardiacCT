@@ -32,10 +32,12 @@
 #define IDC_CHECK_Object                1007
 #define IDC_CHECK3                      1009
 #define IDC_CHECK_PLANE                 1009
-#define IDC_EDIT_PIXEL_THRES            1010
+#define IDC_EDIT_PIXEL_THRESHOLD        1010
 #define IDC_CHECK_COMPLETE              1011
-#define IDC_CHECK_PIXELTHRESHOLD        1012
 #define IDC_CHECK_PIXEL_THRESHOLD       1012
+#define IDC_EDIT_HU_THRESHOLD           1013
+#define IDC_CHECK1                      1014
+#define IDC_CHECK_HU_THRESHOLD          1014
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -48,7 +50,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        323
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1013
+#define _APS_NEXT_CONTROL_VALUE         1015
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

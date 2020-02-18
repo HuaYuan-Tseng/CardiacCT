@@ -3,6 +3,7 @@
 //
 
 #include "pch.h"
+#include "math.h"
 #include "DcmDir.h"
 #include "dcmtk/dcmdata/dcdicdir.h"
 #include "dcmtk/dcmdata/dcdeftag.h"
@@ -43,6 +44,9 @@ DcmDir::DcmDir()
 	Window_2_Center = 0;
 	Window_1_Width = 0;
 	Window_2_Width = 0;
+
+	HU_max = 0;
+	HU_min = 0;
 
 	X_Spacing = 0.0f;
 	Y_Spacing = 0.0f;
@@ -129,6 +133,11 @@ DcmDir::~DcmDir()
 		X_Spacing = 0.0f;
 	if (Y_Spacing != 0.0f)
 		Y_Spacing = 0.0f;
+
+	if (HU_max != 0)
+		HU_max = 0;
+	if (HU_min != 0)
+		HU_min = 0;
 
 	if (SeriesList.empty() != true)
 	{
@@ -293,6 +302,11 @@ void DcmDir::openDirFromSeries(CString &pathName)
 		if (dcm.getDataset()->findAndGetOFString(DCM_HighBit, str_temp).good())
 		{
 			Bits_HiBit = str_temp.c_str();
+		}
+		if (Rescale_Intercept.IsEmpty() != true && Rescale_Slope.IsEmpty() != true && Bits_Stored.IsEmpty() != true)
+		{
+			HU_min = 0 * atoi(Rescale_Slope) + atoi(Rescale_Intercept);
+			HU_max = (int)pow(2, atoi(Bits_Stored)) * atoi(Rescale_Slope) + atoi(Rescale_Intercept);
 		}
 	}
 

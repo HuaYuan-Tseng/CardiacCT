@@ -32,6 +32,7 @@
 #define Window_Width_2 m_dir->Window_2_Width
 #define Rescale_Intercept atoi(m_dir->Rescale_Intercept)
 #define Rescale_Slope atoi(m_dir->Rescale_Slope)
+#define Bits_Stored atoi(m_dir->Bits_Stored)
 
 //============//
 //   CCTDoc   //
@@ -297,6 +298,7 @@ void CCTDoc::BuildDataMatrix()
 	//
 	const int Row = ROW;
 	const int Col = COL;
+	const int BitStored = Bits_Stored;
 	const int TotalSlice = Total_Slice;
 	const int RescaleSlope = Rescale_Slope;
 	const int RescaleIntercept = Rescale_Intercept;
@@ -326,11 +328,11 @@ void CCTDoc::BuildDataMatrix()
 
 		if (image != NULL)
 		{
-			Uint16* data = (Uint16*)(image->getOutputData(12));		// 獲得原始影像數據
+			Uint16* data = (Uint16*)(image->getOutputData(BitStored));			// 獲得原始影像數據
 			if (data != NULL)
 			{
 				i = 0;
-				while (i < Row*Col)
+				while (i < Row * Col)
 				{
 					value = *(data + i) * RescaleSlope + RescaleIntercept;
 					m_HUimg[slice][i] = value;

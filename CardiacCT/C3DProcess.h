@@ -70,8 +70,10 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	double*			user_Plane;
 //-------------------------◆ openGL 砞﹚把计 ◆-----------------------------//
 
-	unsigned short		DisplaySlice;		// 陪ボslice(眖0秨﹍)
-	unsigned short		PixelThreshold;		// て霩(pixel)
+	short			HUThreshold;		// て霩(HU)
+unsigned short		PixelThreshold;		// て霩(pixel)
+unsigned short		DisplaySlice;		// 陪ボslice(眖0秨﹍)
+	
 
 //================//
 //   Operations   //
@@ -115,9 +117,11 @@ public:										// CString场だΤAttributes砞跑计纗
 	BOOL	m_plane;
 	BOOL	m_object;
 	BOOL	m_complete;
+	BOOL	m_thresholdHU;
 	BOOL	m_thresholdPixel;
 
 	CString m_pixelThreshold;
+	CString m_HUThreshold;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
@@ -137,9 +141,9 @@ public:
 	afx_msg void OnBnClickedCheckPlane();
 	afx_msg void OnBnClickedCheckObject();
 	afx_msg void OnBnClickedCheckComplete();
+	afx_msg void OnBnClickedCheckHuThreshold();
 	afx_msg void OnBnClickedCheckPixelThreshold();
 	
-	afx_msg void OnEnChangeEditPixelThres();
-	
-	
+	afx_msg void OnEnChangeEditPixelThreshold();
+	afx_msg void OnEnChangeEditHuThreshold();
 };

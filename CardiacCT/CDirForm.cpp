@@ -320,6 +320,18 @@ void CDirForm::displayContextList(int &series)
 	m_ContList.SetItemText(n, 0, "High Bit");
 	m_ContList.SetItemText(n, 1, m_pDoc->m_dir->Bits_HiBit);
 
+	n = n + 1;
+	temp.Format("%d", m_pDoc->m_dir->HU_min);
+	m_ContList.InsertItem(n, _T(""));
+	m_ContList.SetItemText(n, 0, "HU min");
+	m_ContList.SetItemText(n, 1, temp);
+
+	n = n + 1;
+	temp.Format("%d", m_pDoc->m_dir->HU_max);
+	m_ContList.InsertItem(n, _T(""));
+	m_ContList.SetItemText(n, 0, "HU max");
+	m_ContList.SetItemText(n, 1, temp);
+
 }
 
 
