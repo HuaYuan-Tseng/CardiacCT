@@ -41,8 +41,9 @@ public:
 	BOOL			gl_3DTexture;		// 判斷是否支援3D紋理
 PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	
-	GLuint			textureName[10];	// 記載紋理名稱
+	GLuint			textureName[5];		// 記載紋理名稱
 	
+//-------------------------↓ openGL 設定參數 ↓-----------------------------//
 	int				Mat_Offset;			// 影像矩陣置中的偏移量
 	int				ImageFrame;			// 影像框數(1個時序1個)
 	int				glSlices;			// openGL建立紋理層數
@@ -66,10 +67,11 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	float			transY;
 	float*			lastPos;
 	float**			glVertexPt;			// openGL繪圖點
-
 	double*			user_Plane;
+//-------------------------↑ openGL 設定參數 ↑-----------------------------//
 
-unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
+	unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
+	unsigned short		PixelThreshold;		// 二值化閾值(pixel)
 
 //================//
 //   Operations   //
@@ -99,7 +101,7 @@ public:
 // Implementation //
 //================//
 public:
-	C3DProcess(CWnd* pParent = nullptr);   // standard constructor
+	C3DProcess(CWnd* pParent = nullptr);	// standard constructor
 	virtual ~C3DProcess();
 	virtual BOOL OnInitDialog();
 
@@ -109,9 +111,13 @@ public:
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_DIALOG_3DPROCESS };
 #endif
-public:
-	BOOL	m_object;
+public:										// CString的部分，有在Attributes另外設變數儲存
 	BOOL	m_plane;
+	BOOL	m_object;
+	BOOL	m_complete;
+	BOOL	m_thresholdPixel;
+
+	CString m_pixelThreshold;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
@@ -128,7 +134,12 @@ public:
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	
-	afx_msg void OnBnClickedCheckObject();
 	afx_msg void OnBnClickedCheckPlane();
+	afx_msg void OnBnClickedCheckObject();
+	afx_msg void OnBnClickedCheckComplete();
+	afx_msg void OnBnClickedCheckPixelThreshold();
+	
+	afx_msg void OnEnChangeEditPixelThres();
+	
 	
 };

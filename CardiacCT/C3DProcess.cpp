@@ -34,6 +34,9 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_3DPROCESS, pParent)
 	, m_object(TRUE)
 	, m_plane(FALSE)
+	, m_complete(TRUE)
+	, m_thresholdPixel(FALSE)
+	, m_pixelThreshold(_T("150"))
 {
 	mode = ControlModes::ControlObject;
 
@@ -58,7 +61,6 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	ImageFrame = 1;
 	obj_angle = 0.0F;
 	pln_angle = 0.0F;
-	DisplaySlice = 0;
 
 	glVertexPt = New2Dmatrix(64, 3, float);
 	lastPos = new float[3]{ 0.0F, 0.0F, 0.0F };
@@ -66,6 +68,8 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	pln_axis = new float[3]{ 0.0F, 0.0F, 0.0F };
 	user_Plane = new double[4]{ 1.0L, 0.0L, 0.0L, 1.0L };
 
+	DisplaySlice = 0;
+	PixelThreshold = atoi(m_pixelThreshold);
 }
 
 C3DProcess::~C3DProcess()
@@ -87,6 +91,10 @@ C3DProcess::~C3DProcess()
 		m_object = TRUE;
 	if (m_plane != FALSE)
 		m_plane = FALSE;
+	if (m_complete != TRUE)
+		m_complete = TRUE;
+	if (m_thresholdPixel != FALSE)
+		m_thresholdPixel = FALSE;
 
 	if (gl_3DTexture != FALSE)
 		gl_3DTexture = FALSE;
@@ -95,6 +103,9 @@ C3DProcess::~C3DProcess()
 	if (Act_Rotate != false)
 		Act_Rotate = false;
 	
+	if (m_pixelThreshold.IsEmpty() != true)
+		m_pixelThreshold.Empty();
+
 	if (scale_x != 0.3F)
 		scale_x = 0.3F;
 	if (scale_y != 0.5F)
@@ -118,20 +129,30 @@ C3DProcess::~C3DProcess()
 		obj_angle = 0.0F;
 	if (pln_angle != 0.0F)
 		pln_angle = 0.0F;
-	if (DisplaySlice != 0)
-		DisplaySlice = 0;
 	if (Mat_Offset != 0)
 		Mat_Offset = 0;
+
+	if (DisplaySlice != 0)
+		DisplaySlice = 0;
+	if (PixelThreshold != 0)
+		PixelThreshold = 0;
 	
-	glDeleteTextures(10, textureName);
+	glDeleteTextures(5, textureName);
 }
 
 void C3DProcess::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_SCROLLBAR_2D, m_ScrollBar);
-	DDX_Check(pDX, IDC_CHECK_Object, m_object);
+
 	DDX_Check(pDX, IDC_CHECK_PLANE, m_plane);
+	DDX_Check(pDX, IDC_CHECK_Object, m_object);
+	DDX_Check(pDX, IDC_CHECK_COMPLETE, m_complete);
+	DDX_Check(pDX, IDC_CHECK_PIXEL_THRESHOLD, m_thresholdPixel);
+
+	DDX_Text(pDX, IDC_EDIT_PIXEL_THRES, m_pixelThreshold);
+	DDV_MinMaxShort(pDX, atoi(m_pixelThreshold), 0, 255);
+	
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -147,6 +168,10 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 
 	ON_BN_CLICKED(IDC_CHECK_Object, &C3DProcess::OnBnClickedCheckObject)
 	ON_BN_CLICKED(IDC_CHECK_PLANE, &C3DProcess::OnBnClickedCheckPlane)
+
+	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRES, &C3DProcess::OnEnChangeEditPixelThres)
+	ON_BN_CLICKED(IDC_CHECK_COMPLETE, &C3DProcess::OnBnClickedCheckComplete)
+	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -433,6 +458,38 @@ void C3DProcess::OnBnClickedCheckPlane()
 	UpdateData(FALSE);
 }
 
+void C3DProcess::OnBnClickedCheckComplete()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : Complete (m_complete)
+	//
+	m_complete = TRUE;
+	m_thresholdPixel = FALSE;
+	UpdateData(FALSE);
+	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnBnClickedCheckPixelThreshold()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : Threshold<Pixel> (m_thresholdPixel)
+	//
+	m_complete = FALSE;
+	m_thresholdPixel = TRUE;
+	UpdateData(FALSE);
+	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnEnChangeEditPixelThres()
+{
+	// 更換 二值化閾值 (Pixel)
+	// EditBox : Pixel Threshold (m_pixelThreshold)
+	//
+	UpdateData(TRUE);
+	PixelThreshold = atoi(m_pixelThreshold);
+	Draw2DImage(DisplaySlice);
+}
+
 //==========================//
 //   C3DProcess Functions   //
 //==========================//
@@ -600,7 +657,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	int Sample_start = 0 + Mat_Offset;
 	int Sample_end = 0 + Mat_Offset + TotalSlice;
 	
-	BYTE m_image0[256 * 256 * 256][4] = {0};					// 萬惡的佔用記憶體
+	BYTE m_image0[256 * 256 * 256][4] = {0};					// 萬惡的佔用記憶體!!!!!!!!!!!!!
 
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
@@ -1078,11 +1135,32 @@ void C3DProcess::Draw2DImage(unsigned short &slice)
 	//
 	CClientDC dc(m_2D_frame);
 
-	PerspectiveBuild();
+	int Row = ROW;
+	int Col = COL;
+	register int i;
 
 	if (m_pDoc->m_img != nullptr)
 	{
-		m_2D_dib->ShowInverseDIB(&dc, m_pDoc->m_img[slice]);
+		if (m_complete == TRUE)
+		{
+			m_2D_dib->ShowInverseDIB(&dc, m_pDoc->m_img[slice]);
+		}
+		else if (m_thresholdPixel == TRUE)
+		{
+			PBYTE image_thres = new BYTE[Row*Col];
+
+			i = 0;
+			while (i < Row * Col)
+			{
+				if (m_pDoc->m_img[slice][i] > PixelThreshold)
+					image_thres[i] = 255;
+				else
+					image_thres[i] = 0;
+				i += 1;
+			}
+			m_2D_dib->ShowInverseDIB(&dc, image_thres);
+			delete[] image_thres;
+		}
 	}
 
 	// 寫字 (slice)
@@ -1282,4 +1360,5 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	}
 	return p;
 }
+
 
