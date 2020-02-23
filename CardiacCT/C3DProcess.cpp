@@ -39,8 +39,10 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_complete(TRUE)
 	, m_thresholdHU(FALSE)
 	, m_thresholdPixel(FALSE)
-	, m_pixelThreshold(_T("150"))
 	, m_HUThreshold(_T("210"))
+	, m_pixelThreshold(_T("150"))
+	, m_intensity(_T("0.8125"))
+	, m_density(_T("0.0"))
 {
 	mode = ControlModes::ControlObject;
 
@@ -114,6 +116,10 @@ C3DProcess::~C3DProcess()
 		m_pixelThreshold.Empty();
 	if (m_HUThreshold.IsEmpty() != true)
 		m_HUThreshold.Empty();
+	if (m_intensity.IsEmpty() != true)
+		m_intensity.Empty();
+	if (m_density.IsEmpty() != true)
+		m_density.Empty();
 
 	if (scale_x != 0.3F)
 		scale_x = 0.3F;
@@ -167,7 +173,9 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Text(pDX, IDC_EDIT_HU_THRESHOLD, m_HUThreshold);
 	DDV_MinMaxShort(pDX, atoi(m_HUThreshold), HU_min, HU_max);
-	
+
+	DDX_Text(pDX, IDC_EDIT_INTENSITY, m_intensity);
+	DDX_Text(pDX, IDC_EDIT_DENSITY, m_density);
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -187,6 +195,11 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_HU_THRESHOLD, &C3DProcess::OnBnClickedCheckHuThreshold)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
 	
+	ON_BN_CLICKED(IDC_BUTTON_DENSITY_PLUS, &C3DProcess::OnBnClickedButtonDensityPlus)
+	ON_BN_CLICKED(IDC_BUTTON_DENSITY_MINUS, &C3DProcess::OnBnClickedButtonDensityMinus)
+	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_PLUS, &C3DProcess::OnBnClickedButtonIntensityPlus)
+	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_MINUS, &C3DProcess::OnBnClickedButtonIntensityMinus)
+
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	
@@ -503,13 +516,61 @@ void C3DProcess::OnBnClickedCheckPixelThreshold()
 void C3DProcess::OnBnClickedCheckHuThreshold()
 {
 	// TODO: Add your control notification handler code here
-	// CheckBox : Threshild<HU> (m_thresholdHU)
+	// CheckBox : Threshold<HU> (m_thresholdHU)
 	//
 	m_complete = FALSE;
 	m_thresholdHU = TRUE;
 	m_thresholdPixel = FALSE;
 	UpdateData(FALSE);
 	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnBnClickedButtonIntensityPlus()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Intensity_Plus (m_intensity)
+	//
+	intensity += 1.0F / 32.0F;
+	if (intensity > 1.0F)	intensity = 1.0F;
+	m_intensity.Format("%f", intensity);
+	UpdateData(FALSE);
+	Draw3DImage(true);
+}
+
+void C3DProcess::OnBnClickedButtonIntensityMinus()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Intensity_Minus (m_intensity)
+	//
+	intensity -= 1.0F / 32.0F;
+	if (intensity < 0.0F)	intensity = 0.0F;
+	m_intensity.Format("%f", intensity);
+	UpdateData(FALSE);
+	Draw3DImage(true);
+}
+
+void C3DProcess::OnBnClickedButtonDensityPlus()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Density_Plus (m_density)
+	//
+	density += 1.0F / 32.0F;
+	if (density > 1.0F)	density = 1.0F;
+	m_density.Format("%f", density);
+	UpdateData(FALSE);
+	Draw3DImage(true);
+}
+
+void C3DProcess::OnBnClickedButtonDensityMinus()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Density_Minus (m_density)
+	//
+	density -= 1.0F / 32.0F;
+	if (density < 0.0F)	density = 0.0F;
+	m_density.Format("%f", density);
+	UpdateData(FALSE);
+	Draw3DImage(true);
 }
 
 void C3DProcess::OnEnChangeEditPixelThreshold()

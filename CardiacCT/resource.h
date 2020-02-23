@@ -38,6 +38,13 @@
 #define IDC_EDIT_HU_THRESHOLD           1013
 #define IDC_CHECK1                      1014
 #define IDC_CHECK_HU_THRESHOLD          1014
+#define IDC_EDIT_INTENSITY              1015
+#define IDC_BUTTON_INTENSITY_PLUS       1016
+#define IDC_BUTTON_INTENSITY_MINUS      1017
+#define IDC_EDIT_DENSITY                1018
+#define IDC_BUTTON_DENSITY_PLUS         1019
+#define IDC_BUTTON2                     1020
+#define IDC_BUTTON_DENSITY_MINUS        1020
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -50,7 +57,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        323
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1015
+#define _APS_NEXT_CONTROL_VALUE         1021
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif
