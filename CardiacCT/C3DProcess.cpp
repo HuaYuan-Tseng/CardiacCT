@@ -43,6 +43,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_pixelThreshold(_T("150"))
 	, m_intensity(_T("0.8125"))
 	, m_density(_T("0.0"))
+	, m_slices(_T("512"))
 {
 	mode = ControlModes::ControlObject;
 
@@ -120,6 +121,8 @@ C3DProcess::~C3DProcess()
 		m_intensity.Empty();
 	if (m_density.IsEmpty() != true)
 		m_density.Empty();
+	if (m_slices.IsEmpty() != true)
+		m_slices.Empty();
 
 	if (scale_x != 0.3F)
 		scale_x = 0.3F;
@@ -174,8 +177,12 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_HU_THRESHOLD, m_HUThreshold);
 	DDV_MinMaxShort(pDX, atoi(m_HUThreshold), HU_min, HU_max);
 
+	DDX_Text(pDX, IDC_EDIT_SLICES, m_slices);
+	DDV_MinMaxInt(pDX, atoi(m_slices), 1, 512);
+
 	DDX_Text(pDX, IDC_EDIT_INTENSITY, m_intensity);
 	DDX_Text(pDX, IDC_EDIT_DENSITY, m_density);
+	
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -195,6 +202,8 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_HU_THRESHOLD, &C3DProcess::OnBnClickedCheckHuThreshold)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
 	
+	ON_BN_CLICKED(IDC_BUTTON_SLICES_PLUS, &C3DProcess::OnBnClickedButtonSlicesPlus)
+	ON_BN_CLICKED(IDC_BUTTON_SLICES_MINUS, &C3DProcess::OnBnClickedButtonSlicesMinus)
 	ON_BN_CLICKED(IDC_BUTTON_DENSITY_PLUS, &C3DProcess::OnBnClickedButtonDensityPlus)
 	ON_BN_CLICKED(IDC_BUTTON_DENSITY_MINUS, &C3DProcess::OnBnClickedButtonDensityMinus)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_PLUS, &C3DProcess::OnBnClickedButtonIntensityPlus)
@@ -202,7 +211,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
-	
+	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -573,6 +582,30 @@ void C3DProcess::OnBnClickedButtonDensityMinus()
 	Draw3DImage(true);
 }
 
+void C3DProcess::OnBnClickedButtonSlicesPlus()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Slices_Plus (m_slices)
+	//
+	glSlices += 1;
+	if (glSlices > 512)		glSlices = 512;
+	m_slices.Format("%d", glSlices);
+	UpdateData(FALSE);
+	Draw3DImage(true);
+}
+
+void C3DProcess::OnBnClickedButtonSlicesMinus()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Slices_Minus (m_slices)
+	//
+	glSlices -= 1;
+	if (glSlices < 0)	glSlices = 0;
+	m_slices.Format("%d", glSlices);
+	UpdateData(FALSE);
+	Draw3DImage(true);
+}
+
 void C3DProcess::OnEnChangeEditPixelThreshold()
 {
 	// 更換 二值化閾值 (Pixel)
@@ -591,6 +624,16 @@ void C3DProcess::OnEnChangeEditHuThreshold()
 	UpdateData(TRUE);
 	HUThreshold = atoi(m_HUThreshold);
 	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnEnChangeEditSlices()
+{
+	// 更換openGL繪製三維影像的紋理層數
+	// Edit : vertex's slices (m_slices)
+	//
+	UpdateData(TRUE);
+	glSlices = atoi(m_slices);
+	Draw3DImage(true);
 }
 
 //==========================//

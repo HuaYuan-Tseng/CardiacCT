@@ -124,6 +124,7 @@ public:										// CString的部分，有在Attributes另外設變數儲存
 	CString m_HUThreshold;
 	CString m_intensity;
 	CString m_density;
+	CString m_slices;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
@@ -146,6 +147,8 @@ public:
 	afx_msg void OnBnClickedCheckHuThreshold();
 	afx_msg void OnBnClickedCheckPixelThreshold();
 	
+	afx_msg void OnBnClickedButtonSlicesPlus();
+	afx_msg void OnBnClickedButtonSlicesMinus();
 	afx_msg void OnBnClickedButtonDensityPlus();
 	afx_msg void OnBnClickedButtonDensityMinus();
 	afx_msg void OnBnClickedButtonIntensityPlus();
@@ -153,5 +156,5 @@ public:
 
 	afx_msg void OnEnChangeEditPixelThreshold();
 	afx_msg void OnEnChangeEditHuThreshold();
-	
+	afx_msg void OnEnChangeEditSlices();
 };
