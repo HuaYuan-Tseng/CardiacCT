@@ -235,12 +235,12 @@ BOOL C3DProcess::OnInitDialog()
 	m_2D_frame = GetDlgItem(IDC_STATIC_2D);									// 訪問 Dialog 中的物件。
 	m_2D_frame->GetWindowRect(&m_2D_rect);									// 獲得物件在螢幕上的位置（以螢幕為座標軸）。
 	ScreenToClient(&m_2D_rect);												// 將物件在以"螢幕"為座標軸體系下的位置，轉換為"用戶區"座標軸體系下的位置。
-	m_2D_frame->MoveWindow(m_2D_rect.left, m_2D_rect.top, COL, ROW, true);	// 調整物件位置與大小。
+	//m_2D_frame->MoveWindow(m_2D_rect.left, m_2D_rect.top, COL, ROW, true);	// 調整物件位置與大小。
 
 	m_3D_frame = GetDlgItem(IDC_STATIC_3D);
 	m_3D_frame->GetWindowRect(&m_3D_rect);
 	ScreenToClient(&m_3D_rect);
-	m_3D_frame->MoveWindow(m_3D_rect.left, m_3D_rect.top, COL, ROW, true);
+	//m_3D_frame->MoveWindow(m_3D_rect.left, m_3D_rect.top, COL, ROW, true);
 
 	m_2D_dib = new CDIB();							
 	m_2D_dib->InitDIB(COL, ROW);							// 初始化畫框
