@@ -523,10 +523,8 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 					{
 						if (seed_img.x >= 0 && seed_img.x <= 511)
 						{
-							DisplaySlice = (unsigned short)seed_img.z;
-							Draw2DImage(DisplaySlice);
-
 							get_3Dseed = true;
+							DisplaySlice = (unsigned short)seed_img.z;
 							GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
 
 							//-----------------------------------------------------------------------------//
@@ -549,8 +547,8 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 				delete[] modelView_matrix;
 				delete[] projection_matrix;
 			}
+			Draw2DImage(DisplaySlice);
 		}
-
 		Draw3DImage(true);
 	}
 	CDialogEx::OnLButtonDown(nFlags, point);
@@ -774,7 +772,29 @@ void C3DProcess::OnBnClickedButton3dseedClear()
 	// TODO: Add your control notification handler code here
 	// Button : 3D Seed Clear
 	//
+	if (get_3Dseed)
+	{
+		seed_gl.x = 0;
+		seed_gl.y = 0;
+		seed_gl.z = 0;
 
+		seed_img.x = 0;
+		seed_img.y = 0;
+		seed_img.z = 0;
+
+		m_pos_1.Format("%d", 0);
+		m_pos_2.Format("%d", 0);
+		m_pos_3.Format("%d", 0);
+		m_pos_4.Format("%d", 0);
+
+		get_3Dseed = false;
+		
+		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
+		
+		UpdateData(FALSE);
+		Draw3DImage(true);
+		Draw2DImage(DisplaySlice);
+	}
 }
 
 void C3DProcess::OnEnChangeEditPixelThreshold()
@@ -1443,14 +1463,18 @@ void C3DProcess::Draw3DImage(bool which)
 	}
 	glEnd();
 
+	// Εγ₯ά 3D seed
+	//
 	if (get_3Dseed)
 	{
 		glPointSize(5);
 		glBegin(GL_POINTS);
-		glColor3f(1.0f, 0.0f, 0.0f);
-		glVertex3f((GLfloat)seed_gl.z, 
-					(GLfloat)seed_gl.y, 
-					(GLfloat)seed_gl.x);
+		{
+			glColor3f(1.0f, 0.0f, 0.0f);
+			glVertex3f((GLfloat)seed_gl.z,
+				(GLfloat)seed_gl.y,
+				(GLfloat)seed_gl.x);
+		}
 		glEnd();
 	}
 
@@ -1528,8 +1552,8 @@ void C3DProcess::Draw2DImage(unsigned short &slice)
 					{
 						for (j = -1; j <= 1; j++)
 						{
-							pt.x = seed_img.x + j;
-							pt.y = seed_img.y + i;
+							pt.x = (LONG)seed_img.x + j;
+							pt.y = (LONG)seed_img.y + i;
 
 							dc.SetPixel(pt, RGB(255, 0, 0));
 						}
