@@ -53,6 +53,12 @@
 #define IDC_BUTTON_SLICES_PLUS          1027
 #define IDC_BUTTON2                     1028
 #define IDC_BUTTON_SLICES_MINUS         1028
+#define IDC_CHECK_3D_SEED               1029
+#define IDC_EDIT_POS1                   1030
+#define IDC_EDIT_POS2                   1031
+#define IDC_EDIT_POS3                   1032
+#define IDC_EDIT_POS4                   1033
+#define IDC_BUTTON_3DSEED_CLEAR         1034
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -65,7 +71,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        323
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1029
+#define _APS_NEXT_CONTROL_VALUE         1035
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

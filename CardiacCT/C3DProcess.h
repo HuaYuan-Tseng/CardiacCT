@@ -43,7 +43,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	
 	GLuint			textureName[5];		// 記載紋理名稱
 	
-//-------------------------↓ openGL 設定參數 ↓-----------------------------//
+///-------------------------↓ openGL 設定參數 ↓----------------------------------------///
 	int				Mat_Offset;			// 影像矩陣置中的偏移量
 	int				ImageFrame;			// 影像框數(1個時序1個)
 	int				glSlices;			// openGL建立紋理層數
@@ -68,7 +68,32 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	float*			lastPos;
 	float**			glVertexPt;			// openGL繪圖點
 	double*			user_Plane;
-//-------------------------↑ openGL 設定參數 ↑-----------------------------//
+///-------------------------↑ openGL 設定參數 ↑----------------------------------------///
+
+///-------------------------↓ 3D seed 宣告參數 ↓---------------------------------------///
+
+	typedef struct
+	{
+		double x;
+		double y;
+		double z;
+	}	Seed;
+
+	Seed			seed_pt;			// 在2D視窗點擊的seed座標
+	Seed			seed_gl;			// 在3D視窗點擊的seed openGL世界座標
+	Seed			seed_img;			// 3D_seed的世界座標轉換為原影像"矩陣"(512*512)座標
+
+	bool			get_3Dseed;			// 是否點選了3D種子點
+	bool			get_zCorrect;		// 是否已作過z軸校正 
+
+	float			z_parameter;		// z軸校正參數
+
+///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
+
+	float			Pos_1;				// m_pos_1 內容
+	float			Pos_2;				// m_pos_2 內容
+	float			Pos_3;				// m_pos_3 內容
+	float			Pos_4;				// m_pos_4 內容
 
 	short			HUThreshold;		// 二值化閾值(HU)
 unsigned short		PixelThreshold;		// 二值化閾值(pixel)
@@ -93,12 +118,13 @@ public:
 	void*	new3Dmatrix(int h, int w, int l, int size);
 	void*	new4Dmatrix(int h, int w, int l, int v, int size);
 
+	Seed	coordiConvert(Seed &pt);					// openGL coordinate -> data array site
 	void	InvertMat(float (&m)[16]);
 	void	ActTracking(int x, int y);					// 物件操作的追蹤(包含旋轉與位移)
 	void	ActStop(UINT nFlags, int x, int y);			// 「結束旋轉」的動作設定
 	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
-
+	
 //================//
 // Implementation //
 //================//
@@ -114,17 +140,23 @@ public:
 	enum { IDD = IDD_DIALOG_3DPROCESS };
 #endif
 public:										// CString的部分，有在Attributes另外設變數儲存
-	BOOL	m_plane;
-	BOOL	m_object;
-	BOOL	m_complete;
-	BOOL	m_thresholdHU;
-	BOOL	m_thresholdPixel;
+	BOOL		m_plane;
+	BOOL		m_object;
+	BOOL		m_complete;
+	BOOL		m_thresholdHU;
+	BOOL		m_thresholdPixel;
 
-	CString m_pixelThreshold;
-	CString m_HUThreshold;
-	CString m_intensity;
-	CString m_density;
-	CString m_slices;
+	BOOL		m_3Dseed;
+
+	CString		m_pixelThreshold;
+	CString		m_HUThreshold;
+	CString		m_intensity;
+	CString		m_density;
+	CString		m_slices;
+	CString		m_pos_1;
+	CString		m_pos_2;
+	CString		m_pos_3;
+	CString		m_pos_4;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
@@ -146,6 +178,8 @@ public:
 	afx_msg void OnBnClickedCheckComplete();
 	afx_msg void OnBnClickedCheckHuThreshold();
 	afx_msg void OnBnClickedCheckPixelThreshold();
+
+	afx_msg void OnBnClickedCheck3dSeed();
 	
 	afx_msg void OnBnClickedButtonSlicesPlus();
 	afx_msg void OnBnClickedButtonSlicesMinus();
@@ -157,4 +191,5 @@ public:
 	afx_msg void OnEnChangeEditPixelThreshold();
 	afx_msg void OnEnChangeEditHuThreshold();
 	afx_msg void OnEnChangeEditSlices();
+	afx_msg void OnBnClickedButton3dseedClear();
 };

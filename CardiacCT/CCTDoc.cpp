@@ -197,6 +197,13 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 
 	if (openDirDlg.DoModal() == IDOK)
 	{
+		// 確認檔案名稱是否為DICOMDIR
+		//
+		if (openDirDlg.GetFileTitle() != "DICOMDIR")
+		{
+			AfxMessageBox("This file is not DICOMDIR!!");
+			return;
+		}
 		// 確認檔案格式是否為DICOM
 		//
 		if ((err = fopen_s(&file, openDirDlg.GetPathName(), "rb")) == 0)
@@ -302,6 +309,8 @@ void CCTDoc::BuildDataMatrix()
 	const int TotalSlice = Total_Slice;
 	const int RescaleSlope = Rescale_Slope;
 	const int RescaleIntercept = Rescale_Intercept;
+	const int WindowCenter_1 = Window_Center_1;
+	const int WindowWidth_1 = Window_Width_1;
 	const double Window_low = Window_Center_1 - 0.5 - (Window_Width_1 - 1) / 2;
 	const double Window_high = Window_Center_1 - 0.5 + (Window_Width_1 - 1) / 2;
 
@@ -350,7 +359,7 @@ void CCTDoc::BuildDataMatrix()
 					}
 					else
 					{
-						m_img[slice][i] = (BYTE)(255 * ((value - (Window_Center_1 - 0.5)) / (Window_Width_1 + 1) + 0.5));
+						m_img[slice][i] = (BYTE)(255 * ((value - (WindowCenter_1 - 0.5)) / (WindowWidth_1 + 1) + 0.5));
 					}
 					i += 1;
 				}

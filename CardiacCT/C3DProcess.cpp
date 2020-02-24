@@ -34,6 +34,7 @@ IMPLEMENT_DYNAMIC(C3DProcess, CDialogEx)
 
 C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_3DPROCESS, pParent)
+	, m_3Dseed(FALSE)
 	, m_object(TRUE)
 	, m_plane(FALSE)
 	, m_complete(TRUE)
@@ -44,6 +45,10 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_intensity(_T("0.8125"))
 	, m_density(_T("0.0"))
 	, m_slices(_T("512"))
+	, m_pos_1(_T("0"))
+	, m_pos_2(_T("0"))
+	, m_pos_3(_T("0"))
+	, m_pos_4(_T("0"))
 {
 	mode = ControlModes::ControlObject;
 
@@ -55,6 +60,14 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 
 	Act_Rotate = false;
 	Act_Translate = false;
+
+	get_3Dseed = false;
+	get_zCorrect = false;
+
+	Pos_1 = 0.0F;
+	Pos_2 = 0.0F;
+	Pos_3 = 0.0F;
+	Pos_4 = 0.0F;
 	
 	scale_x = 0.3F;					
 	scale_y = 0.5F;
@@ -69,12 +82,17 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	obj_angle = 0.0F;
 	pln_angle = 0.0F;
 
+	z_parameter = 0.7F;
+	seed_pt = { 0.0L, 0.0L, 0.0L };
+	seed_gl = { 0.0L, 0.0L, 0.0L };
+	seed_img = { 0.0L, 0.0L, 0.0L };
+
 	glVertexPt = New2Dmatrix(64, 3, float);
 	lastPos = new float[3]{ 0.0F, 0.0F, 0.0F };
 	obj_axis = new float[3]{ 0.0F, 0.0F, 0.0F };
 	pln_axis = new float[3]{ 0.0F, 0.0F, 0.0F };
 	user_Plane = new double[4]{ 1.0L, 0.0L, 0.0L, 1.0L };
-
+	
 	DisplaySlice = 0;
 	HUThreshold = atoi(m_HUThreshold);
 	PixelThreshold = atoi(m_pixelThreshold);
@@ -105,6 +123,8 @@ C3DProcess::~C3DProcess()
 		m_thresholdPixel = FALSE;
 	if (m_thresholdHU != FALSE)
 		m_thresholdHU = FALSE;
+	if (m_3Dseed != FALSE)
+		m_3Dseed = FALSE;
 
 	if (gl_3DTexture != FALSE)
 		gl_3DTexture = FALSE;
@@ -112,6 +132,10 @@ C3DProcess::~C3DProcess()
 		Act_Translate = false;
 	if (Act_Rotate != false)
 		Act_Rotate = false;
+	if (get_3Dseed != false)
+		get_3Dseed = false;
+	if (get_zCorrect != false)
+		get_zCorrect = false;
 	
 	if (m_pixelThreshold.IsEmpty() != true)
 		m_pixelThreshold.Empty();
@@ -123,6 +147,23 @@ C3DProcess::~C3DProcess()
 		m_density.Empty();
 	if (m_slices.IsEmpty() != true)
 		m_slices.Empty();
+	if (m_pos_1.IsEmpty() != true)
+		m_pos_1.Empty();
+	if (m_pos_2.IsEmpty() != true)
+		m_pos_2.Empty();
+	if (m_pos_3.IsEmpty() != true)
+		m_pos_3.Empty();
+	if (m_pos_4.IsEmpty() != true)
+		m_pos_4.Empty();
+
+	if (Pos_1 != 0.0F)
+		Pos_1 = 0.0F;
+	if (Pos_2 != 0.0F)
+		Pos_2 = 0.0F;
+	if (Pos_3 != 0.0F)
+		Pos_3 = 0.0F;
+	if (Pos_4 != 0.0F)
+		Pos_4 = 0.0F;
 
 	if (scale_x != 0.3F)
 		scale_x = 0.3F;
@@ -156,7 +197,12 @@ C3DProcess::~C3DProcess()
 		PixelThreshold = 0;
 	if (HUThreshold != 0)
 		HUThreshold = 0;
+	if (z_parameter != 0.7F)
+		z_parameter = 0.7F;
 	
+	seed_pt = { 0.0L, 0.0L, 0.0L };
+	seed_gl = { 0.0L, 0.0L, 0.0L };
+	seed_img = { 0.0L, 0.0L, 0.0L };
 	glDeleteTextures(5, textureName);
 }
 
@@ -171,18 +217,23 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_HU_THRESHOLD, m_thresholdHU);
 	DDX_Check(pDX, IDC_CHECK_PIXEL_THRESHOLD, m_thresholdPixel);
 
-	DDX_Text(pDX, IDC_EDIT_PIXEL_THRESHOLD, m_pixelThreshold);
-	DDV_MinMaxShort(pDX, atoi(m_pixelThreshold), 0, 255);
-
-	DDX_Text(pDX, IDC_EDIT_HU_THRESHOLD, m_HUThreshold);
-	DDV_MinMaxShort(pDX, atoi(m_HUThreshold), HU_min, HU_max);
+	DDX_Check(pDX, IDC_CHECK_3D_SEED, m_3Dseed);
 
 	DDX_Text(pDX, IDC_EDIT_SLICES, m_slices);
 	DDV_MinMaxInt(pDX, atoi(m_slices), 1, 512);
 
+	DDX_Text(pDX, IDC_EDIT_HU_THRESHOLD, m_HUThreshold);
+	DDV_MinMaxShort(pDX, atoi(m_HUThreshold), HU_min, HU_max);
+
+	DDX_Text(pDX, IDC_EDIT_PIXEL_THRESHOLD, m_pixelThreshold);
+	DDV_MinMaxShort(pDX, atoi(m_pixelThreshold), 0, 255);
+
 	DDX_Text(pDX, IDC_EDIT_INTENSITY, m_intensity);
 	DDX_Text(pDX, IDC_EDIT_DENSITY, m_density);
-	
+	DDX_Text(pDX, IDC_EDIT_POS1, m_pos_1);
+	DDX_Text(pDX, IDC_EDIT_POS2, m_pos_2);
+	DDX_Text(pDX, IDC_EDIT_POS3, m_pos_3);
+	DDX_Text(pDX, IDC_EDIT_POS4, m_pos_4);
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -196,12 +247,15 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_WM_RBUTTONDOWN()
 	ON_WM_RBUTTONDBLCLK()
 
+	ON_BN_CLICKED(IDC_CHECK_3D_SEED, &C3DProcess::OnBnClickedCheck3dSeed)
+
 	ON_BN_CLICKED(IDC_CHECK_PLANE, &C3DProcess::OnBnClickedCheckPlane)
 	ON_BN_CLICKED(IDC_CHECK_Object, &C3DProcess::OnBnClickedCheckObject)
 	ON_BN_CLICKED(IDC_CHECK_COMPLETE, &C3DProcess::OnBnClickedCheckComplete)
 	ON_BN_CLICKED(IDC_CHECK_HU_THRESHOLD, &C3DProcess::OnBnClickedCheckHuThreshold)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
 	
+	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_PLUS, &C3DProcess::OnBnClickedButtonSlicesPlus)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_MINUS, &C3DProcess::OnBnClickedButtonSlicesMinus)
 	ON_BN_CLICKED(IDC_BUTTON_DENSITY_PLUS, &C3DProcess::OnBnClickedButtonDensityPlus)
@@ -212,6 +266,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
+	
 END_MESSAGE_MAP()
 
 //=================================//
@@ -248,6 +303,11 @@ BOOL C3DProcess::OnInitDialog()
 	// 設定ScrollBar的範圍
 	//
 	m_ScrollBar.SetScrollRange(0, Total_Slice-1);
+
+	//-------------------------------------------------------------------------------------//
+	// 設定Button初始狀態
+	//
+	GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 
 	//-------------------------------------------------------------------------------------//
 	// openGL空間建立
@@ -315,7 +375,7 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	ScreenToClient(&mpt);
 	int TotalSlice = Total_Slice;
 
-	// 在二維影像視窗範圍內
+	// 在 二維 影像視窗範圍內
 	//
 	if (mpt.x < m_2D_rect.right && mpt.x > m_2D_rect.left && mpt.y < m_2D_rect.bottom && mpt.y > m_2D_rect.top)
 	{
@@ -328,11 +388,32 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 			DisplaySlice = TotalSlice - 1;
 		else if (DisplaySlice < 0)
 			DisplaySlice = 0;
+
+		Draw2DImage(DisplaySlice);
+		m_ScrollBar.SetScrollPos(DisplaySlice);
 	}
 
-	Draw2DImage(DisplaySlice);
-	m_ScrollBar.SetScrollPos(DisplaySlice);
-	
+	// 在 三維 影像視窗範圍內
+	//
+	if (mpt.x < m_3D_rect.right && mpt.x > m_3D_rect.left && mpt.y < m_3D_rect.bottom && mpt.y > m_3D_rect.top)
+	{
+		if (mode == ControlModes::ControlObject)
+		{
+			if (zDelta < 0)
+				viewDistance += 0.05F;
+			else if (zDelta > 0)
+				viewDistance -= 0.05F;
+		}
+		else if (mode == ControlModes::ControlPlane)
+		{
+			if (zDelta < 0)
+				user_Plane[3] += 0.01F;
+			else if (zDelta > 0)
+				user_Plane[3] -= 0.01F;
+		}
+		Draw3DImage(true);
+	}
+
 	return CDialogEx::OnMouseWheel(nFlags, zDelta, pt);
 }
 
@@ -409,6 +490,66 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
 		ActStart(nFlags, point.x - m_3D_rect.left, point.y - m_3D_rect.top);
+
+		if (m_3Dseed == TRUE)
+		{
+			if (get_3Dseed == false)
+			{
+				GLint*		viewPort = new GLint[16];
+				GLdouble*	modelView_matrix = new GLdouble[16];
+				GLdouble*	projection_matrix = new GLdouble[16];
+
+				GLfloat		win_x, win_y, win_z;
+				GLdouble	obj_x, obj_y, obj_z;
+
+				glGetIntegerv(GL_VIEWPORT, viewPort);
+				glGetDoublev(GL_MODELVIEW_MATRIX, modelView_matrix);
+				glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
+
+				win_x = (GLfloat)(point.x - m_3D_rect.left);
+				win_y = (GLfloat)(viewPort[3] - (point.y - m_3D_rect.top));
+				glReadPixels((int)win_x, (int)win_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &win_z);
+				gluUnProject(win_x, win_y, win_z, modelView_matrix, projection_matrix, viewPort, &obj_x, &obj_y, &obj_z);
+
+				seed_gl.x = obj_z;						// x_axis
+				seed_gl.y = obj_y;						// y_axis
+				seed_gl.z = obj_x;						// slice
+
+				seed_img = coordiConvert(seed_gl);		// 座標點與資料矩陣位置的轉換
+
+				if (seed_img.z >= 0 && seed_img.z <= Total_Slice - 1)
+				{
+					if (seed_img.y >= 0 && seed_img.y <= 511)
+					{
+						if (seed_img.x >= 0 && seed_img.x <= 511)
+						{
+							DisplaySlice = (unsigned short)seed_img.z;
+							Draw2DImage(DisplaySlice);
+
+							get_3Dseed = true;
+							GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
+
+							//-----------------------------------------------------------------------------//
+							
+							Pos_1 = (float)seed_img.x;
+							Pos_2 = (float)seed_img.y;
+							Pos_3 = (float)seed_img.z;
+							Pos_4 = m_pDoc->m_img[(int)seed_img.z][((int)seed_img.y)*ROW + (int)seed_img.z];
+
+							m_pos_1.Format("%d", (int)Pos_1);
+							m_pos_2.Format("%d", (int)Pos_2);
+							m_pos_3.Format("%d", (int)Pos_3);
+							m_pos_4.Format("%d", (int)Pos_4);
+						}
+					}
+				}
+				UpdateData(FALSE);
+
+				delete[] viewPort;
+				delete[] modelView_matrix;
+				delete[] projection_matrix;
+			}
+		}
 
 		Draw3DImage(true);
 	}
@@ -534,6 +675,28 @@ void C3DProcess::OnBnClickedCheckHuThreshold()
 	Draw2DImage(DisplaySlice);
 }
 
+void C3DProcess::OnBnClickedCheck3dSeed()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : 3D_seed (m_3Dseed)
+	//
+	UpdateData(TRUE);
+	if (m_3Dseed == TRUE)
+	{
+		if (get_3Dseed == true)
+		{
+			GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
+		}
+	}
+	else
+	{
+		if (get_3Dseed == true)
+		{
+			GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
+		}
+	}
+}
+
 void C3DProcess::OnBnClickedButtonIntensityPlus()
 {
 	// TODO: Add your control notification handler code here
@@ -604,6 +767,14 @@ void C3DProcess::OnBnClickedButtonSlicesMinus()
 	m_slices.Format("%d", glSlices);
 	UpdateData(FALSE);
 	Draw3DImage(true);
+}
+
+void C3DProcess::OnBnClickedButton3dseedClear()
+{
+	// TODO: Add your control notification handler code here
+	// Button : 3D Seed Clear
+	//
+
 }
 
 void C3DProcess::OnEnChangeEditPixelThreshold()
@@ -1272,6 +1443,17 @@ void C3DProcess::Draw3DImage(bool which)
 	}
 	glEnd();
 
+	if (get_3Dseed)
+	{
+		glPointSize(5);
+		glBegin(GL_POINTS);
+		glColor3f(1.0f, 0.0f, 0.0f);
+		glVertex3f((GLfloat)seed_gl.z, 
+					(GLfloat)seed_gl.y, 
+					(GLfloat)seed_gl.x);
+		glEnd();
+	}
+
 	SwapBuffers(m_hDC);
 }
 
@@ -1283,14 +1465,18 @@ void C3DProcess::Draw2DImage(unsigned short &slice)
 
 	int Row = ROW;
 	int Col = COL;
-	register int i;
+	register int i, j;
 
 	if (m_pDoc->m_img != nullptr)
 	{
+		// 顯示原始影像
+		//
 		if (m_complete == TRUE)
 		{
 			m_2D_dib->ShowInverseDIB(&dc, m_pDoc->m_img[slice]);
 		}
+		// 顯示以Pixel為閾值的二值化影像
+		//
 		else if (m_thresholdPixel == TRUE)
 		{
 			PBYTE image_thres = new BYTE[Row*Col];
@@ -1307,6 +1493,8 @@ void C3DProcess::Draw2DImage(unsigned short &slice)
 			m_2D_dib->ShowInverseDIB(&dc, image_thres);
 			delete[] image_thres;
 		}
+		// 顯示以 HU 為閾值的二值化影像
+		//
 		else if (m_thresholdHU == TRUE)
 		{
 			PBYTE image_thres = new BYTE[Row*Col];
@@ -1322,6 +1510,32 @@ void C3DProcess::Draw2DImage(unsigned short &slice)
 			}
 			m_2D_dib->ShowInverseDIB(&dc, image_thres);
 			delete[] image_thres;
+		}
+
+		//  3D seed 功能
+		//
+		if (m_3Dseed)
+		{
+			CPoint pt;
+			
+			// 於2D影像顯示在3D點選的seed
+			//
+			if (get_3Dseed)
+			{
+				if (slice == (unsigned short)seed_img.z)
+				{
+					for (i = -1; i <= 1; i++)
+					{
+						for (j = -1; j <= 1; j++)
+						{
+							pt.x = seed_img.x + j;
+							pt.y = seed_img.y + i;
+
+							dc.SetPixel(pt, RGB(255, 0, 0));
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -1434,12 +1648,12 @@ void C3DProcess::ActTracking(int x, int y)
 	{
 		if (mode == ControlModes::ControlObject)
 		{
-			viewDistance += 0.01f * (y - transY);
+			viewDistance += 0.01F * (y - transY);
 			transY = (float)y;
 		}
 		else if (mode == ControlModes::ControlPlane)
 		{
-			user_Plane[3] -= 0.01f * (y - transY);
+			user_Plane[3] -= 0.01F * (y - transY);
 			transY = (float)y;
 		}
 	}
@@ -1467,6 +1681,58 @@ void C3DProcess::InvertMat(float (&m)[16])
 	m[12] = -m[12];
 	m[13] = -m[13];
 	m[14] = -m[14];
+}
+
+C3DProcess::Seed C3DProcess::coordiConvert(Seed &pt)
+{
+	// openGL coordinate -> data array
+	//
+	// 由於在3D視窗上，每一張slice的x和y軸都貼齊藍色邊界，且以世界座標來看，數值都介於-1～1之間。
+	// 所以在轉換回去矩陣資料位置時，首先將世界座標+1，將原點從中間移到最左邊(-1~0~1 => 0~1~2)，
+	// 換算每個矩陣為多少openGL的距離，再將現在的位置轉為"矩陣"位置(512*512)。
+	
+	Seed temp;
+
+	temp.x = (pt.x + 1) / ((1.0F - (-1.0F)) / 512.0F);
+
+	if (temp.x - (int)temp.x == 0)
+		temp.x = temp.x - 1;
+	else
+		temp.x = (int)temp.x;
+
+	temp.y = (pt.y + 1) / ((1.0F - (-1.0F)) / 512.0F);
+
+	if (temp.y - (int)temp.y == 0)
+		temp.y = temp.y - 1;
+	else
+		temp.y = (int)temp.y;
+
+	// 由於Z軸(slice)不像X軸或Y軸，在3D空間是貼齊藍色邊界，所以無法像上面的X.Y軸一樣轉換，
+	// 若沒有做Z軸校正，則是直接計算一張slice在openGL空間裡的高度距離，並且從中心做縮放，
+	// 若有做Z軸校正(直接在影像上的最頂或最底點一點(建議直接點脊椎))，因為影像Z軸有置中，
+	// 也就是有對稱，所以直接利用最頂and最底的openGL_Z軸座標與slice的關係做換算。
+	
+	if (!get_zCorrect)
+	{
+		z_parameter = (2.0F / 511.0F)*(Total_Slice / 2.0F) / 2;
+		z_parameter = z_parameter / scale_x;
+		//z_correct = (z_correct > 1) ? 1 : z_correct;
+	}
+	else
+	{
+		z_parameter = (z_parameter > 0) ? z_parameter : -z_parameter;
+	}
+
+	temp.z = ((pt.z + 1) - (-z_parameter + 1))*(Total_Slice / ((z_parameter + 1) - (-z_parameter + 1)));
+
+	if (temp.z < 1)
+		temp.z = 1;
+	else if (temp.z > Total_Slice)
+		temp.z = Total_Slice;
+
+	temp.z -= 1;
+	
+	return temp;
 }
 
 void* C3DProcess::new2Dmatrix(int h, int w, int size)
