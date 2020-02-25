@@ -85,6 +85,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 	bool			get_3Dseed;			// 是否點選了3D種子點
 	bool			get_2Dseed;			// 是否點選了2D種子點
+	bool			get_regionGrow;		// 是否執行過區域成長
 
 	float			z_index;			// 校正Z軸的參數
 
@@ -119,6 +120,8 @@ public:
 	void	ActStop(UINT nFlags, int x, int y);			// 「結束旋轉」的動作設定
 	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
+
+	bool	Region_Growing(Seed &seed);					// 三維 區域成長
 	
 //================//
 // Implementation //
@@ -187,4 +190,5 @@ public:
 	afx_msg void OnBnClickedButtonDensityMinus();
 	afx_msg void OnBnClickedButtonIntensityPlus();
 	afx_msg void OnBnClickedButtonIntensityMinus();
+	afx_msg void OnBnClickedButtonRegionGrowing();
 };

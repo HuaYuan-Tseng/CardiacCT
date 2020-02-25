@@ -58,11 +58,12 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	m_3D_frame = nullptr;
 	gl_3DTexture = FALSE;
 
+	Act_Translate = false;
+	Act_Rotate = false;
 	get_2Dseed = false;
 	get_3Dseed = false;
-	Act_Rotate = false;
-	Act_Translate = false;
-
+	get_regionGrow = false;
+	
 	scale_x = 0.3F;
 	scale_y = 0.5F;
 	scale_z = 0.5F;
@@ -130,6 +131,8 @@ C3DProcess::~C3DProcess()
 		get_3Dseed = false;
 	if (get_2Dseed != false)
 		get_2Dseed = false;
+	if (get_regionGrow != false)
+		get_regionGrow = false;
 	
 	if (m_pixelThreshold.IsEmpty() != true)
 		m_pixelThreshold.Empty();
@@ -239,18 +242,20 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_HU_THRESHOLD, &C3DProcess::OnBnClickedCheckHuThreshold)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
 	
-	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
-	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_PLUS, &C3DProcess::OnBnClickedButtonSlicesPlus)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_MINUS, &C3DProcess::OnBnClickedButtonSlicesMinus)
 	ON_BN_CLICKED(IDC_BUTTON_DENSITY_PLUS, &C3DProcess::OnBnClickedButtonDensityPlus)
 	ON_BN_CLICKED(IDC_BUTTON_DENSITY_MINUS, &C3DProcess::OnBnClickedButtonDensityMinus)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_PLUS, &C3DProcess::OnBnClickedButtonIntensityPlus)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_MINUS, &C3DProcess::OnBnClickedButtonIntensityMinus)
+	ON_BN_CLICKED(IDC_BUTTON_REGION_GROWING, &C3DProcess::OnBnClickedButtonRegionGrowing)
+	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
+	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
+	
 END_MESSAGE_MAP()
 
 //=================================//
@@ -291,9 +296,10 @@ BOOL C3DProcess::OnInitDialog()
 	//-------------------------------------------------------------------------------------//
 	// 砞﹚Button﹍篈
 	//
+	GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
-
+	
 	//-------------------------------------------------------------------------------------//
 	// э蝴紇钩Z禸よ罽ゑㄒ(ぃ璶胔好э琌Z禸⊿岿)
 	//
@@ -524,7 +530,9 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 							get_3Dseed = true;
 							DisplaySlice = (unsigned short)seed_img.z;
 							m_ScrollBar.SetScrollPos(DisplaySlice);
+
 							GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
+							GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(TRUE);
 
 							//-----------------------------------------------------------------------------------//
 							
@@ -566,7 +574,8 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		get_2Dseed = true;
 		UpdateData(FALSE);
 		Draw2DImage(DisplaySlice);
-		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
+		if (m_3Dseed)
+			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
 	}
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
@@ -630,6 +639,36 @@ void C3DProcess::OnRButtonDblClk(UINT nFlags, CPoint point)
 		}
 	}
 	CDialogEx::OnRButtonDblClk(nFlags, point);
+}
+
+void C3DProcess::OnEnChangeEditPixelThreshold()
+{
+	// 传 て霩 (Pixel)
+	// EditBox : Pixel Threshold (m_pixelThreshold)
+	//
+	UpdateData(TRUE);
+	PixelThreshold = atoi(m_pixelThreshold);
+	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnEnChangeEditHuThreshold()
+{
+	// 传 て霩 (HU)
+	// EditBox : HU Threshold (m_HUThreshold)
+	//
+	UpdateData(TRUE);
+	HUThreshold = atoi(m_HUThreshold);
+	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnEnChangeEditSlices()
+{
+	// 传openGL酶籹蝴紇钩瞶糷计
+	// Edit : vertex's slices (m_slices)
+	//
+	UpdateData(TRUE);
+	glSlices = atoi(m_slices);
+	Draw3DImage(true);
 }
 
 void C3DProcess::OnBnClickedCheckObject()
@@ -698,20 +737,23 @@ void C3DProcess::OnBnClickedCheck3dSeed()
 	UpdateData(TRUE);
 	if (m_3Dseed == TRUE)
 	{
-		if (get_3Dseed == true)
+		if (get_3Dseed)
 		{
 			GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
+			GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(TRUE);
 		}
-		if (get_2Dseed == true)
+		if (get_2Dseed)
 		{
 			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
 		}
 	}
 	else
 	{
+		GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 	}
+	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
 }
 
@@ -810,6 +852,7 @@ void C3DProcess::OnBnClickedButton3dseedClear()
 		get_3Dseed = false;
 		
 		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
 		
 		UpdateData(FALSE);
 		Draw3DImage(true);
@@ -838,6 +881,7 @@ void C3DProcess::OnBnClickedButtonSeedChange()
 		get_3Dseed = true;
 		DisplaySlice = (unsigned short)seed_pt.z;
 		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
+		GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(TRUE);
 
 		UpdateData(FALSE);
 		Draw3DImage(true);
@@ -845,34 +889,15 @@ void C3DProcess::OnBnClickedButtonSeedChange()
 	}
 }
 
-void C3DProcess::OnEnChangeEditPixelThreshold()
+void C3DProcess::OnBnClickedButtonRegionGrowing()
 {
-	// 传 て霩 (Pixel)
-	// EditBox : Pixel Threshold (m_pixelThreshold)
+	// TODO: Add your control notification handler code here
+	// Button : 3D Region Growing
 	//
-	UpdateData(TRUE);
-	PixelThreshold = atoi(m_pixelThreshold);
-	Draw2DImage(DisplaySlice);
-}
-
-void C3DProcess::OnEnChangeEditHuThreshold()
-{
-	// 传 て霩 (HU)
-	// EditBox : HU Threshold (m_HUThreshold)
-	//
-	UpdateData(TRUE);
-	HUThreshold = atoi(m_HUThreshold);
-	Draw2DImage(DisplaySlice);
-}
-
-void C3DProcess::OnEnChangeEditSlices()
-{
-	// 传openGL酶籹蝴紇钩瞶糷计
-	// Edit : vertex's slices (m_slices)
-	//
-	UpdateData(TRUE);
-	glSlices = atoi(m_slices);
-	Draw3DImage(true);
+	if (get_3Dseed)
+	{
+		get_regionGrow = Region_Growing(seed_img);
+	}
 }
 
 //==========================//
@@ -1513,15 +1538,15 @@ void C3DProcess::Draw3DImage(bool which)
 
 	// 陪ボ 3D seed
 	//
-	if (get_3Dseed)
+	if (m_3Dseed == TRUE && get_3Dseed == true)
 	{
 		glPointSize(5);
 		glBegin(GL_POINTS);
 		{
 			glColor3f(1.0f, 0.0f, 0.0f);
 			glVertex3f((GLfloat)seed_gl.z,
-				(GLfloat)seed_gl.y,
-				(GLfloat)seed_gl.x);
+						(GLfloat)seed_gl.y,
+						(GLfloat)seed_gl.x);
 		}
 		glEnd();
 	}
@@ -1873,4 +1898,11 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 		}
 	}
 	return p;
+}
+
+bool C3DProcess::Region_Growing(Seed &seed)
+{
+
+
+	return true;
 }
