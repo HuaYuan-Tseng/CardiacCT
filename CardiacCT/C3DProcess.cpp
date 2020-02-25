@@ -58,18 +58,16 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	m_3D_frame = nullptr;
 	gl_3DTexture = FALSE;
 
+	get_3Dseed = false;
 	Act_Rotate = false;
 	Act_Translate = false;
-
-	get_3Dseed = false;
-	get_zCorrect = false;
 
 	Pos_1 = 0.0F;
 	Pos_2 = 0.0F;
 	Pos_3 = 0.0F;
 	Pos_4 = 0.0F;
 	
-	scale_x = 0.3F;					
+	scale_x = 0.3F;
 	scale_y = 0.5F;
 	scale_z = 0.5F;
 	glSlices = 512;
@@ -82,7 +80,6 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	obj_angle = 0.0F;
 	pln_angle = 0.0F;
 
-	z_parameter = 0.7F;
 	seed_pt = { 0.0L, 0.0L, 0.0L };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
 	seed_img = { 0.0L, 0.0L, 0.0L };
@@ -134,8 +131,6 @@ C3DProcess::~C3DProcess()
 		Act_Rotate = false;
 	if (get_3Dseed != false)
 		get_3Dseed = false;
-	if (get_zCorrect != false)
-		get_zCorrect = false;
 	
 	if (m_pixelThreshold.IsEmpty() != true)
 		m_pixelThreshold.Empty();
@@ -197,8 +192,6 @@ C3DProcess::~C3DProcess()
 		PixelThreshold = 0;
 	if (HUThreshold != 0)
 		HUThreshold = 0;
-	if (z_parameter != 0.7F)
-		z_parameter = 0.7F;
 	
 	seed_pt = { 0.0L, 0.0L, 0.0L };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
@@ -266,7 +259,6 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
-	
 END_MESSAGE_MAP()
 
 //=================================//
@@ -310,6 +302,17 @@ BOOL C3DProcess::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 
 	//-------------------------------------------------------------------------------------//
+	// 更改三維影像Z軸方向的縮放比例(不要懷疑，改的是Z軸沒錯)
+	//
+	if (Total_Slice < 200)
+		scale_x = 0.25F;
+	else if (Total_Slice >= 200 && Total_Slice < 300)
+		scale_x = 0.3F;
+	else if (Total_Slice >= 300 && Total_Slice < 350)
+		scale_x = 0.35F;
+	else if (Total_Slice > 350)
+		scale_x = 0.4F;
+	
 	// openGL空間建立
 	//
 	m_hDC = ::GetDC(m_3D_frame->m_hWnd);					// 獲得畫布物件DC的HANDLE（hDC）
@@ -525,6 +528,7 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 						{
 							get_3Dseed = true;
 							DisplaySlice = (unsigned short)seed_img.z;
+							m_ScrollBar.SetScrollPos(DisplaySlice);
 							GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
 
 							//-----------------------------------------------------------------------------//
@@ -547,9 +551,9 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 				delete[] modelView_matrix;
 				delete[] projection_matrix;
 			}
-			Draw2DImage(DisplaySlice);
 		}
 		Draw3DImage(true);
+		Draw2DImage(DisplaySlice);
 	}
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
@@ -1736,18 +1740,12 @@ C3DProcess::Seed C3DProcess::coordiConvert(Seed &pt)
 	// 若有做Z軸校正(直接在影像上的最頂或最底點一點(建議直接點脊椎))，因為影像Z軸有置中，
 	// 也就是有對稱，所以直接利用最頂and最底的openGL_Z軸座標與slice的關係做換算。
 	
-	if (!get_zCorrect)
-	{
-		z_parameter = (2.0F / 511.0F)*(Total_Slice / 2.0F) / 2;
-		z_parameter = z_parameter / scale_x;
-		//z_correct = (z_correct > 1) ? 1 : z_correct;
-	}
-	else
-	{
-		z_parameter = (z_parameter > 0) ? z_parameter : -z_parameter;
-	}
-
-	temp.z = ((pt.z + 1) - (-z_parameter + 1))*(Total_Slice / ((z_parameter + 1) - (-z_parameter + 1)));
+	float z_index;
+	z_index = (2.0F / 511.0F)*(Total_Slice / 2.0F) / 2;
+	z_index = z_index / scale_x;
+	//z_correct = (z_correct > 1) ? 1 : z_correct;
+	
+	temp.z = ((pt.z + 1) - (-z_index + 1))*(Total_Slice / ((z_index + 1) - (-z_index + 1)));
 
 	if (temp.z < 1)
 		temp.z = 1;
