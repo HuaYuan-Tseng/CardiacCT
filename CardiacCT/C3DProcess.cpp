@@ -58,15 +58,11 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	m_3D_frame = nullptr;
 	gl_3DTexture = FALSE;
 
+	get_2Dseed = false;
 	get_3Dseed = false;
 	Act_Rotate = false;
 	Act_Translate = false;
 
-	Pos_1 = 0.0F;
-	Pos_2 = 0.0F;
-	Pos_3 = 0.0F;
-	Pos_4 = 0.0F;
-	
 	scale_x = 0.3F;
 	scale_y = 0.5F;
 	scale_z = 0.5F;
@@ -80,6 +76,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	obj_angle = 0.0F;
 	pln_angle = 0.0F;
 
+	z_index = 0.7F;
 	seed_pt = { 0.0L, 0.0L, 0.0L };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
 	seed_img = { 0.0L, 0.0L, 0.0L };
@@ -131,6 +128,8 @@ C3DProcess::~C3DProcess()
 		Act_Rotate = false;
 	if (get_3Dseed != false)
 		get_3Dseed = false;
+	if (get_2Dseed != false)
+		get_2Dseed = false;
 	
 	if (m_pixelThreshold.IsEmpty() != true)
 		m_pixelThreshold.Empty();
@@ -150,15 +149,6 @@ C3DProcess::~C3DProcess()
 		m_pos_3.Empty();
 	if (m_pos_4.IsEmpty() != true)
 		m_pos_4.Empty();
-
-	if (Pos_1 != 0.0F)
-		Pos_1 = 0.0F;
-	if (Pos_2 != 0.0F)
-		Pos_2 = 0.0F;
-	if (Pos_3 != 0.0F)
-		Pos_3 = 0.0F;
-	if (Pos_4 != 0.0F)
-		Pos_4 = 0.0F;
 
 	if (scale_x != 0.3F)
 		scale_x = 0.3F;
@@ -185,6 +175,8 @@ C3DProcess::~C3DProcess()
 		pln_angle = 0.0F;
 	if (Mat_Offset != 0)
 		Mat_Offset = 0;
+	if (z_index != 0.7F)
+		z_index = 0.7F;
 
 	if (DisplaySlice != 0)
 		DisplaySlice = 0;
@@ -241,7 +233,6 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_WM_RBUTTONDBLCLK()
 
 	ON_BN_CLICKED(IDC_CHECK_3D_SEED, &C3DProcess::OnBnClickedCheck3dSeed)
-
 	ON_BN_CLICKED(IDC_CHECK_PLANE, &C3DProcess::OnBnClickedCheckPlane)
 	ON_BN_CLICKED(IDC_CHECK_Object, &C3DProcess::OnBnClickedCheckObject)
 	ON_BN_CLICKED(IDC_CHECK_COMPLETE, &C3DProcess::OnBnClickedCheckComplete)
@@ -249,6 +240,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
 	
 	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
+	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_PLUS, &C3DProcess::OnBnClickedButtonSlicesPlus)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_MINUS, &C3DProcess::OnBnClickedButtonSlicesMinus)
 	ON_BN_CLICKED(IDC_BUTTON_DENSITY_PLUS, &C3DProcess::OnBnClickedButtonDensityPlus)
@@ -256,9 +248,9 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_PLUS, &C3DProcess::OnBnClickedButtonIntensityPlus)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_MINUS, &C3DProcess::OnBnClickedButtonIntensityMinus)
 
-	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
-	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
+	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
+	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -300,6 +292,7 @@ BOOL C3DProcess::OnInitDialog()
 	// 設定Button初始狀態
 	//
 	GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 
 	//-------------------------------------------------------------------------------------//
 	// 更改三維影像Z軸方向的縮放比例(不要懷疑，改的是Z軸沒錯)
@@ -490,6 +483,8 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 	// TODO: Add your message handler code here and/or call default
 	// 滑鼠左鍵 按下 事件
 	//
+	// 三維 影像視窗
+	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
 		ActStart(nFlags, point.x - m_3D_rect.left, point.y - m_3D_rect.top);
@@ -531,12 +526,12 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 							m_ScrollBar.SetScrollPos(DisplaySlice);
 							GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
 
-							//-----------------------------------------------------------------------------//
+							//-----------------------------------------------------------------------------------//
 							
-							Pos_1 = (float)seed_img.x;
-							Pos_2 = (float)seed_img.y;
-							Pos_3 = (float)seed_img.z;
-							Pos_4 = m_pDoc->m_img[(int)seed_img.z][((int)seed_img.y)*ROW + (int)seed_img.z];
+							float Pos_1 = (float)seed_img.x;
+							float Pos_2 = (float)seed_img.y;
+							float Pos_3 = (float)seed_img.z;
+							float Pos_4 = m_pDoc->m_img[(int)seed_img.z][((int)seed_img.y)*ROW + (int)seed_img.z];
 
 							m_pos_1.Format("%d", (int)Pos_1);
 							m_pos_2.Format("%d", (int)Pos_2);
@@ -554,6 +549,24 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		}
 		Draw3DImage(true);
 		Draw2DImage(DisplaySlice);
+	}
+	// 二維 影像視窗
+	//
+	if (point.x < m_2D_rect.right && point.x > m_2D_rect.left && point.y < m_2D_rect.bottom && point.y > m_2D_rect.top)
+	{
+		seed_pt.x = point.x - m_2D_rect.left;
+		seed_pt.y = point.y - m_2D_rect.top;
+		seed_pt.z = DisplaySlice;
+
+		m_pos_1.Format("%d", (int)seed_pt.x);
+		m_pos_2.Format("%d", (int)seed_pt.y);
+		m_pos_3.Format("%d", (int)seed_pt.z);
+		m_pos_4.Format("%d", (int)m_pDoc->m_img[(int)seed_pt.z][(int)(seed_pt.y * 512) + (int)seed_pt.x]);
+
+		get_2Dseed = true;
+		UpdateData(FALSE);
+		Draw2DImage(DisplaySlice);
+		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
 	}
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
@@ -689,14 +702,17 @@ void C3DProcess::OnBnClickedCheck3dSeed()
 		{
 			GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
 		}
+		if (get_2Dseed == true)
+		{
+			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
+		}
 	}
 	else
 	{
-		if (get_3Dseed == true)
-		{
-			GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
-		}
+		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 	}
+	Draw2DImage(DisplaySlice);
 }
 
 void C3DProcess::OnBnClickedButtonIntensityPlus()
@@ -795,6 +811,34 @@ void C3DProcess::OnBnClickedButton3dseedClear()
 		
 		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 		
+		UpdateData(FALSE);
+		Draw3DImage(true);
+		Draw2DImage(DisplaySlice);
+	}
+}
+
+void C3DProcess::OnBnClickedButtonSeedChange()
+{
+	// TODO: Add your control notification handler code here
+	// Button : 2D -> 3D Seed
+	//
+	if (get_2Dseed)
+	{
+		seed_img = seed_pt;
+
+		seed_gl.x = seed_pt.x * ((1.0f - (-1.0f)) / 512.0f) - 1;
+		seed_gl.y = seed_pt.y * ((1.0f - (-1.0f)) / 512.0f) - 1;
+		seed_gl.z = seed_pt.z / (Total_Slice / ((z_index + 1) - (-z_index + 1))) + (-z_index + 1) - 1;
+
+		m_pos_1.Format("%d", (int)seed_pt.x);
+		m_pos_2.Format("%d", (int)seed_pt.y);
+		m_pos_3.Format("%d", (int)seed_pt.z);
+		m_pos_4.Format("%d", (int)m_pDoc->m_img[(int)seed_pt.z][(int)(seed_pt.y * 512) + (int)seed_pt.x]);
+
+		get_3Dseed = true;
+		DisplaySlice = (unsigned short)seed_pt.z;
+		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
+
 		UpdateData(FALSE);
 		Draw3DImage(true);
 		Draw2DImage(DisplaySlice);
@@ -1495,78 +1539,100 @@ void C3DProcess::Draw2DImage(unsigned short &slice)
 	int Col = COL;
 	register int i, j;
 
-	if (m_pDoc->m_img != nullptr)
+	if (m_pDoc->m_img == nullptr)
 	{
-		// 顯示原始影像
-		//
-		if (m_complete == TRUE)
-		{
-			m_2D_dib->ShowInverseDIB(&dc, m_pDoc->m_img[slice]);
-		}
-		// 顯示以Pixel為閾值的二值化影像
-		//
-		else if (m_thresholdPixel == TRUE)
-		{
-			PBYTE image_thres = new BYTE[Row*Col];
+		AfxMessageBox("No Image Data can be display!!");
+		return;
+	}
 
-			i = 0;
-			while (i < Row * Col)
-			{
-				if (m_pDoc->m_img[slice][i] > PixelThreshold)
-					image_thres[i] = 255;
-				else
-					image_thres[i] = 0;
-				i += 1;
-			}
-			m_2D_dib->ShowInverseDIB(&dc, image_thres);
-			delete[] image_thres;
-		}
-		// 顯示以 HU 為閾值的二值化影像
-		//
-		else if (m_thresholdHU == TRUE)
+	// 顯示原始影像
+	//
+	if (m_complete == TRUE)
+	{
+		m_2D_dib->ShowInverseDIB(&dc, m_pDoc->m_img[slice]);
+	}
+	// 顯示以Pixel為閾值的二值化影像
+	//
+	else if (m_thresholdPixel == TRUE)
+	{
+		PBYTE image_thres = new BYTE[Row*Col];
+
+		i = 0;
+		while (i < Row * Col)
 		{
-			PBYTE image_thres = new BYTE[Row*Col];
-
-			i = 0;
-			while (i < Row * Col)
-			{
-				if (m_pDoc->m_HUimg[slice][i] > HUThreshold)
-					image_thres[i] = 255;
-				else
-					image_thres[i] = 0;
-				i += 1;
-			}
-			m_2D_dib->ShowInverseDIB(&dc, image_thres);
-			delete[] image_thres;
+			if (m_pDoc->m_img[slice][i] > PixelThreshold)
+				image_thres[i] = 255;
+			else
+				image_thres[i] = 0;
+			i += 1;
 		}
+		m_2D_dib->ShowInverseDIB(&dc, image_thres);
+		delete[] image_thres;
+	}
+	// 顯示以 HU 為閾值的二值化影像
+	//
+	else if (m_thresholdHU == TRUE)
+	{
+		PBYTE image_thres = new BYTE[Row*Col];
 
-		//  3D seed 功能
-		//
-		if (m_3Dseed)
+		i = 0;
+		while (i < Row * Col)
+		{
+			if (m_pDoc->m_HUimg[slice][i] > HUThreshold)
+				image_thres[i] = 255;
+			else
+				image_thres[i] = 0;
+			i += 1;
+		}
+		m_2D_dib->ShowInverseDIB(&dc, image_thres);
+		delete[] image_thres;
+	}
+
+	// 於2D影像顯示在2D點選的種子點
+	//
+	if (get_2Dseed)
+	{
+		if (slice == (unsigned short)seed_pt.z)
 		{
 			CPoint pt;
-			
-			// 於2D影像顯示在3D點選的seed
-			//
-			if (get_3Dseed)
+			for (i = -1; i <= 1; i++)
 			{
-				if (slice == (unsigned short)seed_img.z)
+				for (j = -1; j <= 1; j++)
 				{
-					for (i = -1; i <= 1; i++)
-					{
-						for (j = -1; j <= 1; j++)
-						{
-							pt.x = (LONG)seed_img.x + j;
-							pt.y = (LONG)seed_img.y + i;
-
-							dc.SetPixel(pt, RGB(255, 0, 0));
-						}
-					}
+					pt.x = (LONG)seed_pt.x + j;
+					pt.y = (LONG)seed_pt.y + i;
+					dc.SetPixel(pt, RGB(0, 255, 0));
 				}
 			}
 		}
 	}
 
+	//  3D seed 功能
+	//
+	if (m_3Dseed)
+	{
+		CPoint pt;
+			
+		// 於2D影像顯示在3D點選的seed
+		//
+		if (get_3Dseed)
+		{
+			if (slice == (unsigned short)seed_img.z)
+			{
+				for (i = -1; i <= 1; i++)
+				{
+					for (j = -1; j <= 1; j++)
+					{
+						pt.x = (LONG)seed_img.x + j;
+						pt.y = (LONG)seed_img.y + i;
+
+						dc.SetPixel(pt, RGB(255, 0, 0));
+					}
+				}
+			}
+		}
+	}
+	
 	// 寫字 (slice)
 	//
 	CString str;
@@ -1740,10 +1806,8 @@ C3DProcess::Seed C3DProcess::coordiConvert(Seed &pt)
 	// 若有做Z軸校正(直接在影像上的最頂或最底點一點(建議直接點脊椎))，因為影像Z軸有置中，
 	// 也就是有對稱，所以直接利用最頂and最底的openGL_Z軸座標與slice的關係做換算。
 	
-	float z_index;
 	z_index = (2.0F / 511.0F)*(Total_Slice / 2.0F) / 2;
 	z_index = z_index / scale_x;
-	//z_correct = (z_correct > 1) ? 1 : z_correct;
 	
 	temp.z = ((pt.z + 1) - (-z_index + 1))*(Total_Slice / ((z_index + 1) - (-z_index + 1)));
 
@@ -1810,5 +1874,3 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	}
 	return p;
 }
-
-

@@ -84,13 +84,11 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	Seed			seed_img;			// 3D_seed的世界座標轉換為原影像"矩陣"(512*512)座標
 
 	bool			get_3Dseed;			// 是否點選了3D種子點
+	bool			get_2Dseed;			// 是否點選了2D種子點
+
+	float			z_index;			// 校正Z軸的參數
 
 ///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
-
-	float			Pos_1;				// 暫記 m_pos_1 內容
-	float			Pos_2;				// 暫記 m_pos_2 內容
-	float			Pos_3;				// 暫記 m_pos_3 內容
-	float			Pos_4;				// 暫記 m_pos_4 內容
 
 	short			HUThreshold;		// 二值化閾值(HU)
 unsigned short		PixelThreshold;		// 二值化閾值(pixel)
@@ -170,23 +168,23 @@ public:
 	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
 	
+	afx_msg void OnBnClickedCheck3dSeed();
 	afx_msg void OnBnClickedCheckPlane();
 	afx_msg void OnBnClickedCheckObject();
 	afx_msg void OnBnClickedCheckComplete();
 	afx_msg void OnBnClickedCheckHuThreshold();
 	afx_msg void OnBnClickedCheckPixelThreshold();
 
-	afx_msg void OnBnClickedCheck3dSeed();
-	
+	afx_msg void OnEnChangeEditSlices();
+	afx_msg void OnEnChangeEditHuThreshold();
+	afx_msg void OnEnChangeEditPixelThreshold();
+
+	afx_msg void OnBnClickedButton3dseedClear();
+	afx_msg void OnBnClickedButtonSeedChange();
 	afx_msg void OnBnClickedButtonSlicesPlus();
 	afx_msg void OnBnClickedButtonSlicesMinus();
 	afx_msg void OnBnClickedButtonDensityPlus();
 	afx_msg void OnBnClickedButtonDensityMinus();
 	afx_msg void OnBnClickedButtonIntensityPlus();
 	afx_msg void OnBnClickedButtonIntensityMinus();
-
-	afx_msg void OnEnChangeEditPixelThreshold();
-	afx_msg void OnEnChangeEditHuThreshold();
-	afx_msg void OnEnChangeEditSlices();
-	afx_msg void OnBnClickedButton3dseedClear();
 };
