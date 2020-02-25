@@ -299,6 +299,23 @@ BOOL C3DProcess::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
+
+	//-------------------------------------------------------------------------------------//
+	// 初始化區域成長判定的矩陣大小與初始值
+	//
+	judge = New2Dmatrix(Total_Slice, ROW*COL, BYTE);
+
+	register int i, j;
+	int totaly = Total_Slice;
+	int totalx = ROW * COL;
+
+	for (j = 0; j < totaly; j++)
+	{
+		for (i = 0; i < totalx; i++)
+		{
+			judge[j][i] = 0x00;
+		}
+	}
 	
 	//-------------------------------------------------------------------------------------//
 	// 更改三維影像Z軸方向的縮放比例(不要懷疑，改的是Z軸沒錯)
@@ -1056,7 +1073,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 {
 	// DO : 建立紋理
 	//
-	float pixel = 0.0f;
+	float pixel = 0.0F;
 	register int i, j, k;
 
 	// 預備要用來建立紋理的資料矩陣
@@ -1089,7 +1106,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
 
 						getRamp(m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)], 
-							(float)pixel / 255.0f / 2, 0);
+							(float)pixel / 255.0F / 2, 0);
 					}
 				}
 			}
@@ -1105,7 +1122,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	//
 	if (gl_3DTexture)
 	{
-		float color[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+		float color[] = { 1.0F, 1.0F, 1.0F, 1.0F };
 
 		// 紋理座標系統：S為橫軸、T為縱軸、R為插入螢幕的軸
 		// 設置紋理環繞模式

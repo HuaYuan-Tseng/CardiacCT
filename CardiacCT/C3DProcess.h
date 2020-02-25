@@ -86,8 +86,9 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	bool			get_3Dseed;			// 是否點選了3D種子點
 	bool			get_2Dseed;			// 是否點選了2D種子點
 	bool			get_regionGrow;		// 是否執行過區域成長
-
 	float			z_index;			// 校正Z軸的參數
+
+	BYTE**			judge;				// 區域成長判定
 
 ///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
 
