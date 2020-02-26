@@ -6,7 +6,10 @@
 #include "CardiacCT.h"
 #include "C3DProcess.h"
 #include "CProgress.h"
+#include "CWait.h"
+#include <queue>
 #include "afxdialogex.h"
+using namespace std;
 
 #define M_PI 3.1415926f
 #define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
@@ -306,14 +309,14 @@ BOOL C3DProcess::OnInitDialog()
 	judge = New2Dmatrix(Total_Slice, ROW*COL, BYTE);
 
 	register int i, j;
-	int totaly = Total_Slice;
 	int totalx = ROW * COL;
+	int totaly = Total_Slice;
 
 	for (j = 0; j < totaly; j++)
 	{
 		for (i = 0; i < totalx; i++)
 		{
-			judge[j][i] = 0x00;
+			judge[j][i] = 0;
 		}
 	}
 	
@@ -1919,6 +1922,32 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 
 bool C3DProcess::Region_Growing(Seed &seed)
 {
+	const int Row = ROW;
+	const int Col = COL;
+	const int TotalSlice = Total_Slice;
+	register int i, j, k;
+
+	int x = (int)seed.x;
+	int y = (int)seed.y;
+	int z = (int)seed.z;
+
+	short S_HU = 0;
+	short N_HU = 0;
+	short S_pixel = 0;
+	short N_pixel = 0;
+
+	int count = 0;
+	int Kernel = 51;
+	int range = (Kernel - 1) / 2;
+
+	CWait* m_wait = new CWait();
+	m_wait->Create(IDD_DIALOG_WAIT);
+	m_wait->ShowWindow(SW_NORMAL);
+	m_wait->setDisplay("Region growing...");
+
+	Seed current;
+	queue<Seed> list;
+
 
 
 	return true;
