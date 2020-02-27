@@ -1968,8 +1968,8 @@ bool C3DProcess::Region_Growing(Seed_s &seed)
 			{
 				for (i = -range; i <= range; i++)
 				{
-					if ((current.x + i) < Col && (current.x + i) >= 0 &&
-						(current.y + j) < Row && (current.y + j) >= 0 &&
+					if ((current.x + i) < (Col - 1) && (current.x + i) >= 0 &&
+						(current.y + j) < (Row - 1) && (current.y + j) >= 0 &&
 						(current.z + k) < TotalSlice && (current.z + k) >= 0)
 					{
 						if (judge[(current.z + k)][(current.y + j)*Row + (current.x + i)] != 1)
