@@ -110,6 +110,8 @@ C3DProcess::~C3DProcess()
 		delete[] pln_axis;
 	if (lastPos != nullptr)
 		delete[] lastPos;
+	if (judge != nullptr)
+		delete[] judge;
 
 	if (m_object != TRUE)
 		m_object = TRUE;
