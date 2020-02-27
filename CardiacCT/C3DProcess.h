@@ -74,14 +74,17 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 	typedef struct
 	{
-		double x;
-		double y;
-		double z;
-	}	Seed;
+		short x, y, z;
+	}	Seed_s;
 
-	Seed			seed_pt;			// 在2D視窗點擊的seed座標
-	Seed			seed_gl;			// 在3D視窗點擊的seed openGL世界座標
-	Seed			seed_img;			// 3D_seed的世界座標轉換為原影像"矩陣"(512*512)座標
+	typedef struct
+	{
+		double x, y, z;
+	}	Seed_d;
+
+	Seed_d			seed_gl;			// 在3D視窗點擊的seed openGL世界座標
+	Seed_s			seed_pt;			// 在2D視窗點擊的seed座標
+	Seed_s			seed_img;			// 3D_seed的世界座標轉換為原影像"矩陣"(512*512)座標
 
 	bool			get_3Dseed;			// 是否點選了3D種子點
 	bool			get_2Dseed;			// 是否點選了2D種子點
@@ -89,6 +92,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	float			z_index;			// 校正Z軸的參數
 
 	BYTE**			judge;				// 區域成長判定
+	BYTE			m_image0[256*256*256][4];
 
 ///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
 
@@ -106,7 +110,8 @@ public:
 
 	void	GLInitialization();							// openGL建構初始化
 	void	PerspectiveBuild();							// 建立透視空間
-	void	PrepareVolume(unsigned int texName[10]);	// 建立紋理座標的資料矩陣
+	void	LoadVolume(unsigned int texName[5]);		// 建立紋理
+	void	PrepareVolume(unsigned int texName[5]);		// 建立紋理座標的資料矩陣
 	void	getRamp(GLubyte* color, float t, int n);	// 上色
 
 	void	Draw3DImage(bool which);					// 繪製三維影像
@@ -115,14 +120,15 @@ public:
 	void*	new3Dmatrix(int h, int w, int l, int size);
 	void*	new4Dmatrix(int h, int w, int l, int v, int size);
 
-	Seed	coordiConvert(Seed &pt);					// openGL coordinate -> data array site
 	void	InvertMat(float (&m)[16]);
 	void	ActTracking(int x, int y);					// 物件操作的追蹤(包含旋轉與位移)
 	void	ActStop(UINT nFlags, int x, int y);			// 「結束旋轉」的動作設定
 	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
-	bool	Region_Growing(Seed &seed);					// 三維 區域成長
+	bool	Region_Growing(Seed_s &seed);				// 三維 區域成長
+	Seed_s	coordiConvert(Seed_d &pt);					// openGL coordinate -> data array site
+
 	
 //================//
 // Implementation //

@@ -81,9 +81,9 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	pln_angle = 0.0F;
 
 	z_index = 0.7F;
-	seed_pt = { 0.0L, 0.0L, 0.0L };
+	seed_pt = { 0, 0, 0 };
+	seed_img = { 0, 0, 0 };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
-	seed_img = { 0.0L, 0.0L, 0.0L };
 
 	glVertexPt = New2Dmatrix(64, 3, float);
 	lastPos = new float[3]{ 0.0F, 0.0F, 0.0F };
@@ -191,9 +191,9 @@ C3DProcess::~C3DProcess()
 	if (HUThreshold != 0)
 		HUThreshold = 0;
 	
-	seed_pt = { 0.0L, 0.0L, 0.0L };
+	seed_pt = { 0, 0, 0 };
+	seed_img = { 0, 0, 0 };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
-	seed_img = { 0.0L, 0.0L, 0.0L };
 	glDeleteTextures(5, textureName);
 }
 
@@ -304,7 +304,7 @@ BOOL C3DProcess::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 
 	//-------------------------------------------------------------------------------------//
-	// 初始化區域成長判定的矩陣大小與初始值
+	// 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值
 	//
 	judge = New2Dmatrix(Total_Slice, ROW*COL, BYTE);
 
@@ -317,6 +317,14 @@ BOOL C3DProcess::OnInitDialog()
 		for (i = 0; i < totalx; i++)
 		{
 			judge[j][i] = 0;
+		}
+	}
+
+	for (j = 0; j < 256*256*256; j++)
+	{
+		for (i = 0; i < 4; i++)
+		{
+			m_image0[j][i] = 0;
 		}
 	}
 	
@@ -543,12 +551,12 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 
 				if (seed_img.z >= 0 && seed_img.z <= Total_Slice - 1)
 				{
-					if (seed_img.y >= 0 && seed_img.y <= 511)
+					if (seed_img.y >= 0 && seed_img.y <= ROW - 1)
 					{
-						if (seed_img.x >= 0 && seed_img.x <= 511)
+						if (seed_img.x >= 0 && seed_img.x <= COL - 1)
 						{
 							get_3Dseed = true;
-							DisplaySlice = (unsigned short)seed_img.z;
+							DisplaySlice = seed_img.z;
 							m_ScrollBar.SetScrollPos(DisplaySlice);
 
 							GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
@@ -556,10 +564,10 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 
 							//-----------------------------------------------------------------------------------//
 							
-							float Pos_1 = (float)seed_img.x;
-							float Pos_2 = (float)seed_img.y;
-							float Pos_3 = (float)seed_img.z;
-							float Pos_4 = m_pDoc->m_img[(int)seed_img.z][((int)seed_img.y)*ROW + (int)seed_img.z];
+							short Pos_1 = seed_img.x;
+							short Pos_2 = seed_img.y;
+							short Pos_3 = seed_img.z;
+							short Pos_4 = m_pDoc->m_img[seed_img.z][seed_img.y * ROW + seed_img.x];
 
 							m_pos_1.Format("%d", (int)Pos_1);
 							m_pos_2.Format("%d", (int)Pos_2);
@@ -582,14 +590,14 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 	//
 	if (point.x < m_2D_rect.right && point.x > m_2D_rect.left && point.y < m_2D_rect.bottom && point.y > m_2D_rect.top)
 	{
-		seed_pt.x = point.x - m_2D_rect.left;
-		seed_pt.y = point.y - m_2D_rect.top;
+		seed_pt.x = (short)(point.x - m_2D_rect.left);
+		seed_pt.y = (short)(point.y - m_2D_rect.top);
 		seed_pt.z = DisplaySlice;
 
 		m_pos_1.Format("%d", (int)seed_pt.x);
 		m_pos_2.Format("%d", (int)seed_pt.y);
 		m_pos_3.Format("%d", (int)seed_pt.z);
-		m_pos_4.Format("%d", (int)m_pDoc->m_img[(int)seed_pt.z][(int)(seed_pt.y * 512) + (int)seed_pt.x]);
+		m_pos_4.Format("%d", (int)m_pDoc->m_img[seed_pt.z][(seed_pt.y * 512) + seed_pt.x]);
 
 		get_2Dseed = true;
 		UpdateData(FALSE);
@@ -856,9 +864,9 @@ void C3DProcess::OnBnClickedButton3dseedClear()
 	//
 	if (get_3Dseed)
 	{
-		seed_gl.x = 0;
-		seed_gl.y = 0;
-		seed_gl.z = 0;
+		seed_gl.x = 0.0L;
+		seed_gl.y = 0.0L;
+		seed_gl.z = 0.0L;
 
 		seed_img.x = 0;
 		seed_img.y = 0;
@@ -889,17 +897,17 @@ void C3DProcess::OnBnClickedButtonSeedChange()
 	{
 		seed_img = seed_pt;
 
-		seed_gl.x = seed_pt.x * ((1.0f - (-1.0f)) / 512.0f) - 1;
-		seed_gl.y = seed_pt.y * ((1.0f - (-1.0f)) / 512.0f) - 1;
-		seed_gl.z = seed_pt.z / (Total_Slice / ((z_index + 1) - (-z_index + 1))) + (-z_index + 1) - 1;
+		seed_gl.x = (double)(seed_pt.x * ((1.0F - (-1.0F)) / 512.0F) - 1);
+		seed_gl.y = (double)(seed_pt.y * ((1.0F - (-1.0F)) / 512.0F) - 1);
+		seed_gl.z = (double)(seed_pt.z / (Total_Slice / ((z_index + 1) - (-z_index + 1))) + (-z_index + 1) - 1);
 
 		m_pos_1.Format("%d", (int)seed_pt.x);
 		m_pos_2.Format("%d", (int)seed_pt.y);
 		m_pos_3.Format("%d", (int)seed_pt.z);
-		m_pos_4.Format("%d", (int)m_pDoc->m_img[(int)seed_pt.z][(int)(seed_pt.y * 512) + (int)seed_pt.x]);
+		m_pos_4.Format("%d", (int)(m_pDoc->m_img[seed_pt.z][(seed_pt.y * 512) + seed_pt.x]));
 
 		get_3Dseed = true;
-		DisplaySlice = (unsigned short)seed_pt.z;
+		DisplaySlice = seed_pt.z;
 		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
 		GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(TRUE);
 
@@ -1072,9 +1080,9 @@ void C3DProcess::GLInitialization()
 	}
 }
 
-void C3DProcess::PrepareVolume(unsigned int texName[10])
+void C3DProcess::PrepareVolume(unsigned int texName[5])
 {
-	// DO : 建立紋理
+	// DO : 建立紋理的資料矩陣
 	//
 	float pixel = 0.0F;
 	register int i, j, k;
@@ -1087,8 +1095,6 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 	int Sample_start = 0 + Mat_Offset;
 	int Sample_end = 0 + Mat_Offset + TotalSlice;
 	
-	BYTE m_image0[256 * 256 * 256][4] = {0};					// 萬惡的佔用記憶體!!!!!!!!!!!!!
-
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
 	m_progress->ShowWindow(SW_NORMAL);
@@ -1108,7 +1114,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
 
-						getRamp(m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)], 
+						getRamp(m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)],
 							(float)pixel / 255.0F / 2, 0);
 					}
 				}
@@ -1117,11 +1123,15 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 			m_progress->GetPro(k);
 		}
 	}
+	LoadVolume(texName);
 	m_progress->DestroyWindow();
 	delete m_progress;
+	
+}
 
-	//--------------------------------------------------------------------------//
-	// 建立3D紋理
+void C3DProcess::LoadVolume(unsigned int texName[5])
+{
+	// DO : 建立3D紋理
 	//
 	if (gl_3DTexture)
 	{
@@ -1138,9 +1148,8 @@ void C3DProcess::PrepareVolume(unsigned int texName[10])
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);		// 縮小時的濾鏡方式
 		glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, color);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 256, 256, 256, 0, GL_RGBA,
-					GL_UNSIGNED_BYTE, m_image0);								// 創建3D紋理
+			GL_UNSIGNED_BYTE, m_image0);								// 創建3D紋理
 	}
-	
 }
 
 void C3DProcess::getRamp(GLubyte* color, float t, int n)
@@ -1822,7 +1831,7 @@ void C3DProcess::InvertMat(float (&m)[16])
 	m[14] = -m[14];
 }
 
-C3DProcess::Seed C3DProcess::coordiConvert(Seed &pt)
+C3DProcess::Seed_s C3DProcess::coordiConvert(Seed_d &pt)
 {
 	// openGL coordinate -> data array
 	//
@@ -1830,21 +1839,22 @@ C3DProcess::Seed C3DProcess::coordiConvert(Seed &pt)
 	// 所以在轉換回去矩陣資料位置時，首先將世界座標+1，將原點從中間移到最左邊(-1~0~1 => 0~1~2)，
 	// 換算每個矩陣為多少openGL的距離，再將現在的位置轉為"矩陣"位置(512*512)。
 	
-	Seed temp;
+	Seed_s temp;
+	double tmp_x, tmp_y, tmp_z;
 
-	temp.x = (pt.x + 1) / ((1.0F - (-1.0F)) / 512.0F);
+	tmp_x = (pt.x + 1) / ((1.0F - (-1.0F)) / 512.0F);
 
-	if (temp.x - (int)temp.x == 0)
-		temp.x = temp.x - 1;
+	if (tmp_x - (int)tmp_x == 0)
+		temp.x = (short)tmp_x - 1;
 	else
-		temp.x = (int)temp.x;
+		temp.x = (short)tmp_x;
 
-	temp.y = (pt.y + 1) / ((1.0F - (-1.0F)) / 512.0F);
+	tmp_y = (pt.y + 1) / ((1.0F - (-1.0F)) / 512.0F);
 
-	if (temp.y - (int)temp.y == 0)
-		temp.y = temp.y - 1;
+	if (tmp_y - (int)tmp_y == 0)
+		temp.y = (short)tmp_y - 1;
 	else
-		temp.y = (int)temp.y;
+		temp.y = (short)tmp_y;
 
 	// 由於Z軸(slice)不像X軸或Y軸，在3D空間是貼齊藍色邊界，所以無法像上面的X.Y軸一樣轉換，
 	// 若沒有做Z軸校正，則是直接計算一張slice在openGL空間裡的高度距離，並且從中心做縮放，
@@ -1854,14 +1864,15 @@ C3DProcess::Seed C3DProcess::coordiConvert(Seed &pt)
 	z_index = (2.0F / 511.0F)*(Total_Slice / 2.0F) / 2;
 	z_index = z_index / scale_x;
 	
-	temp.z = ((pt.z + 1) - (-z_index + 1))*(Total_Slice / ((z_index + 1) - (-z_index + 1)));
+	tmp_z = ((pt.z + 1) - (-z_index + 1))*(Total_Slice / ((z_index + 1) - (-z_index + 1)));
 
-	if (temp.z < 1)
-		temp.z = 1;
-	else if (temp.z > Total_Slice)
-		temp.z = Total_Slice;
+	if (tmp_z < 1)
+		tmp_z = (double)1;
+	else if (tmp_z > Total_Slice)
+		tmp_z = (double)Total_Slice;
 
-	temp.z -= 1;
+	tmp_z -= 1;
+	temp.z = (short)tmp_z;
 	
 	return temp;
 }
@@ -1920,16 +1931,12 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-bool C3DProcess::Region_Growing(Seed &seed)
+bool C3DProcess::Region_Growing(Seed_s &seed)
 {
 	const int Row = ROW;
 	const int Col = COL;
 	const int TotalSlice = Total_Slice;
 	register int i, j, k;
-
-	int x = (int)seed.x;
-	int y = (int)seed.y;
-	int z = (int)seed.z;
 
 	short S_HU = 0;
 	short N_HU = 0;
@@ -1937,7 +1944,7 @@ bool C3DProcess::Region_Growing(Seed &seed)
 	short N_pixel = 0;
 
 	int count = 0;
-	int Kernel = 51;
+	int Kernel = 5;
 	int range = (Kernel - 1) / 2;
 
 	CWait* m_wait = new CWait();
@@ -1945,10 +1952,53 @@ bool C3DProcess::Region_Growing(Seed &seed)
 	m_wait->ShowWindow(SW_NORMAL);
 	m_wait->setDisplay("Region growing...");
 
-	Seed current;
-	queue<Seed> list;
+	Seed_s temp;			
+	Seed_s current;			// 當前seed
+	queue<Seed_s> list;
+	list.push(seed);
 
+	while (!list.empty())
+	{
+		current = list.front();
+		for (k = -range; k <= range; k++)
+		{
+			for (j = -range; j <= range; j++)
+			{
+				for (i = -range; i <= range; i++)
+				{
+					if ((current.x + i) < Col && (current.x + i) >= 0 &&
+						(current.y + j) < Row && (current.y + j) >= 0 &&
+						(current.z + k) < TotalSlice && (current.z + k) >= 0)
+					{
+						if (judge[(current.z + k)][(current.y + j)*Row + (current.x + i)] != 1)
+						{
+							S_pixel = m_pDoc->m_img[(current.z)][(current.y)*Row + (current.x)];
+							N_pixel = m_pDoc->m_img[(current.z + k)][(current.y)*Row + (current.x + i)];
+							
+							if (abs(N_pixel - S_pixel) <= 5 && N_pixel >= 180)
+							{
+								temp.x = current.x + i;
+								temp.y = current.y + j;
+								temp.z = current.z + k;
+								
+								list.push(temp);
 
+								judge[(current.z + k)][(current.y + j)*Row + (current.x + i)] = 1;
 
+								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
+									(float)N_pixel / 255.0F / 2, 1);
+							}
+						}
+					}
+				}
+			}
+		}
+		list.pop();
+	}
+	LoadVolume(textureName);
+	Draw3DImage(true);
+	m_wait->DestroyWindow();
+	
+	delete m_wait;
 	return true;
 }
