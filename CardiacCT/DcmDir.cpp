@@ -52,7 +52,7 @@ DcmDir::DcmDir()
 	Y_Spacing = 0.0f;
 }
 
-DcmDir::DcmDir(Action act, CString &pathName) : DcmDir()
+DcmDir::DcmDir(Action act, CString& pathName) : DcmDir()
 {
 	// 此建構子直接開檔，引數為"開檔模式選擇"與"開檔路徑"
 	// 最後發現開檔的寫法都通用(單一時序或十時序)，
@@ -120,25 +120,6 @@ DcmDir::~DcmDir()
 	if (Bits_HiBit.IsEmpty() != true)
 		Bits_HiBit.Empty();
 
-	if (Window_1_Center != 0)
-		Window_1_Center = 0;
-	if (Window_2_Center != 0)
-		Window_2_Center = 0;
-	if (Window_1_Width != 0)
-		Window_1_Width = 0;
-	if (Window_2_Width != 0)
-		Window_2_Width = 0;
-
-	if (X_Spacing != 0.0f)
-		X_Spacing = 0.0f;
-	if (Y_Spacing != 0.0f)
-		Y_Spacing = 0.0f;
-
-	if (HU_max != 0)
-		HU_max = 0;
-	if (HU_min != 0)
-		HU_min = 0;
-
 	if (SeriesList.empty() != true)
 	{
 		SeriesList.clear();
@@ -150,7 +131,7 @@ DcmDir::~DcmDir()
 //   DcmDir commands   //
 //=====================//
 
-void DcmDir::openDirFromSeries(CString &pathName)
+void DcmDir::openDirFromSeries(CString& pathName)
 {
 	// DO : 開啟單一或十時序的DICOMDIR檔案
 	//

@@ -26,10 +26,7 @@ CDirForm::CDirForm(CWnd* pParent /*=nullptr*/)
 
 CDirForm::~CDirForm()
 {
-	if (m_clickItem != 0)
-		m_clickItem = 0;
-	if (m_checkItem != 0)
-		m_checkItem = 0;
+	
 }
 
 void CDirForm::DoDataExchange(CDataExchange* pDX)

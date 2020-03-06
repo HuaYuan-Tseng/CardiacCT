@@ -69,9 +69,6 @@ CCTDoc::~CCTDoc()
 		delete[] m_HUimg;
 	if (m_img != nullptr)
 		delete[] m_img;
-
-	if (displaySeries != 0)
-		displaySeries = 0;
 }
 
 BOOL CCTDoc::OnNewDocument()

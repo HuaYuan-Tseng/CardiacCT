@@ -69,7 +69,7 @@ public:
 //   Operations   //
 //================//
 public:
-	void	openDirFromSeries(CString &pathName);	// 開啟單一或十時序的DICOMDIR檔案
+	void	openDirFromSeries(CString& pathName);	// 開啟單一或十時序的DICOMDIR檔案
 
 };
 

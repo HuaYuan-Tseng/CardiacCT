@@ -16,7 +16,6 @@ class CWait : public CDialogEx
 //   Attributes   //
 //================//
 public:
-	CString		display;
 
 //================//
 //   Operations   //

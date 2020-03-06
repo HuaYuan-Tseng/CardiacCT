@@ -19,12 +19,6 @@ DcmImage::DcmImage()
 
 DcmImage::~DcmImage()
 {
-	if (Row != 0)
-		Row = 0;
-	if (Col != 0)
-		Col = 0;
-	if (SliceNumber != 0)
-		SliceNumber = 0;
 	if (AbsFilePath.IsEmpty() != true)
 		AbsFilePath.Empty();
 }

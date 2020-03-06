@@ -16,13 +16,10 @@ IMPLEMENT_DYNAMIC(CWait, CDialogEx)
 CWait::CWait(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_WAIT, pParent)
 {
-	display = _T("");
 }
 
 CWait::~CWait()
 {
-	if (display.IsEmpty() != true)
-		display.Empty();
 }
 
 void CWait::DoDataExchange(CDataExchange* pDX)
@@ -43,5 +40,4 @@ void CWait::setDisplay(CString text)
 	pDC.SetBkMode(TRANSPARENT);
 	pDC.TextOut(15, 10, text);
 	pDC.UpdateColors();
-	display = text;
 }

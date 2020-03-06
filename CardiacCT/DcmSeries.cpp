@@ -17,8 +17,6 @@ DcmSeries::DcmSeries()
 
 DcmSeries::~DcmSeries()
 {
-	if (TotalSliceCount != 0)
-		TotalSliceCount = 0;
 	if (SeriesNumber.IsEmpty() != true)
 		SeriesNumber.Empty();
 	if (ImageList.empty() != true)
