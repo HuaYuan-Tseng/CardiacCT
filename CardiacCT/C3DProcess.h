@@ -145,13 +145,12 @@ public:
 	enum { IDD = IDD_DIALOG_3DPROCESS };
 #endif
 public:										// CString的部分，有在Attributes另外設變數儲存
+	BOOL		m_3Dseed;
 	BOOL		m_plane;
 	BOOL		m_object;
 	BOOL		m_complete;
 	BOOL		m_thresholdHU;
 	BOOL		m_thresholdPixel;
-
-	BOOL		m_3Dseed;
 
 	CString		m_pixelThreshold;
 	CString		m_HUThreshold;

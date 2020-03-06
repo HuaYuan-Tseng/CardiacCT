@@ -2004,3 +2004,4 @@ bool C3DProcess::Region_Growing(Seed_s &seed)
 	delete m_wait;
 	return true;
 }
+
