@@ -1070,7 +1070,7 @@ void C3DProcess::PrepareVolume(unsigned int texName[5])
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
 
 						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
-							(float)pixel / 255.0F, 0);
+								pixel / 255.0F, 0);
 					}
 				}
 			}
@@ -1103,7 +1103,7 @@ void C3DProcess::LoadVolume(unsigned int texName[5])
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);		// 縮小時的濾鏡方式
 		glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, color);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 256, 256, 256, 0, GL_RGBA,
-			GL_UNSIGNED_BYTE, m_image0);										// 創建3D紋理
+			GL_UNSIGNED_BYTE, (GLvoid*)m_image0);										// 創建3D紋理
 	}
 }
 
