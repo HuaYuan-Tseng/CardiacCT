@@ -22,7 +22,6 @@
 #define IDI_ICON4                       320
 #define IDD_DIALOG1                     321
 #define IDD_DIALOG_PROGRESSBAR          321
-#define IDD_DIALOG2                     323
 #define IDD_DIALOG_WAIT                 323
 #define IDC_LIST1                       1000
 #define IDC_LIST3                       1002
@@ -63,6 +62,11 @@
 #define IDC_BUTTON_3DSEED_CLEAR         1034
 #define IDC_BUTTON_SEED_CHANGE          1035
 #define IDC_BUTTON_REGION_GROWING       1037
+#define IDC_EDIT_POS5                   1038
+#define IDC_EDIT_POS6                   1039
+#define IDC_EDIT_POS7                   1040
+#define IDC_EDIT4                       1041
+#define IDC_EDIT_POS8                   1041
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -75,7 +79,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        325
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1038
+#define _APS_NEXT_CONTROL_VALUE         1042
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

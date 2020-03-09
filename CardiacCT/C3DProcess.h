@@ -161,6 +161,10 @@ public:										// CString的部分，有在Attributes另外設變數儲存
 	CString		m_pos_2;
 	CString		m_pos_3;
 	CString		m_pos_4;
+	CString		m_pos_5;
+	CString		m_pos_6;
+	CString		m_pos_7;
+	CString		m_pos_8;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
@@ -197,4 +201,5 @@ public:
 	afx_msg void OnBnClickedButtonIntensityPlus();
 	afx_msg void OnBnClickedButtonIntensityMinus();
 	afx_msg void OnBnClickedButtonRegionGrowing();
+	
 };

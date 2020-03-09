@@ -52,6 +52,10 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_pos_2(_T("0"))
 	, m_pos_3(_T("0"))
 	, m_pos_4(_T("0"))
+	, m_pos_5(_T("0"))
+	, m_pos_6(_T("0"))
+	, m_pos_7(_T("0"))
+	, m_pos_8(_T("0"))
 {
 	mode = ControlModes::ControlObject;
 
@@ -85,15 +89,16 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	seed_img = { 0, 0, 0 };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
 
+	DisplaySlice = 0;
+	HUThreshold = atoi(m_HUThreshold);
+	PixelThreshold = atoi(m_pixelThreshold);
+
 	glVertexPt = New2Dmatrix(64, 3, float);
 	lastPos = new float[3]{ 0.0F, 0.0F, 0.0F };
 	obj_axis = new float[3]{ 0.0F, 0.0F, 0.0F };
 	pln_axis = new float[3]{ 0.0F, 0.0F, 0.0F };
 	user_Plane = new double[4]{ 1.0L, 0.0L, 0.0L, 1.0L };
 	
-	DisplaySlice = 0;
-	HUThreshold = atoi(m_HUThreshold);
-	PixelThreshold = atoi(m_pixelThreshold);
 }
 
 C3DProcess::~C3DProcess()
@@ -112,32 +117,6 @@ C3DProcess::~C3DProcess()
 		delete[] lastPos;
 	if (judge != nullptr)
 		delete[] judge;
-
-	if (m_object != TRUE)
-		m_object = TRUE;
-	if (m_plane != FALSE)
-		m_plane = FALSE;
-	if (m_complete != TRUE)
-		m_complete = TRUE;
-	if (m_thresholdPixel != FALSE)
-		m_thresholdPixel = FALSE;
-	if (m_thresholdHU != FALSE)
-		m_thresholdHU = FALSE;
-	if (m_3Dseed != FALSE)
-		m_3Dseed = FALSE;
-
-	if (gl_3DTexture != FALSE)
-		gl_3DTexture = FALSE;
-	if (Act_Translate != false)
-		Act_Translate = false;
-	if (Act_Rotate != false)
-		Act_Rotate = false;
-	if (get_3Dseed != false)
-		get_3Dseed = false;
-	if (get_2Dseed != false)
-		get_2Dseed = false;
-	if (get_regionGrow != false)
-		get_regionGrow = false;
 	
 	if (m_pixelThreshold.IsEmpty() != true)
 		m_pixelThreshold.Empty();
@@ -157,45 +136,15 @@ C3DProcess::~C3DProcess()
 		m_pos_3.Empty();
 	if (m_pos_4.IsEmpty() != true)
 		m_pos_4.Empty();
+	if (m_pos_5.IsEmpty() != true)
+		m_pos_5.Empty();
+	if (m_pos_6.IsEmpty() != true)
+		m_pos_6.Empty();
+	if (m_pos_7.IsEmpty() != true)
+		m_pos_7.Empty();
+	if (m_pos_8.IsEmpty() != true)
+		m_pos_8.Empty();
 
-	if (scale_x != 0.3F)
-		scale_x = 0.3F;
-	if (scale_y != 0.5F)
-		scale_y = 0.5F;
-	if (scale_z != 0.5F)
-		scale_z = 0.5F;
-	if (glSlices != 512)
-		glSlices = 512;
-	if (density != 0.0F)
-		density = 0.0F;
-	if (intensity != 0.8125F)
-		intensity = 0.8125F;
-	if (viewDistance != -4.0F)
-		viewDistance = -4.0F;
-
-	if (transY != 0.0F)
-		transY = 0.0F;
-	if (ImageFrame != 1)
-		ImageFrame = 1;
-	if (obj_angle != 0.0F)
-		obj_angle = 0.0F;
-	if (pln_angle != 0.0F)
-		pln_angle = 0.0F;
-	if (Mat_Offset != 0)
-		Mat_Offset = 0;
-	if (z_index != 0.7F)
-		z_index = 0.7F;
-
-	if (DisplaySlice != 0)
-		DisplaySlice = 0;
-	if (PixelThreshold != 0)
-		PixelThreshold = 0;
-	if (HUThreshold != 0)
-		HUThreshold = 0;
-	
-	seed_pt = { 0, 0, 0 };
-	seed_img = { 0, 0, 0 };
-	seed_gl = { 0.0L, 0.0L, 0.0L };
 	glDeleteTextures(5, textureName);
 }
 
@@ -227,6 +176,10 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_POS2, m_pos_2);
 	DDX_Text(pDX, IDC_EDIT_POS3, m_pos_3);
 	DDX_Text(pDX, IDC_EDIT_POS4, m_pos_4);
+	DDX_Text(pDX, IDC_EDIT_POS5, m_pos_5);
+	DDX_Text(pDX, IDC_EDIT_POS6, m_pos_6);
+	DDX_Text(pDX, IDC_EDIT_POS7, m_pos_7);
+	DDX_Text(pDX, IDC_EDIT_POS8, m_pos_8);
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -566,15 +519,15 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 
 							//-----------------------------------------------------------------------------------//
 							
-							short Pos_1 = seed_img.x;
-							short Pos_2 = seed_img.y;
-							short Pos_3 = seed_img.z;
-							short Pos_4 = m_pDoc->m_img[seed_img.z][seed_img.y * ROW + seed_img.x];
+							short Pos_5 = seed_img.x;
+							short Pos_6 = seed_img.y;
+							short Pos_7 = seed_img.z;
+							short Pos_8 = m_pDoc->m_img[seed_img.z][seed_img.y * ROW + seed_img.x];
 
-							m_pos_1.Format("%d", (int)Pos_1);
-							m_pos_2.Format("%d", (int)Pos_2);
-							m_pos_3.Format("%d", (int)Pos_3);
-							m_pos_4.Format("%d", (int)Pos_4);
+							m_pos_5.Format("%d", (int)Pos_5);
+							m_pos_6.Format("%d", (int)Pos_6);
+							m_pos_7.Format("%d", (int)Pos_7);
+							m_pos_8.Format("%d", (int)Pos_8);
 						}
 					}
 				}
@@ -903,10 +856,10 @@ void C3DProcess::OnBnClickedButtonSeedChange()
 		seed_gl.y = (double)(seed_pt.y * ((1.0F - (-1.0F)) / 512.0F) - 1);
 		seed_gl.z = (double)(seed_pt.z / (Total_Slice / ((z_index + 1) - (-z_index + 1))) + (-z_index + 1) - 1);
 
-		m_pos_1.Format("%d", (int)seed_pt.x);
-		m_pos_2.Format("%d", (int)seed_pt.y);
-		m_pos_3.Format("%d", (int)seed_pt.z);
-		m_pos_4.Format("%d", (int)(m_pDoc->m_img[seed_pt.z][(seed_pt.y * 512) + seed_pt.x]));
+		m_pos_5.Format("%d", (int)seed_pt.x);
+		m_pos_6.Format("%d", (int)seed_pt.y);
+		m_pos_7.Format("%d", (int)seed_pt.z);
+		m_pos_8.Format("%d", (int)(m_pDoc->m_img[seed_pt.z][(seed_pt.y * 512) + seed_pt.x]));
 
 		get_3Dseed = true;
 		DisplaySlice = seed_pt.z;
@@ -1116,8 +1069,8 @@ void C3DProcess::PrepareVolume(unsigned int texName[5])
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
 
-						getRamp(m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)],
-							(float)pixel / 255.0F / 2, 0);
+						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+							(float)pixel / 255.0F, 0);
 					}
 				}
 			}
@@ -1150,7 +1103,7 @@ void C3DProcess::LoadVolume(unsigned int texName[5])
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);		// 縮小時的濾鏡方式
 		glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, color);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 256, 256, 256, 0, GL_RGBA,
-			GL_UNSIGNED_BYTE, m_image0);								// 創建3D紋理
+			GL_UNSIGNED_BYTE, m_image0);										// 創建3D紋理
 	}
 }
 
@@ -1158,8 +1111,6 @@ void C3DProcess::getRamp(GLubyte* color, float t, int n)
 {
 	// DO : 計算RGBA的數值
 	//
-	t *= 2.0f;
-
 	if (n == 0)							// Gray Scale
 	{
 		color[0] = (GLubyte)(255 * t);	// R

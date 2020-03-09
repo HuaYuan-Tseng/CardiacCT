@@ -17,6 +17,7 @@ public:
 public:
 	LPBITMAPINFO	m_lpbmi;
 	LPLOGPALETTE	m_lpPal;
+	BYTE*			DICMRGB;
 	
 //================//
 //   Operations   //
