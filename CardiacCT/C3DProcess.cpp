@@ -996,7 +996,7 @@ void C3DProcess::GLInitialization()
 	}
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-
+	 
 	// 建立3D紋理儲存空間
 	//
 	glGenTextures(ImageFrame, textureName);					// 告訴 openGL 配置一塊記憶體空間存放材質
@@ -1004,7 +1004,7 @@ void C3DProcess::GLInitialization()
 															// 預設 4 bytes，設成 1 byte 避免 padding
 	// 載入紋理
 	//
-	PrepareVolume(textureName);
+	PrepareVolume();
 
 	// 建立頂點座標(建立openGL繪圖時，glVertex()所需要的點)
 	//
@@ -1035,7 +1035,7 @@ void C3DProcess::GLInitialization()
 	}
 }
 
-void C3DProcess::PrepareVolume(unsigned int texName[5])
+void C3DProcess::PrepareVolume()
 {
 	// DO : 建立紋理的資料矩陣
 	//
@@ -1078,13 +1078,13 @@ void C3DProcess::PrepareVolume(unsigned int texName[5])
 			m_progress->GetPro(k);
 		}
 	}
-	LoadVolume(texName);
+	LoadVolume();
 	m_progress->DestroyWindow();
 	delete m_progress;
 	
 }
 
-void C3DProcess::LoadVolume(unsigned int texName[5])
+void C3DProcess::LoadVolume()
 {
 	// DO : 建立3D紋理
 	//
@@ -1095,7 +1095,7 @@ void C3DProcess::LoadVolume(unsigned int texName[5])
 		// 紋理座標系統：S為橫軸、T為縱軸、R為插入螢幕的軸
 		// 設置紋理環繞模式
 		//
-		glBindTexture(GL_TEXTURE_3D, texName[0]);								// 綁定紋理（指定類型, 紋理對象ID）
+		glBindTexture(GL_TEXTURE_3D, textureName[0]);							// 綁定紋理（指定類型, 紋理對象ID）
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);	// 紋理過濾函數（選擇濾鏡）
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R_EXT, GL_CLAMP_TO_EDGE);
@@ -1103,7 +1103,7 @@ void C3DProcess::LoadVolume(unsigned int texName[5])
 		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);		// 縮小時的濾鏡方式
 		glTexParameterfv(GL_TEXTURE_3D, GL_TEXTURE_BORDER_COLOR, color);
 		glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA8, 256, 256, 256, 0, GL_RGBA,
-			GL_UNSIGNED_BYTE, (GLvoid*)m_image0);										// 創建3D紋理
+			GL_UNSIGNED_BYTE, (GLvoid*)m_image0);								// 創建3D紋理
 	}
 }
 
@@ -1361,7 +1361,7 @@ void C3DProcess::Draw3DImage(bool which)
 	glEnable(GL_CLIP_PLANE4);
 	glEnable(GL_CLIP_PLANE5);
 
-	glColor4f(1.0f, 1.0f, 1.0f, intensity);				// 設定openGL的slcies顏色（R, G, B, Alpha）
+	glColor4f(1.0F, 1.0F, 1.0F, intensity);				// 設定openGL的slcies顏色（R, G, B, Alpha）
 
 	// 啟動 Alpha / 混合 測試
 	//
@@ -1377,11 +1377,11 @@ void C3DProcess::Draw3DImage(bool which)
 	glLoadIdentity();
 	glEnable(GL_TEXTURE_3D);
 
-	glTranslatef(0.5f, 0.5f, 0.5f);						// 將物件(心臟)移到正中心
+	glTranslatef(0.5F, 0.5F, 0.5F);						// 將物件(心臟)移到正中心
 	glScalef(scale_x, scale_y, scale_z);				// 將物件(心臟)縮放
 
 	glMultMatrixf(mat);
-	glTranslatef(0.0f, 0.0f, -viewDistance);
+	glTranslatef(0.0F, 0.0F, -viewDistance);
 
 	// set modelView to identity
 	//
@@ -1948,7 +1948,7 @@ bool C3DProcess::Region_Growing(Seed_s &seed)
 		}
 		list.pop();
 	}
-	LoadVolume(textureName);
+	LoadVolume();
 	Draw3DImage(true);
 	m_wait->DestroyWindow();
 	

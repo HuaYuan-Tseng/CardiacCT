@@ -108,10 +108,10 @@ public:
 	BOOL	SetupPixelFormat(HDC hDC);					// 設置hDC像素格式
 	BOOL	ExtensionSupported(const char* exten);
 
+	void	LoadVolume();								// 建立紋理
+	void	PrepareVolume();							// 建立紋理座標的資料矩陣
 	void	GLInitialization();							// openGL建構初始化
 	void	PerspectiveBuild();							// 建立透視空間
-	void	LoadVolume(unsigned int texName[5]);		// 建立紋理
-	void	PrepareVolume(unsigned int texName[5]);		// 建立紋理座標的資料矩陣
 	void	getRamp(GLubyte* color, float t, int n);	// 上色
 
 	void	Draw3DImage(bool which);					// 繪製三維影像
