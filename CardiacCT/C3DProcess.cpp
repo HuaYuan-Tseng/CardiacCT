@@ -11,7 +11,7 @@
 #include "afxdialogex.h"
 using namespace std;
 
-#define M_PI 3.1415926f
+#define M_PI 3.1415926F
 #define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
 #define New3Dmatrix(H, W, L, TYPE) (TYPE***)new3Dmatrix(H, W, L, sizeof(TYPE))
 #define New4Dmatrix(H, W, L, V, TYPE) (TYPE****)new4Dmatrix(H, W, L, V, sizeof(TYPE))
@@ -1536,7 +1536,7 @@ void C3DProcess::Draw3DImage(bool which)
 	SwapBuffers(m_hDC);
 }
 
-void C3DProcess::Draw2DImage(unsigned short &slice)
+void C3DProcess::Draw2DImage(unsigned short& slice)
 {
 	//	DO : Ã¸»s 2D ¼v¹³
 	//
@@ -1784,7 +1784,7 @@ void C3DProcess::InvertMat(float (&m)[16])
 	m[14] = -m[14];
 }
 
-C3DProcess::Seed_s C3DProcess::coordiConvert(Seed_d &pt)
+C3DProcess::Seed_s C3DProcess::coordiConvert(Seed_d& pt)
 {
 	// openGL coordinate -> data array
 	//
@@ -1884,7 +1884,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-bool C3DProcess::Region_Growing(Seed_s &seed)
+bool C3DProcess::Region_Growing(Seed_s& seed)
 {
 	const int Row = ROW;
 	const int Col = COL;
@@ -1897,7 +1897,7 @@ bool C3DProcess::Region_Growing(Seed_s &seed)
 	short N_pixel = 0;
 
 	int count = 0;
-	int Kernel = 5;
+	int Kernel = 3;
 	int range = (Kernel - 1) / 2;
 
 	CWait* m_wait = new CWait();
@@ -1910,6 +1910,34 @@ bool C3DProcess::Region_Growing(Seed_s &seed)
 	queue<Seed_s> list;
 	list.push(seed);
 
+
+	while (!list.empty())
+	{
+		current = list.front();
+		for (k = -range; k <= range; k++)
+		{
+			for (j = -range; j <= range; j++)
+			{
+				for (i = -range; i <= range; i++)
+				{
+					if ((current.x + i) < (Col - 1) && (current.x + i) >= 0 &&
+						(current.y + j) < (Row - 1) && (current.y + j) >= 0 &&
+						(current.z + k) < TotalSlice && (current.z + k) >= 0)
+					{
+						if (judge[(current.z + k)][(current.y + j)*Row + (current.x + i)] != 1)
+						{
+							
+						}
+					}
+				}
+			}
+		}
+		list.pop();
+	}
+
+
+
+	/*
 	while (!list.empty())
 	{
 		current = list.front();
@@ -1948,6 +1976,10 @@ bool C3DProcess::Region_Growing(Seed_s &seed)
 		}
 		list.pop();
 	}
+	*/
+
+
+
 	LoadVolume();
 	Draw3DImage(true);
 	m_wait->DestroyWindow();

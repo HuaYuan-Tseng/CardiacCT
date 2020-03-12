@@ -115,7 +115,7 @@ public:
 	void	getRamp(GLubyte* color, float t, int n);	// 上色
 
 	void	Draw3DImage(bool which);					// 繪製三維影像
-	void	Draw2DImage(unsigned short &slice);			// 繪製二維影像
+	void	Draw2DImage(unsigned short& slice);			// 繪製二維影像
 	void*	new2Dmatrix(int h, int w, int size);		// 動態配置二維矩陣
 	void*	new3Dmatrix(int h, int w, int l, int size);
 	void*	new4Dmatrix(int h, int w, int l, int v, int size);
@@ -126,8 +126,8 @@ public:
 	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
-	bool	Region_Growing(Seed_s &seed);				// 三維 區域成長
-	Seed_s	coordiConvert(Seed_d &pt);					// openGL coordinate -> data array site
+	bool	Region_Growing(Seed_s& seed);				// 三維 區域成長
+	Seed_s	coordiConvert(Seed_d& pt);					// openGL coordinate -> data array site
 
 	
 //================//
