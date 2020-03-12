@@ -7,11 +7,12 @@
 ============================================================================================
 
 1. 建立專案時，確保「Configuration」->「General」->「Use of MFC」->「Use MFC in a Shared DLL」
-    以及「C/C++」->「Code Generation」->「Runtime Library」->「依照Library版本，在此為MDd」
+	、「Configuration」->「General」->「Character Set」->「Use Multi-Byte Character Set」
+	、「C/C++」->「Code Generation」->「Runtime Library」->「依照Library版本，在此為MDd」
 
 2. DCMTK - 3.6.3
 =>  先將Source Code 進行Compile、Build
-=>  於專案「Properties」底下：( 新增時只能是當初 Compile的路徑，若是新增另外複製到其他路徑，會有錯誤 )
+=>  於專案「Properties」底下：（善用Macros => $SolutionDir）
        「C/C++」->「General」->「Additional Include Directories」新增 Compile 我們 Source Code 的路徑底下的 include 資料夾
        「Linker」->「General」->「Additional Library Directories」新增 Compile 我們 Source Code 的路徑底下的 lib 資料夾以及支援庫的zlib底下的 lib 資料夾
        「Linker」->「Input」->「Additional Dependencies」依序新增 ：
@@ -39,3 +40,15 @@ ijg12.lib
 ijg16.lib
 i2d.lib
 zlib_d.lib
+
+3. FreeGLUT 3.0.0
+=> 至官網下載已經編譯好的文件：Prepackaged Releases -> Martin's Windows binaries (MSVC and MinGW) -> Download freeglut3.0.0 for MinGW
+
+4. GLEW 
+=> 至官網下載已經編譯好的文件：Binaries-> Windows 32-bit and 64 bit
+
+5. 記得在「Build Events」->「Post-Build Event」：
+copy "$(SolutionDir)Library\openGL\FreeGLUT\bin\$(PlatformTarget)\*.dll" "$(OutputPath)" /Y
+copy "$(SolutionDir)Library\openGL\GLEW\bin\Release\$(PlatformTarget)\*.dll" "$(OutputPath)" /Y
+
+
