@@ -1910,6 +1910,13 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	queue<Seed_s> list;
 	list.push(seed);
 
+	double avg;
+	double up_limit;
+	double down_limit;
+	double threshold = 10.0L;
+	unsigned int n = 1;
+	avg = m_pDoc->m_img[seed.z][(seed.y)*Row + (seed.x)];
+	judge[seed.z][(seed.y) * Row + (seed.x)] = 1;
 
 	while (!list.empty())
 	{
@@ -1924,7 +1931,28 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 						(current.y + j) < (Row - 1) && (current.y + j) >= 0 &&
 						(current.z + k) < TotalSlice && (current.z + k) >= 0)
 					{
-						
+						if (judge[current.z + k][(current.y + j) * Row + (current.x + i)] != 1)
+						{
+							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Row + (current.x + i)];
+
+							up_limit = avg + threshold;
+							down_limit = avg - threshold;
+
+							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
+							{
+								temp.x = current.x + i;
+								temp.y = current.y + j;
+								temp.z = current.z + k;
+								list.push(temp);
+
+								judge[current.z + k][(current.y + j) * Row + (current.x + i)] = 1;
+								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
+									(float)N_pixel / 255.0F / 2, 1);
+
+								avg = (avg * n + N_pixel) / (n+1);
+								n += 1;
+							}
+						}
 					}
 				}
 			}
