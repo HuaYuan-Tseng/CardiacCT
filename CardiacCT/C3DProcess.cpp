@@ -200,6 +200,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_HU_THRESHOLD, &C3DProcess::OnBnClickedCheckHuThreshold)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
 	
+	ON_BN_CLICKED(IDC_BUTTON_PLANE_RESET, &C3DProcess::OnBnClickedButtonPlaneReset)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_PLUS, &C3DProcess::OnBnClickedButtonSlicesPlus)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_MINUS, &C3DProcess::OnBnClickedButtonSlicesMinus)
 	ON_BN_CLICKED(IDC_BUTTON_DENSITY_PLUS, &C3DProcess::OnBnClickedButtonDensityPlus)
@@ -213,7 +214,6 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
-	
 END_MESSAGE_MAP()
 
 //=================================//
@@ -809,6 +809,24 @@ void C3DProcess::OnBnClickedButtonSlicesMinus()
 	if (glSlices < 0)	glSlices = 0;
 	m_slices.Format("%d", glSlices);
 	UpdateData(FALSE);
+	Draw3DImage(true);
+}
+
+void C3DProcess::OnBnClickedButtonPlaneReset()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Plane Reset
+	// (未完成...)
+	pln_angle = obj_angle;
+	pln_axis[0] = 0.0F;
+	pln_axis[1] = 0.0F;
+	pln_axis[2] = 0.0F;
+
+	user_Plane[0] = 1.0L;
+	user_Plane[1] = 0.0L;
+	user_Plane[2] = 0.0L;
+	user_Plane[3] = 1.0L;
+
 	Draw3DImage(true);
 }
 
@@ -1620,10 +1638,29 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 	{
 		CPoint pt;
 			
-		// 於2D影像顯示在3D點選的seed
-		//
 		if (get_3Dseed)
 		{
+			// 於2D影像顯示在3D區域成長結果
+			//
+			if (get_regionGrow)
+			{
+				for (j = 0; j < 512; j++)
+				{
+					for (i = 0; i < 512; i++)
+					{
+						if (judge[DisplaySlice][j * 512 + i] == 1)
+						{
+							pt.x = i;
+							pt.y = j;
+
+							dc.SetPixel(pt, RGB(255, 120, 190));
+						}
+					}
+				}
+			}
+
+			// 於2D影像顯示在3D點選的seed
+			//
 			if (slice == (unsigned short)seed_img.z)
 			{
 				for (i = -1; i <= 1; i++)
@@ -1906,7 +1943,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	m_wait->setDisplay("Region growing...");
 
 	Seed_s temp;			
-	Seed_s current;			// 當前seed
+	Seed_s current;				// 當前seed
 	queue<Seed_s> list;
 	list.push(seed);
 
@@ -1947,7 +1984,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 
 								judge[current.z + k][(current.y + j) * Row + (current.x + i)] = 1;
 								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
-									(float)N_pixel / 255.0F / 2, 1);
+									(float)N_pixel / 255.0F, 1);
 
 								avg = (avg * n + N_pixel) / (n+1);
 								n += 1;
@@ -1968,4 +2005,3 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	delete m_wait;
 	return true;
 }
-

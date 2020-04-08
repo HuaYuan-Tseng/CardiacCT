@@ -6,6 +6,30 @@
 //  單純用"Threshold"與"像素值的差"進行區域成長  //
 //============================================//
 
+const int Row = ROW;
+const int Col = COL;
+const int TotalSlice = Total_Slice;
+register int i, j, k;
+
+short S_HU = 0;
+short N_HU = 0;
+short S_pixel = 0;
+short N_pixel = 0;
+
+int count = 0;
+int Kernel = 3;
+int range = (Kernel - 1) / 2;
+
+CWait* m_wait = new CWait();
+m_wait->Create(IDD_DIALOG_WAIT);
+m_wait->ShowWindow(SW_NORMAL);
+m_wait->setDisplay("Region growing...");
+
+Seed_s temp;			
+Seed_s current;			// 當前seed
+queue<Seed_s> list;
+list.push(seed);
+
 while (!list.empty())
 {
 	current = list.front();
@@ -44,3 +68,10 @@ while (!list.empty())
 	}
 	list.pop();
 }
+
+LoadVolume();
+Draw3DImage(true);
+m_wait->DestroyWindow();
+
+delete m_wait;
+return true;
