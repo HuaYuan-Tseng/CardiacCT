@@ -1998,6 +1998,9 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	}
 
 
+
+
+
 	LoadVolume();
 	Draw3DImage(true);
 	m_wait->DestroyWindow();
