@@ -1689,7 +1689,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 
 void C3DProcess::pointToVector(int x, int y, int width, int height, float vec[3])
 {
-	// DO : project x,y onto a hemi-sphere centered within width, height
+	// DO : project x, y onto a hemi-sphere centered within width, height
 	//
 	float d, a;
 
