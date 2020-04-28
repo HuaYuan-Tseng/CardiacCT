@@ -192,6 +192,7 @@ public:
 	afx_msg void OnEnChangeEditHuThreshold();
 	afx_msg void OnEnChangeEditPixelThreshold();
 
+	afx_msg void OnBnClickedButton2dseedClear();
 	afx_msg void OnBnClickedButton3dseedClear();
 	afx_msg void OnBnClickedButtonPlaneReset();
 	afx_msg void OnBnClickedButtonSeedChange();
@@ -202,5 +203,4 @@ public:
 	afx_msg void OnBnClickedButtonIntensityPlus();
 	afx_msg void OnBnClickedButtonIntensityMinus();
 	afx_msg void OnBnClickedButtonRegionGrowing();
-	
 };

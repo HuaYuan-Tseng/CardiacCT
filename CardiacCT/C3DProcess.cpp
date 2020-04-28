@@ -208,6 +208,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_PLUS, &C3DProcess::OnBnClickedButtonIntensityPlus)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_MINUS, &C3DProcess::OnBnClickedButtonIntensityMinus)
 	ON_BN_CLICKED(IDC_BUTTON_REGION_GROWING, &C3DProcess::OnBnClickedButtonRegionGrowing)
+	ON_BN_CLICKED(IDC_BUTTON_2DSEED_CLEAR, &C3DProcess::OnBnClickedButton2dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 
@@ -559,6 +560,7 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		Draw2DImage(DisplaySlice);
 		if (m_3Dseed)
 			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
+		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(TRUE);
 	}
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
@@ -830,6 +832,32 @@ void C3DProcess::OnBnClickedButtonPlaneReset()
 	Draw3DImage(true);
 }
 
+void C3DProcess::OnBnClickedButton2dseedClear()
+{
+	// TODO: Add your control notification handler code here
+	// Button : 2D Seed Clear
+	//
+	if (get_2Dseed)
+	{
+		seed_pt.x = 0;
+		seed_pt.y = 0;
+		seed_pt.z = 0;
+
+		m_pos_1.Format("%d", 0);
+		m_pos_2.Format("%d", 0);
+		m_pos_3.Format("%d", 0);
+		m_pos_4.Format("%d", 0);
+
+		get_2Dseed = false;
+		if (m_3Dseed)
+			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
+		
+		UpdateData(FALSE);
+		Draw2DImage(DisplaySlice);
+	}
+}
+
 void C3DProcess::OnBnClickedButton3dseedClear()
 {
 	// TODO: Add your control notification handler code here
@@ -845,13 +873,12 @@ void C3DProcess::OnBnClickedButton3dseedClear()
 		seed_img.y = 0;
 		seed_img.z = 0;
 
-		m_pos_1.Format("%d", 0);
-		m_pos_2.Format("%d", 0);
-		m_pos_3.Format("%d", 0);
-		m_pos_4.Format("%d", 0);
+		m_pos_5.Format("%d", 0);
+		m_pos_6.Format("%d", 0);
+		m_pos_7.Format("%d", 0);
+		m_pos_8.Format("%d", 0);
 
 		get_3Dseed = false;
-		
 		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
 		
@@ -1952,7 +1979,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	double down_limit;
 	double threshold = 10.0L;
 	unsigned int n = 1;
-	avg = m_pDoc->m_img[seed.z][(seed.y)*Row + (seed.x)];
+	avg = m_pDoc->m_img[seed.z][(seed.y) * Row + (seed.x)];
 	judge[seed.z][(seed.y) * Row + (seed.x)] = 1;
 
 	while (!list.empty())
@@ -2008,3 +2035,4 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	delete m_wait;
 	return true;
 }
+
