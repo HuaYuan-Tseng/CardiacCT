@@ -287,13 +287,13 @@ BOOL C3DProcess::OnInitDialog()
 	//-------------------------------------------------------------------------------------//
 	// 更改三維影像Z軸方向的縮放比例(不要懷疑，改的是Z軸沒錯)
 	//
-	if (Total_Slice < 200)
+	if (totaly < 200)
 		scale_x = 0.25F;
-	else if (Total_Slice >= 200 && Total_Slice < 300)
+	else if (totaly >= 200 && totaly < 300)
 		scale_x = 0.3F;
-	else if (Total_Slice >= 300 && Total_Slice < 350)
+	else if (totaly >= 300 && totaly < 350)
 		scale_x = 0.35F;
-	else if (Total_Slice > 350)
+	else if (totaly > 350)
 		scale_x = 0.4F;
 	
 	// openGL空間建立
@@ -925,6 +925,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	if (get_3Dseed)
 	{
 		get_regionGrow = Region_Growing(seed_img);
+		Draw2DImage(DisplaySlice);
 	}
 }
 
