@@ -208,6 +208,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_PLUS, &C3DProcess::OnBnClickedButtonIntensityPlus)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_MINUS, &C3DProcess::OnBnClickedButtonIntensityMinus)
 	ON_BN_CLICKED(IDC_BUTTON_REGION_GROWING, &C3DProcess::OnBnClickedButtonRegionGrowing)
+	ON_BN_CLICKED(IDC_BUTTON_GROWING_CLEAR, &C3DProcess::OnBnClickedButtonGrowingClear)
 	ON_BN_CLICKED(IDC_BUTTON_2DSEED_CLEAR, &C3DProcess::OnBnClickedButton2dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
@@ -256,6 +257,7 @@ BOOL C3DProcess::OnInitDialog()
 	// 設定Button初始狀態
 	//
 	GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 
@@ -518,7 +520,7 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 							GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
 							GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(TRUE);
 
-							//-----------------------------------------------------------------------------------//
+							//--------------------------------------------------------------------------//
 							
 							short Pos_5 = seed_img.x;
 							short Pos_6 = seed_img.y;
@@ -532,15 +534,15 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 						}
 					}
 				}
-				UpdateData(FALSE);
-
 				delete[] viewPort;
 				delete[] modelView_matrix;
 				delete[] projection_matrix;
+
+				UpdateData(FALSE);
+				Draw3DImage(true);
+				Draw2DImage(DisplaySlice);
 			}
 		}
-		Draw3DImage(true);
-		Draw2DImage(DisplaySlice);
 	}
 	// 二維 影像視窗
 	//
@@ -555,12 +557,13 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		m_pos_3.Format("%d", (int)seed_pt.z);
 		m_pos_4.Format("%d", (int)m_pDoc->m_img[seed_pt.z][(seed_pt.y * 512) + seed_pt.x]);
 
-		get_2Dseed = true;
-		UpdateData(FALSE);
-		Draw2DImage(DisplaySlice);
 		if (m_3Dseed)
 			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
 		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(TRUE);
+
+		get_2Dseed = true;
+		UpdateData(FALSE);
+		Draw2DImage(DisplaySlice);
 	}
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
@@ -722,19 +725,24 @@ void C3DProcess::OnBnClickedCheck3dSeed()
 	UpdateData(TRUE);
 	if (m_3Dseed == TRUE)
 	{
+		if (get_2Dseed)
+		{
+			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
+		}
 		if (get_3Dseed)
 		{
 			GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
 			GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(TRUE);
 		}
-		if (get_2Dseed)
+		if (get_regionGrow)
 		{
-			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
+			GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
 		}
 	}
 	else
 	{
 		GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 	}
@@ -926,7 +934,66 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	{
 		get_regionGrow = Region_Growing(seed_img);
 		Draw2DImage(DisplaySlice);
+
+		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
 	}
+}
+
+void C3DProcess::OnBnClickedButtonGrowingClear()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Growing Clear
+	//
+	if (!get_regionGrow)	return;
+
+	get_regionGrow = false;
+	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
+	//------------------------------------------------------------//
+
+	float pixel;
+	int Row = ROW;
+	int Col = COL;
+	int totalx = ROW * COL;
+	int totaly = Total_Slice;
+	int TotalSlice = Total_Slice;
+	int Sample_start = 0 + Mat_Offset;
+	int Sample_end = 0 + Mat_Offset + TotalSlice;
+
+	// 恢復 : 成長判定矩陣
+	//
+	register int i, j, k;
+	for (j = 0; j < totaly; j++)
+	{
+		for (i = 0; i < totalx; i++)
+		{
+			judge[j][i] = 0;
+		}
+	}
+
+	// 恢復 : 影像
+	//
+	k = 0;
+	while (k < 512)
+	{
+		if (k > Sample_start && k <= Sample_end)
+		{
+			for (j = 2; j < Row - 2; j += 2)
+			{
+				for (i = 2; i < Col - 2; i += 2)
+				{
+					pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
+
+					getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+						pixel / 255.0F, 0);
+				}
+			}
+		}
+		k += 2;
+	}
+
+	LoadVolume();
+	Draw3DImage(true);
+	Draw2DImage(DisplaySlice);
 }
 
 //==========================//
@@ -1666,29 +1733,28 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 	{
 		CPoint pt;
 			
-		if (get_3Dseed)
+		// 於2D影像顯示在3D區域成長結果
+		//
+		if (get_regionGrow)
 		{
-			// 於2D影像顯示在3D區域成長結果
-			//
-			if (get_regionGrow)
+			for (j = 0; j < 512; j++)
 			{
-				for (j = 0; j < 512; j++)
+				for (i = 0; i < 512; i++)
 				{
-					for (i = 0; i < 512; i++)
+					if (judge[DisplaySlice][j * 512 + i] == 1)
 					{
-						if (judge[DisplaySlice][j * 512 + i] == 1)
-						{
-							pt.x = i;
-							pt.y = j;
+						pt.x = i;
+						pt.y = j;
 
-							dc.SetPixel(pt, RGB(255, 120, 190));
-						}
+						dc.SetPixel(pt, RGB(255, 120, 190));
 					}
 				}
 			}
-
-			// 於2D影像顯示在3D點選的seed
-			//
+		}
+		// 於2D影像顯示在3D點選的seed
+		//
+		if (get_3Dseed)
+		{
 			if (slice == (unsigned short)seed_img.z)
 			{
 				for (i = -1; i <= 1; i++)
@@ -1994,7 +2060,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 				{
 					if ((current.x + i) < (Col - 1) && (current.x + i) >= 0 &&
 						(current.y + j) < (Row - 1) && (current.y + j) >= 0 &&
-						(current.z + k) < TotalSlice && (current.z + k) >= 0)
+						(current.z + k) < (TotalSlice) && (current.z + k) >= 0)
 					{
 						if (judge[current.z + k][(current.y + j) * Row + (current.x + i)] != 1)
 						{
@@ -2011,6 +2077,8 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 								list.push(temp);
 
 								judge[current.z + k][(current.y + j) * Row + (current.x + i)] = 1;
+
+
 								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
 									(float)N_pixel / 255.0F, 1);
 
@@ -2036,4 +2104,5 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	delete m_wait;
 	return true;
 }
+
 

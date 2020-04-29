@@ -68,8 +68,9 @@
 #define IDC_EDIT4                       1041
 #define IDC_EDIT_POS8                   1041
 #define IDC_BUTTON_PLANE_RESET          1042
-#define IDC_BUTTON1                     1043
 #define IDC_BUTTON_2DSEED_CLEAR         1043
+#define IDC_BUTTON1                     1044
+#define IDC_BUTTON_GROWING_CLEAR        1044
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -82,7 +83,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        325
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1044
+#define _APS_NEXT_CONTROL_VALUE         1045
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

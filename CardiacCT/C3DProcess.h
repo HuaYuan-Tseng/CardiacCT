@@ -44,7 +44,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	GLuint			textureName[5];		// 記載紋理名稱
 	
 ///-------------------------↓ openGL 設定參數 ↓----------------------------------------///
-	int				Mat_Offset;			// 影像矩陣置中的偏移量
+	int				Mat_Offset;			// 3D影像矩陣置中的偏移量
 	int				ImageFrame;			// 影像框數(1個時序1個)
 	int				glSlices;			// openGL建立紋理層數
 
@@ -203,4 +203,5 @@ public:
 	afx_msg void OnBnClickedButtonIntensityPlus();
 	afx_msg void OnBnClickedButtonIntensityMinus();
 	afx_msg void OnBnClickedButtonRegionGrowing();
+	afx_msg void OnBnClickedButtonGrowingClear();
 };
