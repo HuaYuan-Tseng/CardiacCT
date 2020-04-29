@@ -485,12 +485,12 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		{
 			if (get_3Dseed == false)
 			{
+				GLfloat		win_x, win_y, win_z;
+				GLdouble	obj_x, obj_y, obj_z;
+
 				GLint*		viewPort = new GLint[16];
 				GLdouble*	modelView_matrix = new GLdouble[16];
 				GLdouble*	projection_matrix = new GLdouble[16];
-
-				GLfloat		win_x, win_y, win_z;
-				GLdouble	obj_x, obj_y, obj_z;
 
 				glGetIntegerv(GL_VIEWPORT, viewPort);
 				glGetDoublev(GL_MODELVIEW_MATRIX, modelView_matrix);
@@ -2058,8 +2058,8 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 			{
 				for (i = -range; i <= range; i++)
 				{
-					if ((current.x + i) < (Col - 1) && (current.x + i) >= 0 &&
-						(current.y + j) < (Row - 1) && (current.y + j) >= 0 &&
+					if ((current.x + i) < (Col) && (current.x + i) >= 0 &&
+						(current.y + j) < (Row) && (current.y + j) >= 0 &&
 						(current.z + k) < (TotalSlice) && (current.z + k) >= 0)
 					{
 						if (judge[current.z + k][(current.y + j) * Row + (current.x + i)] != 1)
@@ -2078,9 +2078,15 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 
 								judge[current.z + k][(current.y + j) * Row + (current.x + i)] = 1;
 
-
-								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
-									(float)N_pixel / 255.0F, 1);
+								// 此 if 條件式只是用來限制成長區域的渲染範圍(怕超過，clear也clear不掉QQ)
+								//
+								if ((current.x + i) < (Col - 2) && (current.x + i) >= 0 &&
+									(current.y + j) < (Row - 2) && (current.y + j) >= 0 &&
+									(current.z + k) < (TotalSlice) && (current.z + k) >= 0)
+								{
+									getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
+										(float)N_pixel / 255.0F, 1);
+								}
 
 								avg = (avg * n + N_pixel) / (n+1);
 								n += 1;
