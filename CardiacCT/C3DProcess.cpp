@@ -29,6 +29,10 @@ using namespace std;
 #define HU_min m_pDoc->m_dir->HU_min
 #define HU_max m_pDoc->m_dir->HU_max
 
+#define Slice_Spacing atoi(m_pDoc->m_dir->Spacing_Between_Slices)
+#define Slice_Thickness atoi(m_pDoc->m_dir->Slice_Thickness)
+#define Pixel_Spacing atoi(m_pDoc->m_dir->Pixel_Spacing)
+
 //==========================//
 //   3D Processing Dialog   //
 //==========================//
@@ -48,6 +52,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_intensity(_T("0.8125"))
 	, m_density(_T("0.0"))
 	, m_slices(_T("512"))
+	, m_result(_T("0.0"))
 	, m_pos_1(_T("0"))
 	, m_pos_2(_T("0"))
 	, m_pos_3(_T("0"))
@@ -128,6 +133,8 @@ C3DProcess::~C3DProcess()
 		m_density.Empty();
 	if (m_slices.IsEmpty() != true)
 		m_slices.Empty();
+	if (m_result.IsEmpty() != true)
+		m_result.Empty();
 	if (m_pos_1.IsEmpty() != true)
 		m_pos_1.Empty();
 	if (m_pos_2.IsEmpty() != true)
@@ -172,6 +179,7 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Text(pDX, IDC_EDIT_INTENSITY, m_intensity);
 	DDX_Text(pDX, IDC_EDIT_DENSITY, m_density);
+	DDX_Text(pDX, IDC_EDIT_RESULT, m_result);
 	DDX_Text(pDX, IDC_EDIT_POS1, m_pos_1);
 	DDX_Text(pDX, IDC_EDIT_POS2, m_pos_2);
 	DDX_Text(pDX, IDC_EDIT_POS3, m_pos_3);
@@ -180,6 +188,7 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_POS6, m_pos_6);
 	DDX_Text(pDX, IDC_EDIT_POS7, m_pos_7);
 	DDX_Text(pDX, IDC_EDIT_POS8, m_pos_8);
+	
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -932,9 +941,11 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	//
 	if (get_3Dseed)
 	{
-		get_regionGrow = Region_Growing(seed_img);
-		Draw2DImage(DisplaySlice);
+		growingVolume = Region_Growing(seed_img);
+		get_regionGrow = true;
 
+
+		Draw2DImage(DisplaySlice);
 		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
 	}
 }
@@ -2015,7 +2026,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-bool C3DProcess::Region_Growing(Seed_s& seed)
+double C3DProcess::Region_Growing(Seed_s& seed)
 {
 	const int Row = ROW;
 	const int Col = COL;
@@ -2042,7 +2053,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	list.push(seed);
 
 	double avg;
-	double avg_temp;
+	double volume;
 	double up_limit;
 	double down_limit;
 	double threshold = 10.0L;
@@ -2050,7 +2061,6 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 
 	judge[seed.z][(seed.y) * Row + (seed.x)] = 1;
 	avg = m_pDoc->m_img[seed.z][(seed.y) * Row + (seed.x)];
-	avg_temp = m_pDoc->m_img[seed.z][(seed.y) * Row + (seed.x)];
 
 	while (!list.empty())
 	{
@@ -2102,7 +2112,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 		list.pop();
 	}
 
-
+	volume = 0;	// л▌зя
 
 
 
@@ -2111,7 +2121,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	m_wait->DestroyWindow();
 	
 	delete m_wait;
-	return true;
+	return volume;
 }
 
 

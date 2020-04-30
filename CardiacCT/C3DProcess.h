@@ -99,6 +99,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	short			HUThreshold;		// 二值化閾值(HU)
 unsigned short		PixelThreshold;		// 二值化閾值(pixel)
 unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
+	double			growingVolume;		// 區域成長結果體積
 	
 
 //================//
@@ -126,7 +127,7 @@ public:
 	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
-	bool	Region_Growing(Seed_s& seed);				// 三維 區域成長
+	double	Region_Growing(Seed_s& seed);				// 三維 區域成長
 	Seed_s	coordiConvert(Seed_d& pt);					// openGL coordinate -> data array site
 
 	
@@ -157,6 +158,7 @@ public:										// CString的部分，有在Attributes另外設變數儲存
 	CString		m_intensity;
 	CString		m_density;
 	CString		m_slices;
+	CString		m_result;
 	CString		m_pos_1;
 	CString		m_pos_2;
 	CString		m_pos_3;
