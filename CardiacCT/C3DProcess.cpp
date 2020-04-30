@@ -2028,7 +2028,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	short N_pixel = 0;
 
 	int count = 0;
-	int Kernel = 3;
+	int Kernel = 3;								// 保持奇數
 	int range = (Kernel - 1) / 2;
 
 	CWait* m_wait = new CWait();
@@ -2037,21 +2037,27 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 	m_wait->setDisplay("Region growing...");
 
 	Seed_s temp;			
-	Seed_s current;				// 當前seed
+	Seed_s current;								// 當前seed
 	queue<Seed_s> list;
 	list.push(seed);
 
 	double avg;
+	double avg_temp;
 	double up_limit;
 	double down_limit;
 	double threshold = 10.0L;
 	unsigned int n = 1;
-	avg = m_pDoc->m_img[seed.z][(seed.y) * Row + (seed.x)];
+
 	judge[seed.z][(seed.y) * Row + (seed.x)] = 1;
+	avg = m_pDoc->m_img[seed.z][(seed.y) * Row + (seed.x)];
+	avg_temp = m_pDoc->m_img[seed.z][(seed.y) * Row + (seed.x)];
 
 	while (!list.empty())
 	{
 		current = list.front();
+		up_limit = avg + threshold;
+		down_limit = avg - threshold;
+
 		for (k = -range; k <= range; k++)
 		{
 			for (j = -range; j <= range; j++)
@@ -2066,9 +2072,6 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 						{
 							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Row + (current.x + i)];
 
-							up_limit = avg + threshold;
-							down_limit = avg - threshold;
-
 							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
 							{
 								temp.x = current.x + i;
@@ -2078,7 +2081,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 
 								judge[current.z + k][(current.y + j) * Row + (current.x + i)] = 1;
 
-								// 此 if 條件式只是用來限制成長區域的渲染範圍(怕超過，clear也clear不掉QQ)
+								// 此 if 只是用來限制成長區域的渲染範圍(怕超過，clear也clear不掉QQ)
 								//
 								if ((current.x + i) < (Col - 2) && (current.x + i) >= 2 &&
 									(current.y + j) < (Row - 2) && (current.y + j) >= 2 &&
@@ -2088,7 +2091,7 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 										(float)N_pixel / 255.0F, 1);
 								}
 
-								avg = (avg * n + N_pixel) / (n+1);
+								avg = (avg * n + N_pixel) / (n + 1);
 								n += 1;
 							}
 						}
