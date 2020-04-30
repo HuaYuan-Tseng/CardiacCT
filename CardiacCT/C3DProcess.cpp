@@ -2080,9 +2080,9 @@ bool C3DProcess::Region_Growing(Seed_s& seed)
 
 								// 此 if 條件式只是用來限制成長區域的渲染範圍(怕超過，clear也clear不掉QQ)
 								//
-								if ((current.x + i) < (Col - 2) && (current.x + i) >= 0 &&
-									(current.y + j) < (Row - 2) && (current.y + j) >= 0 &&
-									(current.z + k) < (TotalSlice) && (current.z + k) >= 0)
+								if ((current.x + i) < (Col - 2) && (current.x + i) >= 2 &&
+									(current.y + j) < (Row - 2) && (current.y + j) >= 2 &&
+									(current.z + k) < (TotalSlice) && (current.z + k) >= 2)
 								{
 									getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
 										(float)N_pixel / 255.0F, 1);
