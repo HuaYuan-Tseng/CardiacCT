@@ -271,7 +271,7 @@ void CDirForm::displayContextList(int &series)
 
 	n = n + 1;
 	m_ContList.InsertItem(n, _T(""));
-	m_ContList.SetItemText(n, 0, "Voxel Spacing");
+	m_ContList.SetItemText(n, 0, "Voxel Spacing (mm)");
 	m_ContList.SetItemText(n, 1, m_pDoc->m_dir->Voxel_Spacing);
 
 	n = n + 1;

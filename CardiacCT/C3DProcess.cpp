@@ -941,7 +941,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	//
 	if (get_3Dseed)
 	{
-		growingVolume = Region_Growing(seed_img);
+		growingVolume += Region_Growing(seed_img);
 		m_result.Format("%lf", growingVolume);
 		get_regionGrow = true;
 		
@@ -958,7 +958,9 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	//
 	if (!get_regionGrow)	return;
 
+	growingVolume = 0.0F;
 	get_regionGrow = false;
+	m_result.Format("%lf", growingVolume);
 	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 	//------------------------------------------------------------//
 
@@ -1004,6 +1006,7 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	}
 
 	LoadVolume();
+	UpdateData(FALSE);
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
 }
