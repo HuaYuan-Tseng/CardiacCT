@@ -2115,7 +2115,7 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 
 
 	TRACE1("Growing Pixel : %d \n", n);
-	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;
+	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// ³æ¦ì(cm3)
 
 	LoadVolume();
 	Draw3DImage(true);
