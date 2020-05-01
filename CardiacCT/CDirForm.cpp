@@ -271,8 +271,8 @@ void CDirForm::displayContextList(int &series)
 
 	n = n + 1;
 	m_ContList.InsertItem(n, _T(""));
-	m_ContList.SetItemText(n, 0, "Pixel Spacing");
-	m_ContList.SetItemText(n, 1, m_pDoc->m_dir->Pixel_Spacing);
+	m_ContList.SetItemText(n, 0, "Voxel Spacing");
+	m_ContList.SetItemText(n, 1, m_pDoc->m_dir->Voxel_Spacing);
 
 	n = n + 1;
 	m_ContList.InsertItem(n, _T(""));
@@ -286,13 +286,13 @@ void CDirForm::displayContextList(int &series)
 	m_ContList.SetItemText(n, 1, temp);
 
 	n = n + 1;
-	temp.Format("%d", m_pDoc->m_dir->SeriesList[series]->ImageList[0]->Row);
+	temp.Format("%d", m_pDoc->m_dir->Row);
 	m_ContList.InsertItem(n, _T(""));
 	m_ContList.SetItemText(n, 0, "Row");
 	m_ContList.SetItemText(n, 1, temp);
 
 	n = n + 1;
-	temp.Format("%d", m_pDoc->m_dir->SeriesList[series]->ImageList[0]->Col);
+	temp.Format("%d", m_pDoc->m_dir->Col);
 	m_ContList.InsertItem(n, _T(""));
 	m_ContList.SetItemText(n, 0, "Col");
 	m_ContList.SetItemText(n, 1, temp);

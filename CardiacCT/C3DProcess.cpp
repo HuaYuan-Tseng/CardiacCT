@@ -16,22 +16,21 @@ using namespace std;
 #define New3Dmatrix(H, W, L, TYPE) (TYPE***)new3Dmatrix(H, W, L, sizeof(TYPE))
 #define New4Dmatrix(H, W, L, V, TYPE) (TYPE****)new4Dmatrix(H, W, L, V, sizeof(TYPE))
 
-#define Display_Series m_pDoc->displaySeries
-#define Total_Slice m_pDoc->m_dir->SeriesList[0]->TotalSliceCount
-#define ROW m_pDoc->m_dir->SeriesList[0]->ImageList[0]->Row
-#define COL m_pDoc->m_dir->SeriesList[0]->ImageList[0]->Col
-#define Window_Center_1 m_pDoc->m_dir->Window_1_Center
-#define Window_Center_2 m_pDoc->m_dir->Window_2_Center
-#define Window_Width_1 m_pDoc->m_dir->Window_1_Width
-#define Window_Width_2 m_pDoc->m_dir->Window_2_Width
-#define Rescale_Intercept atoi(m_pDoc->m_dir->Rescale_Intercept)
-#define Rescale_Slope atoi(m_pDoc->m_dir->Rescale_Slope)
+#define ROW m_pDoc->m_dir->Row
+#define COL m_pDoc->m_dir->Col
 #define HU_min m_pDoc->m_dir->HU_min
 #define HU_max m_pDoc->m_dir->HU_max
-
-#define Slice_Spacing atoi(m_pDoc->m_dir->Spacing_Between_Slices)
-#define Slice_Thickness atoi(m_pDoc->m_dir->Slice_Thickness)
-#define Pixel_Spacing atoi(m_pDoc->m_dir->Pixel_Spacing)
+#define Display_Series m_pDoc->displaySeries
+#define Window_Width_1 m_pDoc->m_dir->Window_1_Width
+#define Window_Width_2 m_pDoc->m_dir->Window_2_Width
+#define Window_Center_1 m_pDoc->m_dir->Window_1_Center
+#define Window_Center_2 m_pDoc->m_dir->Window_2_Center
+#define VoxelSpacing_X m_pDoc->m_dir->Voxel_Spacing_X
+#define VoxelSpacing_Y m_pDoc->m_dir->Voxel_Spacing_Y
+#define VoxelSpacing_Z m_pDoc->m_dir->Voxel_Spacing_Z
+#define Rescale_Slope atoi(m_pDoc->m_dir->Rescale_Slope)
+#define Rescale_Intercept atoi(m_pDoc->m_dir->Rescale_Intercept)
+#define Total_Slice m_pDoc->m_dir->SeriesList[0]->TotalSliceCount
 
 //==========================//
 //   3D Processing Dialog   //
@@ -95,6 +94,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	seed_gl = { 0.0L, 0.0L, 0.0L };
 
 	DisplaySlice = 0;
+	growingVolume = 0.0F;
 	HUThreshold = atoi(m_HUThreshold);
 	PixelThreshold = atoi(m_pixelThreshold);
 
@@ -942,9 +942,10 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	if (get_3Dseed)
 	{
 		growingVolume = Region_Growing(seed_img);
+		m_result.Format("%lf", growingVolume);
 		get_regionGrow = true;
-
-
+		
+		UpdateData(FALSE);
 		Draw2DImage(DisplaySlice);
 		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
 	}
@@ -2112,9 +2113,9 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 		list.pop();
 	}
 
-	volume = 0;	// л▌зя
 
-
+	TRACE1("Growing Pixel : %d \n", n);
+	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;
 
 	LoadVolume();
 	Draw3DImage(true);

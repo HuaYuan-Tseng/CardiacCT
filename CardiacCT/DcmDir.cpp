@@ -33,6 +33,7 @@ DcmDir::DcmDir()
 
 	Spacing_Between_Slices = _T("");
 	Slice_Thickness = _T("");
+	Voxel_Spacing = _T("");
 	Pixel_Spacing = _T("");
 
 	Pixel_Representation = _T("");
@@ -40,16 +41,18 @@ DcmDir::DcmDir()
 	Bits_Stored = _T("");
 	Bits_HiBit = _T("");
 
-	Window_1_Center = 0;
-	Window_2_Center = 0;
-	Window_1_Width = 0;
-	Window_2_Width = 0;
-
+	Row = 0;
+	Col = 0;
 	HU_max = 0;
 	HU_min = 0;
+	Window_1_Width = 0;
+	Window_2_Width = 0;
+	Window_1_Center = 0;
+	Window_2_Center = 0;
 
-	X_Spacing = 0.0f;
-	Y_Spacing = 0.0f;
+	Voxel_Spacing_X = 0.0F;
+	Voxel_Spacing_Y = 0.0F;
+	Voxel_Spacing_Z = 0.0F;
 }
 
 DcmDir::DcmDir(Action act, CString& pathName) : DcmDir()
@@ -108,6 +111,8 @@ DcmDir::~DcmDir()
 		Spacing_Between_Slices.Empty();
 	if (Slice_Thickness.IsEmpty() != true)
 		Slice_Thickness.Empty();
+	if (Voxel_Spacing.IsEmpty() != true)
+		Voxel_Spacing.Empty();
 	if (Pixel_Spacing.IsEmpty() != true)
 		Pixel_Spacing.Empty();
 
@@ -187,11 +192,11 @@ void DcmDir::openDirFromSeries(CString& pathName)
 
 					if (imageDir->findAndGetOFString(DCM_Rows, str_temp).good())
 					{
-						m_image->Row = atoi(str_temp.c_str());
+						Row = atoi(str_temp.c_str());
 					}
 					if (imageDir->findAndGetOFString(DCM_Columns, str_temp).good())
 					{
-						m_image->Col = atoi(str_temp.c_str());
+						Col = atoi(str_temp.c_str());
 					}
 					if (imageDir->findAndGetOFString(DCM_InstanceNumber, str_temp).good())
 					{
@@ -220,11 +225,15 @@ void DcmDir::openDirFromSeries(CString& pathName)
 	}
 
 	// 開啟一張DICOM影像，獲得以下參數
+	// (體素的Z軸大小要開到第二張影像，並且用 Slice_Location 來計算)
 	//
-	DcmFileFormat dcm;
-	OFCondition cond = dcm.loadFile((LPCSTR)SeriesList[0]->ImageList[0]->AbsFilePath);
+	double Slice_Location_0 = 0.0F;			// 用以計算體素的Z軸大小
+	double Slice_Location_1 = 0.0F;
 
-	if (cond.good())
+	DcmFileFormat dcm;
+	OFCondition cond_0 = dcm.loadFile((LPCSTR)SeriesList[0]->ImageList[0]->AbsFilePath);
+
+	if (cond_0.good())
 	{
 		if (dcm.getDataset()->findAndGetOFString(DCM_RescaleIntercept, str_temp).good())
 		{
@@ -265,8 +274,12 @@ void DcmDir::openDirFromSeries(CString& pathName)
 		if (dcm.getDataset()->findAndGetOFStringArray(DCM_PixelSpacing, str_temp, true).good())
 		{
 			Pixel_Spacing = str_temp.c_str();
-			X_Spacing = atof(Pixel_Spacing.Left(Pixel_Spacing.Find('\\')));
-			Y_Spacing = atof(Pixel_Spacing.Right(Pixel_Spacing.GetLength() - Pixel_Spacing.Find('\\') - 1));
+			Voxel_Spacing_X = atof(Pixel_Spacing.Left(Pixel_Spacing.Find('\\')));
+			Voxel_Spacing_Y = atof(Pixel_Spacing.Right(Pixel_Spacing.GetLength() - Pixel_Spacing.Find('\\') - 1));
+		}
+		if (dcm.getDataset()->findAndGetOFStringArray(DCM_SliceLocation, str_temp).good())
+		{
+			Slice_Location_0 = atof(str_temp.c_str());
 		}
 		if (dcm.getDataset()->findAndGetOFString(DCM_PixelRepresentation, str_temp).good())
 		{
@@ -289,6 +302,23 @@ void DcmDir::openDirFromSeries(CString& pathName)
 			HU_min = 0 * atoi(Rescale_Slope) + atoi(Rescale_Intercept);
 			HU_max = (int)pow(2, atoi(Bits_Stored)) * atoi(Rescale_Slope) + atoi(Rescale_Intercept);
 		}
+	}
+
+	OFCondition cond_1 = dcm.loadFile((LPCSTR)SeriesList[0]->ImageList[1]->AbsFilePath);
+
+	if (cond_1.good())
+	{
+		if (dcm.getDataset()->findAndGetOFStringArray(DCM_SliceLocation, str_temp).good())
+		{
+			Slice_Location_1 = atof(str_temp.c_str());
+		}
+	}
+
+	if (Slice_Location_0 != 0 && Slice_Location_1 != 0)
+	{
+		Voxel_Spacing_Z = Slice_Location_1 - Slice_Location_0;
+		Voxel_Spacing_Z = (Voxel_Spacing_Z > 0) ? Voxel_Spacing_Z : -Voxel_Spacing_Z;
+		Voxel_Spacing.Format(_T("%lf X %lf X %lf"), Voxel_Spacing_X, Voxel_Spacing_Y, Voxel_Spacing_Z);
 	}
 
 }

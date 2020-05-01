@@ -47,6 +47,7 @@ public:
 	
 	CString		Spacing_Between_Slices;		// 切片間距(mm)
 	CString		Slice_Thickness;			// 切片厚度(mm)
+	CString		Voxel_Spacing;				// 體素大小(mm)
 	CString		Pixel_Spacing;				// 像素間距(mm)
 
 	CString		Pixel_Representation;		// 像素數據的表現類型(0->unsigned；1->signed，如果是1，要減掉2^15)
@@ -54,16 +55,18 @@ public:
 	CString		Bits_Stored;				// 每個像素儲存所佔用的Bits
 	CString		Bits_HiBit;					// High Bit
 
-	int			Window_1_Center;
-	int			Window_2_Center;
+	int			Row;						// 圖片尺寸 : 列(Y軸)
+	int			Col;						// 圖片尺寸 : 行(X軸)
+	int			HU_max;						// 影像紀錄HU最大值
+	int			HU_min;						// 影像紀錄HU最小值
 	int			Window_1_Width;
 	int			Window_2_Width;
+	int			Window_1_Center;
+	int			Window_2_Center;
 
-	int			HU_max;
-	int			HU_min;
-
-	double		X_Spacing;
-	double		Y_Spacing;
+	double		Voxel_Spacing_X;			// 體素X空間大小(mm)
+	double		Voxel_Spacing_Y;			// 體素Y空間大小(mm)
+	double		Voxel_Spacing_Z;			// 體素Z空間大小(mm)
 
 //================//
 //   Operations   //

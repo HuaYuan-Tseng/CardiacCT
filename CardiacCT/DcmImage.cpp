@@ -11,8 +11,6 @@
 
 DcmImage::DcmImage()
 {
-	Row = 0;
-	Col = 0;
 	SliceNumber = 0;
 	AbsFilePath = _T("");
 }

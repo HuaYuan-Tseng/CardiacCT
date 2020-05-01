@@ -23,16 +23,16 @@
 
 #define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
 
-#define Total_Slice m_dir->SeriesList[0]->TotalSliceCount
-#define ROW m_dir->SeriesList[0]->ImageList[0]->Row
-#define COL m_dir->SeriesList[0]->ImageList[0]->Col
-#define Window_Center_1 m_dir->Window_1_Center
-#define Window_Center_2 m_dir->Window_2_Center
+#define ROW m_dir->Row
+#define COL m_dir->Col
 #define Window_Width_1 m_dir->Window_1_Width
 #define Window_Width_2 m_dir->Window_2_Width
-#define Rescale_Intercept atoi(m_dir->Rescale_Intercept)
-#define Rescale_Slope atoi(m_dir->Rescale_Slope)
+#define Window_Center_1 m_dir->Window_1_Center
+#define Window_Center_2 m_dir->Window_2_Center
 #define Bits_Stored atoi(m_dir->Bits_Stored)
+#define Rescale_Slope atoi(m_dir->Rescale_Slope)
+#define Rescale_Intercept atoi(m_dir->Rescale_Intercept)
+#define Total_Slice m_dir->SeriesList[0]->TotalSliceCount
 
 //============//
 //   CCTDoc   //
