@@ -152,7 +152,7 @@ C3DProcess::~C3DProcess()
 	if (m_pos_8.IsEmpty() != true)
 		m_pos_8.Empty();
 
-	glDeleteTextures(5, textureName);
+	glDeleteTextures(ImageFrame, textureName);
 }
 
 void C3DProcess::DoDataExchange(CDataExchange* pDX)
@@ -2065,7 +2065,7 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 
 	judge[seed.z][(seed.y) * Row + (seed.x)] = 1;
 	avg = m_pDoc->m_img[seed.z][(seed.y) * Row + (seed.x)];
-
+	
 	while (!list.empty())
 	{
 		current = list.front();
