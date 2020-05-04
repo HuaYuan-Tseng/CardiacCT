@@ -11,8 +11,8 @@
 #define IDS_TOOLBAR_STANDARD            124
 #define IDS_TOOLBAR_CUSTOMIZE           125
 #define ID_VIEW_CUSTOMIZE               126
+#define IDI_ICON1                       127
 #define IDR_MAINFRAME                   128
-#define IDI_ICON1                       128
 #define IDR_MAINFRAME_256               129
 #define IDS_EDIT_MENU                   306
 #define IDI_ICON2                       312
