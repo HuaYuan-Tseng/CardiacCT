@@ -2060,7 +2060,7 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 	double volume;
 	double up_limit;
 	double down_limit;
-	double threshold = 10.0L;
+	double threshold = 20.0L;
 	unsigned int n = 1;
 
 	judge[seed.z][(seed.y) * Row + (seed.x)] = 1;

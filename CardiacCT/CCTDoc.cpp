@@ -282,6 +282,12 @@ void CCTDoc::OnToolButton3DProcess()
 
 	if (m_dir != nullptr)
 	{
+		if (m_img == nullptr)
+		{
+			AfxMessageBox("Please select a series data¡I");
+			return;
+		}
+
 		C3DProcess* m_3DProcessDlg = new C3DProcess();
 		m_3DProcessDlg->m_pDoc = this;
 
