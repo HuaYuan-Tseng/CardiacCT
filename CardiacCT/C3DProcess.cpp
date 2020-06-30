@@ -7,8 +7,9 @@
 #include "C3DProcess.h"
 #include "CProgress.h"
 #include "CWait.h"
-#include <queue>
 #include "afxdialogex.h"
+#include <queue>
+#include <thread>
 using namespace std;
 
 #define M_PI 3.1415926F
@@ -965,13 +966,13 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	//------------------------------------------------------------//
 
 	float pixel;
-	int Row = ROW;
-	int Col = COL;
-	int totalx = ROW * COL;
-	int totaly = Total_Slice;
-	int TotalSlice = Total_Slice;
-	int Sample_start = 0 + Mat_Offset;
-	int Sample_end = 0 + Mat_Offset + TotalSlice;
+	const int Row = ROW;
+	const int Col = COL;
+	const int totalx = ROW * COL;
+	const int totaly = Total_Slice;
+	const int TotalSlice = Total_Slice;
+	const int Sample_start = 0 + Mat_Offset;
+	const int Sample_end = 0 + Mat_Offset + TotalSlice;
 
 	// 恢復 : 成長判定矩陣
 	//
@@ -1172,11 +1173,11 @@ void C3DProcess::PrepareVolume()
 
 	// 預備要用來建立紋理的資料矩陣
 	//
-	int Row = ROW;
-	int Col = COL;
-	int TotalSlice = Total_Slice;
-	int Sample_start = 0 + Mat_Offset;
-	int Sample_end = 0 + Mat_Offset + TotalSlice;
+	const int Row = ROW;
+	const int Col = COL;
+	const int TotalSlice = Total_Slice;
+	const int Sample_start = 0 + Mat_Offset;
+	const int Sample_end = 0 + Mat_Offset + TotalSlice;
 	
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
@@ -1670,8 +1671,8 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 	//
 	CClientDC dc(m_2D_frame);
 
-	int Row = ROW;
-	int Col = COL;
+	const int Row = ROW;
+	const int Col = COL;
 	register int i, j;
 
 	if (m_pDoc->m_img == nullptr)
@@ -1770,7 +1771,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		//
 		if (get_3Dseed)
 		{
-			if (slice == (unsigned short)seed_img.z)
+			if (slice == seed_img.z)
 			{
 				for (i = -1; i <= 1; i++)
 				{
@@ -2065,7 +2066,8 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 
 	judge[seed.z][(seed.y) * Row + (seed.x)] = 1;
 	avg = m_pDoc->m_img[seed.z][(seed.y) * Row + (seed.x)];
-	
+
+		
 	while (!list.empty())
 	{
 		current = list.front();

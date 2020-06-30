@@ -313,7 +313,6 @@ void DcmDir::openDirFromSeries(CString& pathName)
 			Slice_Location_1 = atof(str_temp.c_str());
 		}
 	}
-
 	if (Slice_Location_0 != 0 && Slice_Location_1 != 0)
 	{
 		Voxel_Spacing_Z = Slice_Location_1 - Slice_Location_0;
