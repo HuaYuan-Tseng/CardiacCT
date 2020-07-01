@@ -956,13 +956,32 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	//
 	if (get_3Dseed)
 	{
-		growingVolume += Region_Growing(seed_img);
+		//growingVolume += Region_Growing_3D_Total(seed_img);
+		
+		double volume_up = 0;
+		double volume_down = 0;
+
+		CWait* m_wait = new CWait();
+		m_wait->Create(IDD_DIALOG_WAIT);
+		m_wait->ShowWindow(SW_NORMAL);
+		m_wait->setDisplay("Region growing...");
+
+		thread	mThread_1(&C3DProcess::Region_Growing_3D_Up, this, ref(volume_up));
+		thread	mThread_2(&C3DProcess::Region_Growing_3D_Down, this, ref(volume_down));
+		
+		mThread_1.join();
+		mThread_2.join();
+		growingVolume = growingVolume + volume_up + volume_down;
+
 		m_result.Format("%lf", growingVolume);
 		get_regionGrow = true;
 		
+		LoadVolume();
+		Draw3DImage(true);
 		UpdateData(FALSE);
 		Draw2DImage(DisplaySlice);
 		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
+		delete m_wait;
 	}
 }
 
@@ -2050,8 +2069,10 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-double C3DProcess::Region_Growing(Seed_s& seed)
+double C3DProcess::Region_Growing_3D_Total(Seed_s& seed)
 {
+	//	DO : 3D 區域成長 - 做全部
+	//
 	const int Row = ROW;
 	const int Col = COL;
 	const int TotalSlice = Total_Slice;
@@ -2085,7 +2106,6 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 
 	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
 	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
-
 		
 	while (!list.empty())
 	{
@@ -2130,7 +2150,6 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 		list.pop();
 	}
 
-
 	TRACE1("Growing Pixel : %d \n", n);
 	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 
@@ -2142,4 +2161,164 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 	return volume;
 }
 
+void C3DProcess::Region_Growing_3D_Up(double& volume)
+{
+	//	DO : 3D 區域成長 - 做上半部分 (0 <= n <= seed's slice)
+	//
+	const int Row = ROW;
+	const int Col = COL;
+	const int TotalSlice = Total_Slice;
+	register int i, j, k;
 
+	short S_HU = 0;
+	short N_HU = 0;
+	short S_pixel = 0;
+	short N_pixel = 0;
+
+	int count = 0;
+	int Kernel = 3;								// 保持奇數
+	int range = (Kernel - 1) / 2;
+
+	Seed_s seed = seed_img;
+	Seed_s temp;
+	Seed_s current;								// 當前seed
+	queue<Seed_s> list;
+	list.push(seed);
+
+	double avg;
+	//double volume;
+	double up_limit;
+	double down_limit;
+	double threshold = 20.0L;
+	unsigned int n = 1;
+
+	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
+	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
+
+	while (!list.empty())
+	{
+		current = list.front();
+		up_limit = avg + threshold;
+		down_limit = avg - threshold;
+
+		for (k = -range; k <= range; k++)
+		{
+			for (j = -range; j <= range; j++)
+			{
+				for (i = -range; i <= range; i++)
+				{
+					if ((current.x + i) < (Col) && (current.x + i) >= 0 &&
+						(current.y + j) < (Row) && (current.y + j) >= 0 &&
+						(current.z + k) <= (seed.z) && (current.z + k) >= 0)
+					{
+						if (judge[current.z + k][(current.y + j) * Col + (current.x + i)] != 1)
+						{
+							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Col + (current.x + i)];
+
+							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
+							{
+								temp.x = current.x + i;
+								temp.y = current.y + j;
+								temp.z = current.z + k;
+								list.push(temp);
+
+								judge[current.z + k][(current.y + j) * Col + (current.x + i)] = 1;
+
+								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
+									(float)N_pixel / 255.0F, 1);
+
+								avg = (avg * n + N_pixel) / (n + 1);
+								n += 1;
+							}
+						}
+					}
+				}
+			}
+		}
+		list.pop();
+	}
+	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	// 單位(cm3)
+	TRACE1("Growing Pixel : %lf \n", volume);
+	
+}
+
+void C3DProcess::Region_Growing_3D_Down(double& volume)
+{
+	//	DO : 3D 區域成長 - 做下半部分 (seed's slice < n <= Total-1)
+	//
+	const int Row = ROW;
+	const int Col = COL;
+	const int TotalSlice = Total_Slice;
+	register int i, j, k;
+
+	short S_HU = 0;
+	short N_HU = 0;
+	short S_pixel = 0;
+	short N_pixel = 0;
+
+	int count = 0;
+	int Kernel = 3;								// 保持奇數
+	int range = (Kernel - 1) / 2;
+
+	Seed_s seed = seed_img;
+	Seed_s temp;
+	Seed_s current;								// 當前seed
+	queue<Seed_s> list;
+	list.push(seed);
+
+	double avg;
+	//double volume;
+	double up_limit;
+	double down_limit;
+	double threshold = 20.0L;
+	unsigned int n = 1;
+
+	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
+	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
+
+	while (!list.empty())
+	{
+		current = list.front();
+		up_limit = avg + threshold;
+		down_limit = avg - threshold;
+
+		for (k = -range; k <= range; k++)
+		{
+			for (j = -range; j <= range; j++)
+			{
+				for (i = -range; i <= range; i++)
+				{
+					if ((current.x + i) < (Col) && (current.x + i) >= 0 &&
+						(current.y + j) < (Row) && (current.y + j) >= 0 &&
+						(current.z + k) < (TotalSlice) && (current.z + k) > seed.z)
+					{
+						if (judge[current.z + k][(current.y + j) * Col + (current.x + i)] != 1)
+						{
+							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Col + (current.x + i)];
+
+							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
+							{
+								temp.x = current.x + i;
+								temp.y = current.y + j;
+								temp.z = current.z + k;
+								list.push(temp);
+
+								judge[current.z + k][(current.y + j) * Col + (current.x + i)] = 1;
+
+								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
+									(float)N_pixel / 255.0F, 1);
+
+								avg = (avg * n + N_pixel) / (n + 1);
+								n += 1;
+							}
+						}
+					}
+				}
+			}
+		}
+		list.pop();
+	}
+	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	// 單位(cm3)
+	TRACE1("Growing Pixel : %lf \n", volume);
+	
+}
