@@ -1210,7 +1210,6 @@ void C3DProcess::PrepareVolume()
 	LoadVolume();
 	m_progress->DestroyWindow();
 	delete m_progress;
-	
 }
 
 void C3DProcess::LoadVolume()
