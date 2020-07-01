@@ -53,7 +53,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	bool			Act_Translate;
 
 	float			scale_x;			// э陪ボゑㄒ把计
-	float			scale_y;
+	float			scale_y;			// 兜计は滦代刚┮砞﹚
 	float			scale_z;
 	float			density;
 	float			intensity;
@@ -89,7 +89,10 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	bool			get_3Dseed;			// 琌翴匡3D贺翴
 	bool			get_2Dseed;			// 琌翴匡2D贺翴
 	bool			get_regionGrow;		// 琌磅︽筁跋办Θ
-	float			z_index;			// タZ禸把计
+
+	float			x_index;			// タ X 禸ゑㄒ把计
+	float			y_index;			// タ Y 禸ゑㄒ把计
+	float			z_index;			// タ Z 禸ゑㄒ把计
 
 	BYTE**			judge;				// 跋办Θ﹚
 	BYTE			m_image0[256*256*256][4];

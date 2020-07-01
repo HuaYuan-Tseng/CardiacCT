@@ -76,11 +76,15 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	get_3Dseed = false;
 	get_regionGrow = false;
 	
-	scale_x = 0.3F;
-	scale_y = 0.5F;
-	scale_z = 0.5F;
 	glSlices = 512;
 	density = 0.0F;
+
+	x_index = 0.5F;
+	y_index = 0.5F;
+	z_index = 0.7F;
+	scale_x = 0.3F;
+	scale_y = 0.495F;
+	scale_z = 0.495F;
 	intensity = 0.8125F;
 	viewDistance = -4.0F;
 	
@@ -88,8 +92,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	ImageFrame = 1;
 	obj_angle = 0.0F;
 	pln_angle = 0.0F;
-
-	z_index = 0.7F;
+	
 	seed_pt = { 0, 0, 0 };
 	seed_img = { 0, 0, 0 };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
@@ -308,6 +311,17 @@ BOOL C3DProcess::OnInitDialog()
 	else if (totaly > 350)
 		scale_x = 0.4F;
 	
+	//-------------------------------------------------------------------------------------//
+	// 設定校正參數
+	//
+	x_index = (2.0F / 511.0F) * (COL / 2.0F) / 2;
+	x_index = x_index / scale_y;
+	y_index = (2.0F / 511.0F) * (ROW / 2.0F) / 2;
+	y_index = y_index / scale_z;
+	z_index = (2.0F / 511.0F) * (Total_Slice / 2.0F) / 2;
+	z_index = z_index / scale_x;
+
+	//-------------------------------------------------------------------------------------//
 	// openGL空間建立
 	//
 	m_hDC = ::GetDC(m_3D_frame->m_hWnd);					// 獲得畫布物件DC的HANDLE（hDC）
@@ -915,8 +929,8 @@ void C3DProcess::OnBnClickedButtonSeedChange()
 	{
 		seed_img = seed_pt;
 
-		seed_gl.x = (double)(seed_pt.x * ((1.0F - (-1.0F)) / 512.0F) - 1);
-		seed_gl.y = (double)(seed_pt.y * ((1.0F - (-1.0F)) / 512.0F) - 1);
+		seed_gl.x = (double)(seed_pt.x / (COL / ((x_index + 1) - (-x_index + 1))) + (-x_index + 1) - 1);
+		seed_gl.y = (double)(seed_pt.y / (ROW / ((y_index + 1) - (-y_index + 1))) + (-y_index + 1) - 1);
 		seed_gl.z = (double)(seed_pt.z / (Total_Slice / ((z_index + 1) - (-z_index + 1))) + (-z_index + 1) - 1);
 
 		m_pos_5.Format("%d", (int)seed_pt.x);
@@ -1934,36 +1948,42 @@ C3DProcess::Seed_s C3DProcess::coordiConvert(Seed_d& pt)
 {
 	// openGL coordinate -> data array
 	//
-	// 由於在3D視窗上，每一張slice的x和y軸都貼齊藍色邊界，且以世界座標來看，數值都介於-1～1之間。
-	// 所以在轉換回去矩陣資料位置時，首先將世界座標+1，將原點從中間移到最左邊(-1~0~1 => 0~1~2)，
-	// 換算每個矩陣為多少openGL的距離，再將現在的位置轉為"矩陣"位置(512*512)。
+	// 假設立方體長.寬.高都是 512 (以矩陣來說)，頂點位置都是從 -1 到 1 (以GL空間來說)，
+	// 則換算種子點的某軸位置時，先計算矩陣與GL空間的比例 ，再計算矩陣(或切片)一半的數量，
+	// 最後兩者相乘換算後除以 2 ，就是原始影像兩端某一端在 openGL 空間的軸位置，
+	// 但因為影像還有做縮放，所以除以縮放比例後獲得的結果，才是頂端真正的軸位置，
+	// 接著，因為兩端位置是對稱關係，所以最後利用某一端端位置、另一端位置、矩陣數、
+	// 以及現在種子點的軸位置去做三角比例換算，獲得的結果即為種子點的切片位置。
 	
 	Seed_s temp;
 	double tmp_x, tmp_y, tmp_z;
 
-	tmp_x = (pt.x + 1) / ((1.0F - (-1.0F)) / 512.0F);
+	x_index = (2.0F / 511.0F) * (COL / 2.0F) / 2;
+	x_index = x_index / scale_y;
+	tmp_x = ((pt.x + 1) - (-x_index + 1)) * (COL / ((x_index + 1) - (-x_index + 1)));
 
 	if (tmp_x - (int)tmp_x == 0)
 		temp.x = (short)tmp_x - 1;
 	else
 		temp.x = (short)tmp_x;
 
-	tmp_y = (pt.y + 1) / ((1.0F - (-1.0F)) / 512.0F);
+	//-------------------------------------------------------------------------------//
+
+	y_index = (2.0F / 511.0F) * (ROW / 2.0F) / 2;
+	y_index = y_index / scale_z;
+	tmp_y = ((pt.y + 1) - (-y_index + 1)) * (ROW / ((y_index + 1) - (-y_index + 1)));
 
 	if (tmp_y - (int)tmp_y == 0)
 		temp.y = (short)tmp_y - 1;
 	else
 		temp.y = (short)tmp_y;
-
-	// 由於Z軸(slice)不像X軸或Y軸，在3D空間是貼齊藍色邊界，所以無法像上面的X.Y軸一樣轉換，
-	// 若沒有做Z軸校正，則是直接計算一張slice在openGL空間裡的高度距離，並且從中心做縮放，
-	// 若有做Z軸校正(直接在影像上的最頂或最底點一點(建議直接點脊椎))，因為影像Z軸有置中，
-	// 也就是有對稱，所以直接利用最頂and最底的openGL_Z軸座標與slice的關係做換算。
 	
-	z_index = (2.0F / 511.0F)*(Total_Slice / 2.0F) / 2;
+	//-------------------------------------------------------------------------------//
+
+	z_index = (2.0F / 511.0F) * (Total_Slice / 2.0F) / 2;
 	z_index = z_index / scale_x;
 	
-	tmp_z = ((pt.z + 1) - (-z_index + 1))*(Total_Slice / ((z_index + 1) - (-z_index + 1)));
+	tmp_z = ((pt.z + 1) - (-z_index + 1)) * (Total_Slice / ((z_index + 1) - (-z_index + 1)));
 
 	if (tmp_z < 1)
 		tmp_z = (double)1;
@@ -2096,16 +2116,9 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 
 								judge[current.z + k][(current.y + j) * Row + (current.x + i)] = 1;
 
-								// 此 if 只是用來限制成長區域的渲染範圍(怕超過，clear也clear不掉QQ)
-								//
-								if ((current.x + i) < (Col - 2) && (current.x + i) >= 2 &&
-									(current.y + j) < (Row - 2) && (current.y + j) >= 2 &&
-									(current.z + k) < (TotalSlice) && (current.z + k) >= 2)
-								{
-									getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
-										(float)N_pixel / 255.0F, 1);
-								}
-
+								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
+									(float)N_pixel / 255.0F, 1);
+								
 								avg = (avg * n + N_pixel) / (n + 1);
 								n += 1;
 							}
