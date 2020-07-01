@@ -1770,7 +1770,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			{
 				for (i = 0; i < 512; i++)
 				{
-					if (judge[DisplaySlice][j * 512 + i] == 1)
+					if (judge[DisplaySlice][j * Col + i] == 1)
 					{
 						pt.x = i;
 						pt.y = j;
@@ -2083,8 +2083,8 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 	double threshold = 20.0L;
 	unsigned int n = 1;
 
-	judge[seed.z][(seed.y) * Row + (seed.x)] = 1;
-	avg = m_pDoc->m_img[seed.z][(seed.y) * Row + (seed.x)];
+	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
+	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
 
 		
 	while (!list.empty())
@@ -2103,9 +2103,9 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 						(current.y + j) < (Row) && (current.y + j) >= 0 &&
 						(current.z + k) < (TotalSlice) && (current.z + k) >= 0)
 					{
-						if (judge[current.z + k][(current.y + j) * Row + (current.x + i)] != 1)
+						if (judge[current.z + k][(current.y + j) * Col + (current.x + i)] != 1)
 						{
-							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Row + (current.x + i)];
+							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Col + (current.x + i)];
 
 							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
 							{
@@ -2114,7 +2114,7 @@ double C3DProcess::Region_Growing(Seed_s& seed)
 								temp.z = current.z + k;
 								list.push(temp);
 
-								judge[current.z + k][(current.y + j) * Row + (current.x + i)] = 1;
+								judge[current.z + k][(current.y + j) * Col + (current.x + i)] = 1;
 
 								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
 									(float)N_pixel / 255.0F, 1);
