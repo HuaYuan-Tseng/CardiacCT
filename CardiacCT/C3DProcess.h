@@ -89,8 +89,8 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	{
 		_IN		Seed_s	seed;			// 種子點
 		_IN		int		kernel;			// 保持奇數
-		_IN		int		z_upLimit;		// Z軸成長上限
-		_IN		int		z_downLimit;	// Z軸成長下限
+		_IN		int		z_upLimit;		// Z軸成長上限(最多到 0)
+		_IN		int		z_downLimit;	// Z軸成長下限(最多到 TotalSlice)
 		_IN		double	threshold;		// 成長閾值
 		_OUT	double	growingVolume;	// 成長體積
 	}	RG_Factor;
