@@ -966,14 +966,12 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 			0
 		};
 
-		Region_Growing_3D_Total(RG_Total);
+		Region_Growing_3D(RG_Total);
 		//thread	mThread_1(&C3DProcess::Region_Growing_3D_Up, this, ref(seed_img), ref(volume_up));
 		//thread	mThread_2(&C3DProcess::Region_Growing_3D_Down, this, ref(seed_img), ref(volume_down));
-		
 		//mThread_1.join();
 		//mThread_2.join();
-		//growingVolume = growingVolume + volume_up + volume_down;
-
+		
 		m_result.Format("%lf", RG_Total.growingVolume);
 		get_regionGrow = true;
 		
@@ -982,6 +980,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		Draw3DImage(true);
 		Draw2DImage(DisplaySlice);
 		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
+		m_wait->DestroyWindow();
 		delete m_wait;
 	}
 }
@@ -994,7 +993,7 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	if (!get_regionGrow)	return;
 
 	get_regionGrow = false;
-	m_result.Format("%lf", 0.0F);
+	m_result = _T("0.0");
 	RG_Total.growingVolume = 0.0L;
 	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 	//------------------------------------------------------------//
@@ -2070,7 +2069,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-void C3DProcess::Region_Growing_3D_Total(C3DProcess::RG_Factor& factor)
+void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 {
 	//	DO : 3D 區域成長 - 做全部
 	//

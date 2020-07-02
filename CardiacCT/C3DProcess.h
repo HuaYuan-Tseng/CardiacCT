@@ -142,10 +142,7 @@ public:
 	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
-	void	Region_Growing_3D_Up(Seed_s& seed, double& volume);
-	void	Region_Growing_3D_Down(Seed_s& seed, double& volume);
-
-	void	Region_Growing_3D_Total(RG_Factor& factor);	// 3D 區域成長 - 做全部
+	void	Region_Growing_3D(RG_Factor& factor);		// 3D 區域成長 - 做全部
 	Seed_s	coordiConvert(Seed_d& pt);					// openGL coordinate -> data array site
 
 	
