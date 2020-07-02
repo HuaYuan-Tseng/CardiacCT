@@ -12,26 +12,23 @@
 #include <thread>
 using namespace std;
 
-#define M_PI 3.1415926F
-#define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
-#define New3Dmatrix(H, W, L, TYPE) (TYPE***)new3Dmatrix(H, W, L, sizeof(TYPE))
-#define New4Dmatrix(H, W, L, V, TYPE) (TYPE****)new4Dmatrix(H, W, L, V, sizeof(TYPE))
+constexpr auto M_PI = 3.1415926F;
 
 #define ROW m_pDoc->m_dir->Row
 #define COL m_pDoc->m_dir->Col
-#define HU_min m_pDoc->m_dir->HU_min
-#define HU_max m_pDoc->m_dir->HU_max
+#define HU_Min m_pDoc->m_dir->HU_min
+#define HU_Max m_pDoc->m_dir->HU_max
 #define Display_Series m_pDoc->displaySeries
-#define Window_Width_1 m_pDoc->m_dir->Window_1_Width
-#define Window_Width_2 m_pDoc->m_dir->Window_2_Width
-#define Window_Center_1 m_pDoc->m_dir->Window_1_Center
-#define Window_Center_2 m_pDoc->m_dir->Window_2_Center
 #define VoxelSpacing_X m_pDoc->m_dir->Voxel_Spacing_X
 #define VoxelSpacing_Y m_pDoc->m_dir->Voxel_Spacing_Y
 #define VoxelSpacing_Z m_pDoc->m_dir->Voxel_Spacing_Z
-#define Rescale_Slope atoi(m_pDoc->m_dir->Rescale_Slope)
-#define Rescale_Intercept atoi(m_pDoc->m_dir->Rescale_Intercept)
+#define RescaleSlope atoi(m_pDoc->m_dir->Rescale_Slope)
+#define RescaleIntercept atoi(m_pDoc->m_dir->Rescale_Intercept)
 #define Total_Slice m_pDoc->m_dir->SeriesList[0]->TotalSliceCount
+
+#define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
+#define New3Dmatrix(H, W, L, TYPE) (TYPE***)new3Dmatrix(H, W, L, sizeof(TYPE))
+#define New4Dmatrix(H, W, L, V, TYPE) (TYPE****)new4Dmatrix(H, W, L, V, sizeof(TYPE))
 
 //==========================//
 //   3D Processing Dialog   //
@@ -75,9 +72,6 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	get_2Dseed = false;
 	get_3Dseed = false;
 	get_regionGrow = false;
-	
-	glSlices = 512;
-	density = 0.0F;
 
 	x_index = 0.5F;
 	y_index = 0.5F;
@@ -85,22 +79,22 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	scale_x = 0.3F;
 	scale_y = 0.495F;
 	scale_z = 0.495F;
+	density = 0.000F;
 	intensity = 0.8125F;
 	viewDistance = -4.0F;
-	
+
 	transY = 0.0F;
 	ImageFrame = 1;
+	glSlices = 512;
 	obj_angle = 0.0F;
 	pln_angle = 0.0F;
-	
+	DisplaySlice = 0;
+	HUThreshold = atoi(m_HUThreshold);
+	PixelThreshold = atoi(m_pixelThreshold);
+
 	seed_pt = { 0, 0, 0 };
 	seed_img = { 0, 0, 0 };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
-
-	DisplaySlice = 0;
-	growingVolume = 0.0F;
-	HUThreshold = atoi(m_HUThreshold);
-	PixelThreshold = atoi(m_pixelThreshold);
 
 	glVertexPt = New2Dmatrix(64, 3, float);
 	lastPos = new float[3]{ 0.0F, 0.0F, 0.0F };
@@ -176,7 +170,7 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDV_MinMaxInt(pDX, atoi(m_slices), 1, 512);
 
 	DDX_Text(pDX, IDC_EDIT_HU_THRESHOLD, m_HUThreshold);
-	DDV_MinMaxShort(pDX, atoi(m_HUThreshold), HU_min, HU_max);
+	DDV_MinMaxShort(pDX, atoi(m_HUThreshold), HU_Min, HU_Max);
 
 	DDX_Text(pDX, IDC_EDIT_PIXEL_THRESHOLD, m_pixelThreshold);
 	DDV_MinMaxShort(pDX, atoi(m_pixelThreshold), 0, 255);
@@ -260,7 +254,7 @@ BOOL C3DProcess::OnInitDialog()
 	//m_3D_frame->MoveWindow(m_3D_rect.left, m_3D_rect.top, COL, ROW, true);
 
 	m_2D_dib = new CDIB();							
-	m_2D_dib->InitDIB(COL, ROW);							// 初始化畫框
+	m_2D_dib->InitDIB(COL, ROW);											// 初始化畫框
 
 	// 設定ScrollBar的範圍
 	//
@@ -277,11 +271,10 @@ BOOL C3DProcess::OnInitDialog()
 	//-------------------------------------------------------------------------------------//
 	// 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值
 	//
-	judge = New2Dmatrix(Total_Slice, ROW*COL, BYTE);
-
 	register int i, j;
 	int totalx = ROW * COL;
 	int totaly = Total_Slice;
+	judge = New2Dmatrix(Total_Slice, ROW * COL, BYTE);
 
 	for (j = 0; j < totaly; j++)
 	{
@@ -956,29 +949,37 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	//
 	if (get_3Dseed)
 	{
-		//growingVolume += Region_Growing_3D_Total(seed_img);
-		
 		double volume_up = 0;
 		double volume_down = 0;
-
+		 
 		CWait* m_wait = new CWait();
 		m_wait->Create(IDD_DIALOG_WAIT);
 		m_wait->ShowWindow(SW_NORMAL);
 		m_wait->setDisplay("Region growing...");
 
-		thread	mThread_1(&C3DProcess::Region_Growing_3D_Up, this, ref(volume_up));
-		thread	mThread_2(&C3DProcess::Region_Growing_3D_Down, this, ref(volume_down));
-		
-		mThread_1.join();
-		mThread_2.join();
-		growingVolume = growingVolume + volume_up + volume_down;
+		RG_Total = {
+			seed_img,
+			3,
+			0,
+			Total_Slice,
+			20.L,
+			0
+		};
 
-		m_result.Format("%lf", growingVolume);
+		Region_Growing_3D_Total(RG_Total);
+		//thread	mThread_1(&C3DProcess::Region_Growing_3D_Up, this, ref(seed_img), ref(volume_up));
+		//thread	mThread_2(&C3DProcess::Region_Growing_3D_Down, this, ref(seed_img), ref(volume_down));
+		
+		//mThread_1.join();
+		//mThread_2.join();
+		//growingVolume = growingVolume + volume_up + volume_down;
+
+		m_result.Format("%lf", RG_Total.growingVolume);
 		get_regionGrow = true;
 		
 		LoadVolume();
-		Draw3DImage(true);
 		UpdateData(FALSE);
+		Draw3DImage(true);
 		Draw2DImage(DisplaySlice);
 		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
 		delete m_wait;
@@ -992,9 +993,9 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	//
 	if (!get_regionGrow)	return;
 
-	growingVolume = 0.0F;
 	get_regionGrow = false;
-	m_result.Format("%lf", growingVolume);
+	m_result.Format("%lf", 0.0F);
+	RG_Total.growingVolume = 0.0L;
 	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 	//------------------------------------------------------------//
 
@@ -2069,7 +2070,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-double C3DProcess::Region_Growing_3D_Total(Seed_s& seed)
+void C3DProcess::Region_Growing_3D_Total(C3DProcess::RG_Factor& factor)
 {
 	//	DO : 3D 區域成長 - 做全部
 	//
@@ -2084,29 +2085,23 @@ double C3DProcess::Region_Growing_3D_Total(Seed_s& seed)
 	short N_pixel = 0;
 
 	int count = 0;
-	int Kernel = 3;								// 保持奇數
-	int range = (Kernel - 1) / 2;
+	int range = (factor.kernel - 1) / 2;
 
-	CWait* m_wait = new CWait();
-	m_wait->Create(IDD_DIALOG_WAIT);
-	m_wait->ShowWindow(SW_NORMAL);
-	m_wait->setDisplay("Region growing...");
-
-	Seed_s temp;			
-	Seed_s current;								// 當前seed
+	double avg;
+	double up_limit;
+	double down_limit;
+	double threshold = factor.threshold;
+	
+	Seed_s temp;								// 當前 判斷的周圍seed
+	Seed_s current;								// 當前 判斷的中心seed
+	Seed_s seed = factor.seed;					// 初始seed
 	queue<Seed_s> list;
 	list.push(seed);
 
-	double avg;
-	double volume;
-	double up_limit;
-	double down_limit;
-	double threshold = 20.0L;
-	unsigned int n = 1;
-
 	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
 	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
-		
+	
+	unsigned int n = 1;
 	while (!list.empty())
 	{
 		current = list.front();
@@ -2121,7 +2116,7 @@ double C3DProcess::Region_Growing_3D_Total(Seed_s& seed)
 				{
 					if ((current.x + i) < (Col) && (current.x + i) >= 0 &&
 						(current.y + j) < (Row) && (current.y + j) >= 0 &&
-						(current.z + k) < (TotalSlice) && (current.z + k) >= 0)
+						(current.z + k) < (factor.z_downLimit) && (current.z + k) >= factor.z_upLimit)
 					{
 						if (judge[current.z + k][(current.y + j) * Col + (current.x + i)] != 1)
 						{
@@ -2151,174 +2146,5 @@ double C3DProcess::Region_Growing_3D_Total(Seed_s& seed)
 	}
 
 	TRACE1("Growing Pixel : %d \n", n);
-	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
-
-	LoadVolume();
-	Draw3DImage(true);
-	m_wait->DestroyWindow();
-	
-	delete m_wait;
-	return volume;
-}
-
-void C3DProcess::Region_Growing_3D_Up(double& volume)
-{
-	//	DO : 3D 區域成長 - 做上半部分 (0 <= n <= seed's slice)
-	//
-	const int Row = ROW;
-	const int Col = COL;
-	const int TotalSlice = Total_Slice;
-	register int i, j, k;
-
-	short S_HU = 0;
-	short N_HU = 0;
-	short S_pixel = 0;
-	short N_pixel = 0;
-
-	int count = 0;
-	int Kernel = 3;								// 保持奇數
-	int range = (Kernel - 1) / 2;
-
-	Seed_s seed = seed_img;
-	Seed_s temp;
-	Seed_s current;								// 當前seed
-	queue<Seed_s> list;
-	list.push(seed);
-
-	double avg;
-	//double volume;
-	double up_limit;
-	double down_limit;
-	double threshold = 20.0L;
-	unsigned int n = 1;
-
-	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
-	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
-
-	while (!list.empty())
-	{
-		current = list.front();
-		up_limit = avg + threshold;
-		down_limit = avg - threshold;
-
-		for (k = -range; k <= range; k++)
-		{
-			for (j = -range; j <= range; j++)
-			{
-				for (i = -range; i <= range; i++)
-				{
-					if ((current.x + i) < (Col) && (current.x + i) >= 0 &&
-						(current.y + j) < (Row) && (current.y + j) >= 0 &&
-						(current.z + k) <= (seed.z) && (current.z + k) >= 0)
-					{
-						if (judge[current.z + k][(current.y + j) * Col + (current.x + i)] != 1)
-						{
-							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Col + (current.x + i)];
-
-							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
-							{
-								temp.x = current.x + i;
-								temp.y = current.y + j;
-								temp.z = current.z + k;
-								list.push(temp);
-
-								judge[current.z + k][(current.y + j) * Col + (current.x + i)] = 1;
-
-								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
-									(float)N_pixel / 255.0F, 1);
-
-								avg = (avg * n + N_pixel) / (n + 1);
-								n += 1;
-							}
-						}
-					}
-				}
-			}
-		}
-		list.pop();
-	}
-	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	// 單位(cm3)
-	TRACE1("Growing Pixel : %lf \n", volume);
-	
-}
-
-void C3DProcess::Region_Growing_3D_Down(double& volume)
-{
-	//	DO : 3D 區域成長 - 做下半部分 (seed's slice < n <= Total-1)
-	//
-	const int Row = ROW;
-	const int Col = COL;
-	const int TotalSlice = Total_Slice;
-	register int i, j, k;
-
-	short S_HU = 0;
-	short N_HU = 0;
-	short S_pixel = 0;
-	short N_pixel = 0;
-
-	int count = 0;
-	int Kernel = 3;								// 保持奇數
-	int range = (Kernel - 1) / 2;
-
-	Seed_s seed = seed_img;
-	Seed_s temp;
-	Seed_s current;								// 當前seed
-	queue<Seed_s> list;
-	list.push(seed);
-
-	double avg;
-	//double volume;
-	double up_limit;
-	double down_limit;
-	double threshold = 20.0L;
-	unsigned int n = 1;
-
-	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
-	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
-
-	while (!list.empty())
-	{
-		current = list.front();
-		up_limit = avg + threshold;
-		down_limit = avg - threshold;
-
-		for (k = -range; k <= range; k++)
-		{
-			for (j = -range; j <= range; j++)
-			{
-				for (i = -range; i <= range; i++)
-				{
-					if ((current.x + i) < (Col) && (current.x + i) >= 0 &&
-						(current.y + j) < (Row) && (current.y + j) >= 0 &&
-						(current.z + k) < (TotalSlice) && (current.z + k) > seed.z)
-					{
-						if (judge[current.z + k][(current.y + j) * Col + (current.x + i)] != 1)
-						{
-							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Col + (current.x + i)];
-
-							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
-							{
-								temp.x = current.x + i;
-								temp.y = current.y + j;
-								temp.z = current.z + k;
-								list.push(temp);
-
-								judge[current.z + k][(current.y + j) * Col + (current.x + i)] = 1;
-
-								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
-									(float)N_pixel / 255.0F, 1);
-
-								avg = (avg * n + N_pixel) / (n + 1);
-								n += 1;
-							}
-						}
-					}
-				}
-			}
-		}
-		list.pop();
-	}
-	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	// 單位(cm3)
-	TRACE1("Growing Pixel : %lf \n", volume);
-	
+	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }

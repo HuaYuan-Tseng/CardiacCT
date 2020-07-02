@@ -12,6 +12,9 @@
 #include "glew.h"
 #include "freeglut.h"
 
+#define _IN							
+#define _OUT		
+
 class C3DProcess : public CDialogEx
 {
 	DECLARE_DYNAMIC(C3DProcess)
@@ -82,6 +85,17 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 		double x, y, z;
 	}	Seed_d;
 
+	typedef struct
+	{
+		_IN		Seed_s	seed;			// 種子點
+		_IN		int		kernel;			// 保持奇數
+		_IN		int		z_upLimit;		// Z軸成長上限
+		_IN		int		z_downLimit;	// Z軸成長下限
+		_IN		double	threshold;		// 成長閾值
+		_OUT	double	growingVolume;	// 成長體積
+	}	RG_Factor;
+
+	RG_Factor		RG_Total;			// 區域成長條件與情況
 	Seed_d			seed_gl;			// 在3D視窗點擊的seed openGL世界座標
 	Seed_s			seed_pt;			// 在2D視窗點擊的seed座標
 	Seed_s			seed_img;			// 3D_seed的世界座標轉換為原影像"矩陣"(512*512)座標
@@ -102,8 +116,6 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	short			HUThreshold;		// 二值化閾值(HU)
 unsigned short		PixelThreshold;		// 二值化閾值(pixel)
 unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
-	double			growingVolume;		// 區域成長結果體積
-	
 
 //================//
 //   Operations   //
@@ -130,10 +142,10 @@ public:
 	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
-	void	Region_Growing_3D_Up(double& volume);
-	void	Region_Growing_3D_Down(double& volume);
+	void	Region_Growing_3D_Up(Seed_s& seed, double& volume);
+	void	Region_Growing_3D_Down(Seed_s& seed, double& volume);
 
-	double	Region_Growing_3D_Total(Seed_s& seed);		// 3D 區域成長 - 做全部
+	void	Region_Growing_3D_Total(RG_Factor& factor);	// 3D 區域成長 - 做全部
 	Seed_s	coordiConvert(Seed_d& pt);					// openGL coordinate -> data array site
 
 	
