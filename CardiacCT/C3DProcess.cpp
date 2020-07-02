@@ -8,6 +8,7 @@
 #include "CProgress.h"
 #include "CWait.h"
 #include "afxdialogex.h"
+#include <ctime>
 #include <queue>
 #include <thread>
 using namespace std;
@@ -949,29 +950,46 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	//
 	if (get_3Dseed)
 	{
-		double volume_up = 0;
-		double volume_down = 0;
-		 
-		CWait* m_wait = new CWait();
-		m_wait->Create(IDD_DIALOG_WAIT);
-		m_wait->ShowWindow(SW_NORMAL);
-		m_wait->setDisplay("Region growing...");
+		// 設定 成長條件 與 評估的測量時間
+		//
+		clock_t start, end;
+		RG_Factor RG_Temp;
 
 		RG_Total = {
 			seed_img,
 			3,
 			0,
 			Total_Slice,
-			20.L,
+			20.0L,
 			0
 		};
 
+		RG_Temp = {
+			seed_img,
+			3,
+			seed_img.z,
+			Total_Slice,
+			20.0L,
+			0
+		};
+
+		// 開始執行 3D_Region Growing
+		//
+		CWait* m_wait = new CWait();
+		m_wait->Create(IDD_DIALOG_WAIT);
+		m_wait->ShowWindow(SW_NORMAL);
+		m_wait->setDisplay("Region growing...");
+
+		start = clock();
 		Region_Growing_3D(RG_Total);
-		//thread	mThread_1(&C3DProcess::Region_Growing_3D_Up, this, ref(seed_img), ref(volume_up));
-		//thread	mThread_2(&C3DProcess::Region_Growing_3D_Down, this, ref(seed_img), ref(volume_down));
+		//thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
+		//thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
 		//mThread_1.join();
 		//mThread_2.join();
-		
+		end = clock();
+
+		RG_Total.growingVolume += RG_Temp.growingVolume;
+		TRACE1("Cost Time : %f \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		m_result.Format("%lf", RG_Total.growingVolume);
 		get_regionGrow = true;
 		
@@ -2071,7 +2089,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 
 void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 {
-	//	DO : 3D 區域成長 - 做全部
+	//	DO : 3D 區域成長
 	//
 	const int Row = ROW;
 	const int Col = COL;
@@ -2143,7 +2161,6 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 		}
 		list.pop();
 	}
-
-	TRACE1("Growing Pixel : %d \n", n);
+	//TRACE1("Growing Pixel : %d \n", n);
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
