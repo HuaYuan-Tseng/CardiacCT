@@ -78,8 +78,8 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	y_index = 0.5F;
 	z_index = 0.7F;
 	scale_x = 0.3F;
-	scale_y = 0.495F;
-	scale_z = 0.495F;
+	scale_y = 0.5F;
+	scale_z = 0.5F;
 	density = 0.000F;
 	intensity = 0.8125F;
 	viewDistance = -4.0F;
@@ -982,10 +982,12 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 		start = clock();
 		Region_Growing_3D(RG_Total);
-		//thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
-		//thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
-		//mThread_1.join();
-		//mThread_2.join();
+		/*
+		thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
+		thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
+		mThread_1.join();
+		mThread_2.join();
+		*/
 		end = clock();
 
 		RG_Total.growingVolume += RG_Temp.growingVolume;
@@ -2094,16 +2096,13 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	const int Row = ROW;
 	const int Col = COL;
 	const int TotalSlice = Total_Slice;
+	const int range = (factor.kernel - 1) / 2;	// 判斷範圍
 	register int i, j, k;
+	unsigned int n = 1;							// 計數成長的pixel數量
 
-	short S_HU = 0;
-	short N_HU = 0;
 	short S_pixel = 0;
 	short N_pixel = 0;
-
-	int count = 0;
-	int range = (factor.kernel - 1) / 2;
-
+	
 	double avg;
 	double up_limit;
 	double down_limit;
@@ -2112,15 +2111,17 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	Seed_s temp;								// 當前 判斷的周圍seed
 	Seed_s current;								// 當前 判斷的中心seed
 	Seed_s seed = factor.seed;					// 初始seed
+	queue<double> avg_que;
 	queue<Seed_s> sd_que;
+
+	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
+	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
+	avg_que.push(avg);
 	sd_que.push(seed);
 
-	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
-	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
-	
-	unsigned int n = 1;
 	while (!sd_que.empty())
 	{
+		avg = avg_que.front();
 		current = sd_que.front();
 		up_limit = avg + threshold;
 		down_limit = avg - threshold;
@@ -2152,6 +2153,7 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 									(float)N_pixel / 255.0F, 1);
 								
 								avg = (avg * n + N_pixel) / (n + 1);
+								avg_que.push(avg);
 								n += 1;
 							}
 						}
@@ -2159,9 +2161,11 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 				}
 			}
 		}
+		avg_que.pop();
 		sd_que.pop();
 	}
-	//TRACE1("Growing Pixel : %d \n", n);
+	//TRACE1("sd : %d \n", sd_que.size());
+	//TRACE1("avg : %d \n", avg_que.size());
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
 
