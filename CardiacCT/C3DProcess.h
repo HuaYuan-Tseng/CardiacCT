@@ -88,7 +88,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	typedef struct
 	{
 		_IN		Seed_s	seed;			// 贺翴
-		_IN		int		kernel;			// 玂计
+		_IN		int		kernel;			// 癠叭ゲ玂计
 		_IN		int		z_upLimit;		// Z禸Θ(程 0)
 		_IN		int		z_downLimit;	// Z禸Θ(程 TotalSlice)
 		_IN		double	threshold;		// Θ霩
@@ -144,6 +144,7 @@ public:
 
 	void	Region_Growing_3D(RG_Factor& factor);		// 3D 跋办Θ
 	Seed_s	coordiConvert(Seed_d& pt);					// openGL coordinate -> data array site
+
 
 	
 //================//

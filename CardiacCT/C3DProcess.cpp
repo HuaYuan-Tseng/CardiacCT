@@ -960,7 +960,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 			3,
 			0,
 			Total_Slice,
-			20.0L,
+			25.0L,
 			0
 		};
 
@@ -2112,16 +2112,16 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	Seed_s temp;								// 當前 判斷的周圍seed
 	Seed_s current;								// 當前 判斷的中心seed
 	Seed_s seed = factor.seed;					// 初始seed
-	queue<Seed_s> list;
-	list.push(seed);
+	queue<Seed_s> sd_que;
+	sd_que.push(seed);
 
 	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
 	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
 	
 	unsigned int n = 1;
-	while (!list.empty())
+	while (!sd_que.empty())
 	{
-		current = list.front();
+		current = sd_que.front();
 		up_limit = avg + threshold;
 		down_limit = avg - threshold;
 
@@ -2144,7 +2144,7 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 								temp.x = current.x + i;
 								temp.y = current.y + j;
 								temp.z = current.z + k;
-								list.push(temp);
+								sd_que.push(temp);
 
 								judge[current.z + k][(current.y + j) * Col + (current.x + i)] = 1;
 
@@ -2159,8 +2159,9 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 				}
 			}
 		}
-		list.pop();
+		sd_que.pop();
 	}
 	//TRACE1("Growing Pixel : %d \n", n);
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
+
