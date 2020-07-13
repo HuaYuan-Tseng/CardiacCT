@@ -989,9 +989,9 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		mThread_2.join();
 		*/
 		end = clock();
-
-		RG_Total.growingVolume += RG_Temp.growingVolume;
+		
 		TRACE1("Cost Time : %f \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		RG_Total.growingVolume += RG_Temp.growingVolume;
 		m_result.Format("%lf", RG_Total.growingVolume);
 		get_regionGrow = true;
 		
