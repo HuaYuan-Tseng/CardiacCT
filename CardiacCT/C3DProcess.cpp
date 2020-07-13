@@ -961,7 +961,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 			0,
 			Total_Slice,
 			25.0L,
-			0
+			0.0L
 		};
 
 		RG_Temp = {
@@ -970,7 +970,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 			seed_img.z,
 			Total_Slice,
 			20.0L,
-			0
+			0.0L
 		};
 
 		// 開始執行 3D_Region Growing
@@ -991,11 +991,17 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		*/
 
 		end = clock();
+		TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+
+		start = clock();
+		Erosion_3D(RG_Total);
+		end = clock();
+		TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		get_regionGrow = true;
 		RG_Total.growingVolume += RG_Temp.growingVolume;
 		m_result.Format("%lf", RG_Total.growingVolume);
-		TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		//TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		TRACE1("Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
 		
 		PrepareVolume();
@@ -2126,7 +2132,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
+void C3DProcess::Region_Growing_3D(RG_Factor& factor)
 {
 	//	DO : 3D 區域成長
 	//
@@ -2203,7 +2209,7 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
 
-void C3DProcess::Erosion_3D()
+void C3DProcess::Erosion_3D(RG_Factor& factor)
 {
 	short kernel[27] = {
 		0, 0, 0,
@@ -2223,35 +2229,40 @@ void C3DProcess::Erosion_3D()
 	const int Col = COL;
 	const int Total = Total_Slice;
 	register int i, j, k;
+	unsigned int n = 0;
 
-	for (k = 1; k <= Total-1; k++)
+	/*
+	(judge[(k + -1)][(j + -1) * Col + (i + -1)] == kernel[0]) && (judge[(k + -1)][(j + -1) * Col + (i + 0)] == kernel[1]) && (judge[(k + -1)][(j + -1) * Col + (i + 1)] == kernel[2]) &&
+	(judge[(k + -1)][(j + 0) * Col + (i + -1)] == kernel[3]) && (judge[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (judge[(k + -1)][(j + 0) * Col + (i + 1)] == kernel[5]) &&
+	(judge[(k + -1)][(j + 1) * Col + (i + -1)] == kernel[6]) && (judge[(k + -1)][(j + 1) * Col + (i + 0)] == kernel[7]) && (judge[(k + -1)][(j + 1) * Col + (i + 1)] == kernel[8]) &&
+
+	(judge[(k + 0)][(j + -1) * Col + (i + -1)] == kernel[9]) && (judge[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) && (judge[(k + 0)][(j + -1) * Col + (i + 1)] == kernel[11]) &&
+	(judge[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (judge[(k + 0)][(j + 0) * Col + (i + 0)] == kernel[13]) && (judge[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) &&
+	(judge[(k + 0)][(j + 1) * Col + (i + -1)] == kernel[15]) && (judge[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && (judge[(k + 0)][(j + 1) * Col + (i + 1)] == kernel[17]) &&
+
+	(judge[(k + 1)][(j + -1) * Col + (i + -1)] == kernel[18]) && (judge[(k + 1)][(j + -1) * Col + (i + 0)] == kernel[19]) && (judge[(k + 1)][(j + -1) * Col + (i + 1)] == kernel[20]) &&
+	(judge[(k + 1)][(j + 0) * Col + (i + -1)] == kernel[21]) && (judge[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22]) && (judge[(k + 1)][(j + 0) * Col + (i + 1)] == kernel[23]) &&
+	(judge[(k + 1)][(j + 1) * Col + (i + -1)] == kernel[24]) && (judge[(k + 1)][(j + 1) * Col + (i + 0)] == kernel[25]) && (judge[(k + 1)][(j + 1) * Col + (i + 1)] == kernel[26])
+	*/
+
+	for (k = 1; k < Total-1; k++)
 	{
-		for (j = 1; j <= Row-1; j++)
+		for (j = 1; j < Row-1; j++)
 		{
-			for (i = 1; i <= Col-1; i++)
+			for (i = 1; i < Col-1; i++)
 			{
-				if ((judge[(k + -1)][(j + -1) * Col + (i + -1)] == kernel[0]) && (judge[(k + -1)][(j + -1) * Col + (i + 0)] == kernel[1]) && (judge[(k + -1)][(j + -1) * Col + (i + 1)] == kernel[2]) &&
-					(judge[(k + -1)][(j + 0) * Col + (i + -1)] == kernel[3]) && (judge[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (judge[(k + -1)][(j + 0) * Col + (i + 1)] == kernel[5]) &&
-					(judge[(k + -1)][(j + 1) * Col + (i + -1)] == kernel[6]) && (judge[(k + -1)][(j + 1) * Col + (i + 0)] == kernel[7]) && (judge[(k + -1)][(j + 1) * Col + (i + 1)] == kernel[8]) &&
-					
-					(judge[(k + 0)][(j + -1) * Col + (i + -1)] == kernel[9]) && (judge[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) && (judge[(k + 0)][(j + -1) * Col + (i + 1)] == kernel[11]) &&
-					(judge[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (judge[(k + 0)][(j + 0) * Col + (i + 0)] == kernel[13]) && (judge[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) &&
-					(judge[(k + 0)][(j + 1) * Col + (i + -1)] == kernel[15]) && (judge[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && (judge[(k + 0)][(j + 1) * Col + (i + 1)] == kernel[17])&&
-					
-					(judge[(k + 1)][(j + -1) * Col + (i + -1)] == kernel[18]) && (judge[(k + 1)][(j + -1) * Col + (i + 0)] == kernel[19]) && (judge[(k + 1)][(j + -1) * Col + (i + 1)] == kernel[20]) &&
-					(judge[(k + 1)][(j + 0) * Col + (i + -1)] == kernel[21]) && (judge[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22]) && (judge[(k + 1)][(j + 0) * Col + (i + 1)] == kernel[23]) &&
-					(judge[(k + 1)][(j + 1) * Col + (i + -1)] == kernel[24]) && (judge[(k + 1)][(j + 1) * Col + (i + 0)] == kernel[25]) && (judge[(k + 1)][(j + 1) * Col + (i + 1)] == kernel[26])
-					)
+				if ((judge[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (judge[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) &&
+					(judge[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (judge[(k + 0)][(j + 0) * Col + (i + 0)] == kernel[13]) && 
+					(judge[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) && (judge[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && 
+					(judge[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22])
+				   )
 				{
 					judge[(k + 0)][(j + 0) * Col + (i + 0)] = 1;
-				}
-				else
-				{
-					judge[(k + 0)][(j + 0) * Col + (i + 0)] = 0;
+					n += 1;
 				}
 			}
 		}
 	}
-
+	factor.growingVolume -= ((n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000);	// 單位(cm3)
 
 }
