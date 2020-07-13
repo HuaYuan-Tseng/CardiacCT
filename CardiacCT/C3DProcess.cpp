@@ -995,7 +995,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		m_result.Format("%lf", RG_Total.growingVolume);
 		TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		TRACE1("Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
-		
+		                                                                                                    
 		LoadVolume();
 		UpdateData(FALSE);
 		Draw3DImage(true);
@@ -2112,8 +2112,8 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	Seed_s temp;								// 當前 判斷的周圍seed
 	Seed_s current;								// 當前 判斷的中心seed
 	Seed_s seed = factor.seed;					// 初始seed
-	queue<double> avg_que;
-	queue<Seed_s> sd_que;
+	queue<double> avg_que;						// 暫存某點成長判斷完，當下已成長區域的整體avg
+	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
 
 	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
 	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
