@@ -54,6 +54,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	bool			LR_Button;			// true:滑鼠左鍵；false:滑鼠右鍵
 	bool			Act_Rotate;
 	bool			Act_Translate;
+	bool			get_3Dimage;		// 是否已經建立 3D image
 
 	float			scale_x;			// 可以改顯示比例的神奇參數
 	float			scale_y;			// 此三項數值為反覆測試後所設定的
@@ -117,6 +118,12 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 unsigned short		PixelThreshold;		// 二值化閾值(pixel)
 unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 
+///------------- ↓ 實驗區 ↓ -------------///
+
+
+
+///------------- ↑ 實驗區 ↑ -------------///
+
 //================//
 //   Operations   //
 //================//
@@ -142,10 +149,14 @@ public:
 	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
-	void	Region_Growing_3D(RG_Factor& factor);		// 3D 區域成長
+	void	Region_Growing_3D(RG_Factor& factor);		// 3D 區域成長(成長結果存於judge)
 	Seed_s	coordiConvert(Seed_d& pt);					// openGL coordinate -> data array site
 
+///------------- ↓ 實驗區 ↓ -------------///
 
+	void	Erosion_3D(); 
+
+///------------- ↑ 實驗區 ↑ -------------///
 	
 //================//
 // Implementation //

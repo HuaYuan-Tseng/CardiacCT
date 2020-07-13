@@ -73,6 +73,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	get_2Dseed = false;
 	get_3Dseed = false;
 	get_regionGrow = false;
+	get_3Dimage = false;
 
 	x_index = 0.5F;
 	y_index = 0.5F;
@@ -96,13 +97,12 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	seed_pt = { 0, 0, 0 };
 	seed_img = { 0, 0, 0 };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
-
+	
 	glVertexPt = New2Dmatrix(64, 3, float);
 	lastPos = new float[3]{ 0.0F, 0.0F, 0.0F };
 	obj_axis = new float[3]{ 0.0F, 0.0F, 0.0F };
 	pln_axis = new float[3]{ 0.0F, 0.0F, 0.0F };
 	user_Plane = new double[4]{ 1.0L, 0.0L, 0.0L, 1.0L };
-	
 }
 
 C3DProcess::~C3DProcess()
@@ -368,7 +368,7 @@ void C3DProcess::OnPaint()
 	
 	Draw2DImage(DisplaySlice);
 	Draw3DImage(true);
-
+	get_3Dimage = true;
 }
 
 BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
@@ -982,12 +982,14 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 		start = clock();
 		Region_Growing_3D(RG_Total);
+
 		/*
 		thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
 		thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
 		mThread_1.join();
 		mThread_2.join();
 		*/
+
 		end = clock();
 		
 		get_regionGrow = true;
@@ -995,7 +997,8 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		m_result.Format("%lf", RG_Total.growingVolume);
 		TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		TRACE1("Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
-		                                                                                                    
+		
+		PrepareVolume();
 		LoadVolume();
 		UpdateData(FALSE);
 		Draw3DImage(true);
@@ -1222,8 +1225,7 @@ void C3DProcess::PrepareVolume()
 {
 	// DO : 建立紋理的資料矩陣
 	//
-	float pixel = 0.0F;
-	register int i, j, k;
+	if (m_pDoc->m_img == NULL)	return;
 
 	// 預備要用來建立紋理的資料矩陣
 	//
@@ -1233,6 +1235,9 @@ void C3DProcess::PrepareVolume()
 	const int Sample_start = 0 + Mat_Offset;
 	const int Sample_end = 0 + Mat_Offset + TotalSlice;
 	
+	float pixel = 0.0F;
+	register int i, j, k;
+
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
 	m_progress->ShowWindow(SW_NORMAL);
@@ -1240,7 +1245,8 @@ void C3DProcess::PrepareVolume()
 	m_progress->SetStatic("Construct 3D Image...");
 
 	i = 0;	j = 0;	k = 0;
-	if (m_pDoc->m_img != NULL)
+	
+	if (!get_3Dimage)
 	{
 		while (k < 512)
 		{
@@ -1253,7 +1259,7 @@ void C3DProcess::PrepareVolume()
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
 
 						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
-								pixel / 255.0F, 0);
+							pixel / 255.0F, 0);
 					}
 				}
 			}
@@ -1261,6 +1267,36 @@ void C3DProcess::PrepareVolume()
 			m_progress->GetPro(k);
 		}
 	}
+	else
+	{
+		while (k < 512)
+		{
+			if (k > Sample_start && k <= Sample_end)
+			{
+				for (j = 2; j < Row - 2; j += 2)
+				{
+					for (i = 2; i < Col - 2; i += 2)
+					{
+						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
+
+						if (judge[k - (Mat_Offset + 1)][j * Col + i] == 0)
+						{
+							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+								pixel / 255.0F, 0);
+						}
+						else
+						{
+							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+								pixel / 255.0F, 1);
+						}
+					}
+				}
+			}
+			k += 2;
+			m_progress->GetPro(k);
+		}
+	}
+	
 	LoadVolume();
 	m_progress->DestroyWindow();
 	delete m_progress;
@@ -2149,9 +2185,6 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 								sd_que.push(temp);
 
 								judge[current.z + k][(current.y + j) * Col + (current.x + i)] = 1;
-
-								getRamp(m_image0[((current.x + i) / 2) * 256 * 256 + ((current.y + j) / 2) * 256 + ((current.z + k + Mat_Offset + 1) / 2)],
-									(float)N_pixel / 255.0F, 1);
 								
 								avg = (avg * n + N_pixel) / (n + 1);
 								avg_que.push(avg);
@@ -2170,3 +2203,55 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
 
+void C3DProcess::Erosion_3D()
+{
+	short kernel[27] = {
+		0, 0, 0,
+		0, 1, 0,
+		0, 0, 0,
+
+		0, 1, 0,
+		1, 1, 1,
+		0, 1, 0,
+
+		0, 0, 0,
+		0, 1, 0,
+		0, 0, 0,
+	};
+
+	const int Row = ROW;
+	const int Col = COL;
+	const int Total = Total_Slice;
+	register int i, j, k;
+
+	for (k = 1; k <= Total-1; k++)
+	{
+		for (j = 1; j <= Row-1; j++)
+		{
+			for (i = 1; i <= Col-1; i++)
+			{
+				if ((judge[(k + -1)][(j + -1) * Col + (i + -1)] == kernel[0]) && (judge[(k + -1)][(j + -1) * Col + (i + 0)] == kernel[1]) && (judge[(k + -1)][(j + -1) * Col + (i + 1)] == kernel[2]) &&
+					(judge[(k + -1)][(j + 0) * Col + (i + -1)] == kernel[3]) && (judge[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (judge[(k + -1)][(j + 0) * Col + (i + 1)] == kernel[5]) &&
+					(judge[(k + -1)][(j + 1) * Col + (i + -1)] == kernel[6]) && (judge[(k + -1)][(j + 1) * Col + (i + 0)] == kernel[7]) && (judge[(k + -1)][(j + 1) * Col + (i + 1)] == kernel[8]) &&
+					
+					(judge[(k + 0)][(j + -1) * Col + (i + -1)] == kernel[9]) && (judge[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) && (judge[(k + 0)][(j + -1) * Col + (i + 1)] == kernel[11]) &&
+					(judge[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (judge[(k + 0)][(j + 0) * Col + (i + 0)] == kernel[13]) && (judge[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) &&
+					(judge[(k + 0)][(j + 1) * Col + (i + -1)] == kernel[15]) && (judge[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && (judge[(k + 0)][(j + 1) * Col + (i + 1)] == kernel[17])&&
+					
+					(judge[(k + 1)][(j + -1) * Col + (i + -1)] == kernel[18]) && (judge[(k + 1)][(j + -1) * Col + (i + 0)] == kernel[19]) && (judge[(k + 1)][(j + -1) * Col + (i + 1)] == kernel[20]) &&
+					(judge[(k + 1)][(j + 0) * Col + (i + -1)] == kernel[21]) && (judge[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22]) && (judge[(k + 1)][(j + 0) * Col + (i + 1)] == kernel[23]) &&
+					(judge[(k + 1)][(j + 1) * Col + (i + -1)] == kernel[24]) && (judge[(k + 1)][(j + 1) * Col + (i + 0)] == kernel[25]) && (judge[(k + 1)][(j + 1) * Col + (i + 1)] == kernel[26])
+					)
+				{
+					judge[(k + 0)][(j + 0) * Col + (i + 0)] = 1;
+				}
+				else
+				{
+					judge[(k + 0)][(j + 0) * Col + (i + 0)] = 0;
+				}
+			}
+		}
+	}
+
+
+}
