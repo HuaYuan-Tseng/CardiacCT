@@ -1001,11 +1001,9 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		get_regionGrow = true;
 		RG_Total.growingVolume += RG_Temp.growingVolume;
 		m_result.Format("%lf", RG_Total.growingVolume);
-		//TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		TRACE1("Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
 		
 		PrepareVolume();
-		LoadVolume();
 		UpdateData(FALSE);
 		Draw3DImage(true);
 		Draw2DImage(DisplaySlice);
@@ -2227,7 +2225,8 @@ void C3DProcess::Erosion_3D(RG_Factor& factor)
 
 	const int Row = ROW;
 	const int Col = COL;
-	const int Total = Total_Slice;
+	const int total_xy = ROW * COL;
+	const int total_z = Total_Slice;
 	register int i, j, k;
 	unsigned int n = 0;
 
@@ -2245,24 +2244,43 @@ void C3DProcess::Erosion_3D(RG_Factor& factor)
 	(judge[(k + 1)][(j + 1) * Col + (i + -1)] == kernel[24]) && (judge[(k + 1)][(j + 1) * Col + (i + 0)] == kernel[25]) && (judge[(k + 1)][(j + 1) * Col + (i + 1)] == kernel[26])
 	*/
 
-	for (k = 1; k < Total-1; k++)
+	BYTE** temp = New2Dmatrix(total_z, total_xy, BYTE);
+	
+	// Deep copy (QQ)
+	//
+	for (j = 0; j < total_z; j++)
 	{
-		for (j = 1; j < Row-1; j++)
+		for (i = 0; i < total_xy; i++)
 		{
-			for (i = 1; i < Col-1; i++)
+			temp[j][i] = judge[j][i];
+		}
+	}
+
+	// Erosion
+	//
+	for (k = 1; k < total_z - 1; k++)
+	{
+		for (j = 1; j < Row - 1; j++)
+		{
+			for (i = 1; i < Col - 1; i++)
 			{
-				if ((judge[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (judge[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) &&
-					(judge[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (judge[(k + 0)][(j + 0) * Col + (i + 0)] == kernel[13]) && 
-					(judge[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) && (judge[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && 
-					(judge[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22])
+				if ((temp[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (temp[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) &&
+					(temp[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (temp[(k + 0)][(j + 0) * Col + (i + 0)] == kernel[13]) &&
+					(temp[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) && (temp[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) &&
+					(temp[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22])
 				   )
 				{
-					judge[(k + 0)][(j + 0) * Col + (i + 0)] = 1;
+					judge[k][j * Col + i] = 1;
 					n += 1;
+				}
+				else
+				{
+					judge[k][j * Col + i] = 0;
 				}
 			}
 		}
 	}
-	factor.growingVolume -= ((n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000);	// 單位(cm3)
 
+	factor.growingVolume = ((n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000);	// 單位(cm3)
+	delete temp;
 }
