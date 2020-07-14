@@ -995,6 +995,8 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 		start = clock();
 		Erosion_3D(RG_Total);
+		Erosion_3D(RG_Total);
+		Dilation_3D(RG_Temp);
 		end = clock();
 		TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
@@ -2209,6 +2211,8 @@ void C3DProcess::Region_Growing_3D(RG_Factor& factor)
 
 void C3DProcess::Erosion_3D(RG_Factor& factor)
 {
+	// DO : 3D Erosion (侵蝕 -形態學處理)
+	//
 	short kernel[27] = {
 		0, 0, 0,
 		0, 1, 0,
@@ -2246,7 +2250,7 @@ void C3DProcess::Erosion_3D(RG_Factor& factor)
 
 	BYTE** temp = New2Dmatrix(total_z, total_xy, BYTE);
 	
-	// Deep copy (QQ)
+	// Deep copy (目前先以這樣的方式處理QQ)
 	//
 	for (j = 0; j < total_z; j++)
 	{
@@ -2264,18 +2268,106 @@ void C3DProcess::Erosion_3D(RG_Factor& factor)
 		{
 			for (i = 1; i < Col - 1; i++)
 			{
-				if ((temp[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (temp[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) &&
-					(temp[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (temp[(k + 0)][(j + 0) * Col + (i + 0)] == kernel[13]) &&
-					(temp[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) && (temp[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) &&
-					(temp[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22])
-				   )
+				if (temp[k][j * Col + i] == 1)
 				{
-					judge[k][j * Col + i] = 1;
-					n += 1;
+					if ((temp[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (temp[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) &&
+						(temp[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (temp[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) &&
+						(temp[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && (temp[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22])
+						)
+					{
+						judge[k][j * Col + i] = 1;
+						n += 1;
+					}
+					else
+					{
+						judge[k][j * Col + i] = 0;
+					}
 				}
-				else
+			}
+		}
+	}
+
+	factor.growingVolume = ((n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000);	// 單位(cm3)
+	delete temp;
+}
+
+void C3DProcess::Dilation_3D(RG_Factor& factor)
+{
+	// DO : 3D Dilation (膨脹 - 形態學處理)
+	//
+	short kernel[27] = {
+		0, 0, 0,
+		0, 1, 0,
+		0, 0, 0,
+
+		0, 1, 0,
+		1, 1, 1,
+		0, 1, 0,
+
+		0, 0, 0,
+		0, 1, 0,
+		0, 0, 0,
+	};
+
+	const int Row = ROW;
+	const int Col = COL;
+	const int total_xy = ROW * COL;
+	const int total_z = Total_Slice;
+	register int i, j, k;
+	unsigned int n = 0;
+
+	BYTE** temp = New2Dmatrix(total_z, total_xy, BYTE);
+
+	// Deep copy (目前先以這樣的方式處理QQ)
+	//
+	for (j = 0; j < total_z; j++)
+	{
+		for (i = 0; i < total_xy; i++)
+		{
+			temp[j][i] = judge[j][i];
+		}
+	}
+
+	// Dilation
+	//
+	for (k = 1; k < total_z - 1; k++)
+	{
+		for (j = 1; j < Row - 1; j++)
+		{
+			for (i = 1; i < Col - 1; i++)
+			{
+				if (temp[k][j * Col + i] == 1)
 				{
-					judge[k][j * Col + i] = 0;
+					if (judge[(k + -1)][(j + 0) * Col + (i + 0)] != 1)
+					{
+						judge[(k + -1)][(j + 0) * Col + (i + 0)] = 1;
+						n++;
+					}
+					if (judge[(k + 0)][(j + -1) * Col + (i + 0)] != 1)
+					{
+						judge[(k + 0)][(j + -1) * Col + (i + 0)] = 1;
+						n++;
+					}
+					if (judge[(k + 0)][(j + 0) * Col + (i + -1)] != 1)
+					{
+						judge[(k + 0)][(j + 0) * Col + (i + -1)] = 1;
+						n++;
+					}
+					if (judge[(k + 0)][(j + 0) * Col + (i + 1)] != 1)
+					{
+						judge[(k + 0)][(j + 0) * Col + (i + 1)] = 1;
+						n++;
+					}
+					if (judge[(k + 0)][(j + 1) * Col + (i + 0)] != 1)
+					{
+						judge[(k + 0)][(j + 1) * Col + (i + 0)] = 1;
+						n++;
+					}
+					if (judge[(k + 1)][(j + 0) * Col + (i + 0)] != 1)
+					{
+						judge[(k + 1)][(j + 0) * Col + (i + 0)] = 1;
+						n++;
+					}
 				}
 			}
 		}

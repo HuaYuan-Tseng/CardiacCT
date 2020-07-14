@@ -155,6 +155,7 @@ public:
 ///------------- ↓ 實驗區 ↓ -------------///
 
 	void	Erosion_3D(RG_Factor& factor);
+	void	Dilation_3D(RG_Factor& factor);
 
 ///------------- ↑ 實驗區 ↑ -------------///
 	
