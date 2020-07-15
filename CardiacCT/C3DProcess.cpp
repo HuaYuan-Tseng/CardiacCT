@@ -989,14 +989,14 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		mThread_2.join();
 		*/
 		end = clock();
-		TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
 		start = clock();
-		Erosion_3D(RG_Total);
-		Erosion_3D(RG_Total);
-		Dilation_3D(RG_Temp);
+		Erosion_3D();
+		Erosion_3D();
+		Dilation_3D();
 		end = clock();
-		TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		get_regionGrow = true;
 		RG_Total.growingVolume += RG_Temp.growingVolume;
@@ -2207,7 +2207,7 @@ void C3DProcess::Region_Growing_3D(RG_Factor& factor)
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
 
-void C3DProcess::Erosion_3D(RG_Factor& factor)
+void C3DProcess::Erosion_3D()
 {
 	// DO : 3D Erosion (侵蝕 -形態學處理)
 	//
@@ -2285,11 +2285,10 @@ void C3DProcess::Erosion_3D(RG_Factor& factor)
 		}
 	}
 
-	factor.growingVolume = ((n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000);	// 單位(cm3)
 	delete temp;
 }
 
-void C3DProcess::Dilation_3D(RG_Factor& factor)
+void C3DProcess::Dilation_3D()
 {
 	// DO : 3D Dilation (膨脹 - 形態學處理)
 	//
@@ -2371,6 +2370,5 @@ void C3DProcess::Dilation_3D(RG_Factor& factor)
 		}
 	}
 
-	factor.growingVolume = ((n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000);	// 單位(cm3)
 	delete temp;
 }
