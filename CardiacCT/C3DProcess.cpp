@@ -982,14 +982,12 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 		start = clock();
 		Region_Growing_3D(RG_Total);
-
 		/*
 		thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
 		thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
 		mThread_1.join();
 		mThread_2.join();
 		*/
-
 		end = clock();
 		TRACE1("Cost Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
