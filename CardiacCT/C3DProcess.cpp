@@ -950,7 +950,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	//
 	if (get_3Dseed)
 	{
-		// 設定 成長條件 與 評估的測量時間
+		// 宣告 成長條件 與 評估的測量時間
 		//
 		clock_t start, end;
 		RG_Factor RG_Temp;
@@ -982,24 +982,23 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 		start = clock();
 		Region_Growing_3D(RG_Total);
-		/*
-		thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
-		thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
-		mThread_1.join();
-		mThread_2.join();
-		*/
+		
+		//thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
+		//thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
+		//mThread_1.join();
+		//mThread_2.join();
+		
 		end = clock();
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
-		start = clock();
-		Erosion_3D(judge);
-		Erosion_3D(judge);
-		Dilation_3D(judge);
-		end = clock();
-		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		//start = clock();
+		//Erosion_3D(judge);
+		//Erosion_3D(judge);
+		//Dilation_3D(judge);
+		//end = clock();
+		//TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		get_regionGrow = true;
-		RG_Total.growingVolume += RG_Temp.growingVolume;
 		m_result.Format("%lf", RG_Total.growingVolume);
 		TRACE1("Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
 		
