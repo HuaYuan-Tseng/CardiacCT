@@ -154,8 +154,8 @@ public:
 
 ///------------- ↓ 實驗區 ↓ -------------///
 
-	void	Erosion_3D();
-	void	Dilation_3D();
+	void	Erosion_3D(BYTE** src);
+	void	Dilation_3D(BYTE** src);
 
 ///------------- ↑ 實驗區 ↑ -------------///
 	

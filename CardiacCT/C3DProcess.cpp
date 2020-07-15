@@ -992,9 +992,9 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
 		start = clock();
-		Erosion_3D();
-		Erosion_3D();
-		Dilation_3D();
+		Erosion_3D(judge);
+		Erosion_3D(judge);
+		Dilation_3D(judge);
 		end = clock();
 		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
@@ -2207,7 +2207,7 @@ void C3DProcess::Region_Growing_3D(RG_Factor& factor)
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
 
-void C3DProcess::Erosion_3D()
+void C3DProcess::Erosion_3D(BYTE** src)
 {
 	// DO : 3D Erosion (侵蝕 -形態學處理)
 	//
@@ -2246,6 +2246,8 @@ void C3DProcess::Erosion_3D()
 	(judge[(k + 1)][(j + 1) * Col + (i + -1)] == kernel[24]) && (judge[(k + 1)][(j + 1) * Col + (i + 0)] == kernel[25]) && (judge[(k + 1)][(j + 1) * Col + (i + 1)] == kernel[26])
 	*/
 
+	// src : 原始以及將要被更改的矩陣
+	// temp : 暫存原始狀態的矩陣(不做更動)
 	BYTE** temp = New2Dmatrix(total_z, total_xy, BYTE);
 	
 	// Deep copy (目前先以這樣的方式處理QQ)
@@ -2254,7 +2256,7 @@ void C3DProcess::Erosion_3D()
 	{
 		for (i = 0; i < total_xy; i++)
 		{
-			temp[j][i] = judge[j][i];
+			temp[j][i] = src[j][i];
 		}
 	}
 
@@ -2273,12 +2275,12 @@ void C3DProcess::Erosion_3D()
 						(temp[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && (temp[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22])
 						)
 					{
-						judge[k][j * Col + i] = 1;
+						src[k][j * Col + i] = 1;
 						n += 1;
 					}
 					else
 					{
-						judge[k][j * Col + i] = 0;
+						src[k][j * Col + i] = 0;
 					}
 				}
 			}
@@ -2288,7 +2290,7 @@ void C3DProcess::Erosion_3D()
 	delete temp;
 }
 
-void C3DProcess::Dilation_3D()
+void C3DProcess::Dilation_3D(BYTE** src)
 {
 	// DO : 3D Dilation (膨脹 - 形態學處理)
 	//
@@ -2313,6 +2315,8 @@ void C3DProcess::Dilation_3D()
 	register int i, j, k;
 	unsigned int n = 0;
 
+	// src : 原始以及將要被更改的矩陣
+	// temp : 暫存原始狀態的矩陣(不做更動)
 	BYTE** temp = New2Dmatrix(total_z, total_xy, BYTE);
 
 	// Deep copy (目前先以這樣的方式處理QQ)
@@ -2321,7 +2325,7 @@ void C3DProcess::Dilation_3D()
 	{
 		for (i = 0; i < total_xy; i++)
 		{
-			temp[j][i] = judge[j][i];
+			temp[j][i] = src[j][i];
 		}
 	}
 
@@ -2335,34 +2339,34 @@ void C3DProcess::Dilation_3D()
 			{
 				if (temp[k][j * Col + i] == 1)
 				{
-					if (judge[(k + -1)][(j + 0) * Col + (i + 0)] != 1)
+					if (temp[(k + -1)][(j + 0) * Col + (i + 0)] != 1)
 					{
-						judge[(k + -1)][(j + 0) * Col + (i + 0)] = 1;
+						src[(k + -1)][(j + 0) * Col + (i + 0)] = 1;
 						n++;
 					}
-					if (judge[(k + 0)][(j + -1) * Col + (i + 0)] != 1)
+					if (temp[(k + 0)][(j + -1) * Col + (i + 0)] != 1)
 					{
-						judge[(k + 0)][(j + -1) * Col + (i + 0)] = 1;
+						src[(k + 0)][(j + -1) * Col + (i + 0)] = 1;
 						n++;
 					}
-					if (judge[(k + 0)][(j + 0) * Col + (i + -1)] != 1)
+					if (temp[(k + 0)][(j + 0) * Col + (i + -1)] != 1)
 					{
-						judge[(k + 0)][(j + 0) * Col + (i + -1)] = 1;
+						src[(k + 0)][(j + 0) * Col + (i + -1)] = 1;
 						n++;
 					}
-					if (judge[(k + 0)][(j + 0) * Col + (i + 1)] != 1)
+					if (temp[(k + 0)][(j + 0) * Col + (i + 1)] != 1)
 					{
-						judge[(k + 0)][(j + 0) * Col + (i + 1)] = 1;
+						src[(k + 0)][(j + 0) * Col + (i + 1)] = 1;
 						n++;
 					}
-					if (judge[(k + 0)][(j + 1) * Col + (i + 0)] != 1)
+					if (temp[(k + 0)][(j + 1) * Col + (i + 0)] != 1)
 					{
-						judge[(k + 0)][(j + 1) * Col + (i + 0)] = 1;
+						src[(k + 0)][(j + 1) * Col + (i + 0)] = 1;
 						n++;
 					}
-					if (judge[(k + 1)][(j + 0) * Col + (i + 0)] != 1)
+					if (temp[(k + 1)][(j + 0) * Col + (i + 0)] != 1)
 					{
-						judge[(k + 1)][(j + 0) * Col + (i + 0)] = 1;
+						src[(k + 1)][(j + 0) * Col + (i + 0)] = 1;
 						n++;
 					}
 				}
