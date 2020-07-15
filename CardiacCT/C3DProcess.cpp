@@ -543,7 +543,7 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 							short Pos_5 = seed_img.x;
 							short Pos_6 = seed_img.y;
 							short Pos_7 = seed_img.z;
-							short Pos_8 = m_pDoc->m_img[seed_img.z][seed_img.y * ROW + seed_img.x];
+							short Pos_8 = m_pDoc->m_img[seed_img.z][seed_img.y * COL + seed_img.x];
 
 							m_pos_5.Format("%d", (int)Pos_5);
 							m_pos_6.Format("%d", (int)Pos_6);
@@ -2129,7 +2129,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-void C3DProcess::Region_Growing_3D(RG_Factor& factor)
+void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 {
 	//	DO : 3D 區域成長
 	//
@@ -2201,6 +2201,7 @@ void C3DProcess::Region_Growing_3D(RG_Factor& factor)
 		avg_que.pop();
 		sd_que.pop();
 	}
+
 	//TRACE1("sd : %d \n", sd_que.size());
 	//TRACE1("avg : %d \n", avg_que.size());
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
