@@ -978,8 +978,8 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		start = clock();
 		Erosion_3D(judge);
 		//Erosion_3D(judge);
-		//Dilation_3D(judge);
-		//Region_Growing_3D_Sec(RG_Total);
+		Region_Growing_3D_Connect(RG_Total);
+		Dilation_3D(judge);
 		end = clock();
 		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
@@ -1278,7 +1278,7 @@ void C3DProcess::PrepareVolume()
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 								pixel / 255.0F, 1);
 						}
-						else if (judge[k - (Mat_Offset + 1)][j * Col + i] == state)
+						else if (judge[k - (Mat_Offset + 1)][j * Col + i] == state-1)
 						{
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 								pixel / 255.0F, 2);
@@ -1848,7 +1848,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 
 						dc.SetPixel(pt, RGB(255, 120, 190));
 					}
-					else if (judge[DisplaySlice][j * Col + i] == state)
+					else if (judge[DisplaySlice][j * Col + i] == state-1)
 					{
 						pt.x = i;
 						pt.y = j;
@@ -2223,6 +2223,7 @@ void C3DProcess::Erosion_3D(BYTE** src)
 {
 	// DO : 3D Erosion (侵蝕 -形態學處理)
 	//
+	// 26 連通
 	/*
 	(temp[(k + -1)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + -1) * col + (i + 1)] == pre_state) &&
 	(temp[(k + -1)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 1)] == pre_state) &&
@@ -2237,6 +2238,28 @@ void C3DProcess::Erosion_3D(BYTE** src)
 	(temp[(k + 1)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 1)] == pre_state)
 	*/
 	
+	// 6 連通
+	/*
+	(temp[(k + -1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + 0)] == pre_state) &&
+	(temp[(k + 0)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 0) * col + (i + 1)] == pre_state) &&
+	(temp[(k + 0)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + 0) * col + (i + 0)] == pre_state)
+	*/
+
+	// 18 連通
+	/*
+	(temp[(k + -1)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + -1)] == pre_state) &&
+	(temp[(k + -1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 1)] == pre_state) &&
+	(temp[(k + -1)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + -1)] == pre_state) &&
+
+	(temp[(k + 0)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + 1)] == pre_state) &&
+	(temp[(k + 0)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 0) * col + (i + 1)] == pre_state) &&
+	(temp[(k + 0)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 1) * col + (i + 0)] == pre_state) &&
+
+	(temp[(k + 0)][(j + 1) * col + (i + 1)] == pre_state) && (temp[(k + 1)][(j + -1) * col + (i + 0)] == pre_state) &&
+	(temp[(k + 1)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + 0) * col + (i + 0)] == pre_state) &&
+	(temp[(k + 1)][(j + 0) * col + (i + 1)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 0)] == pre_state)
+	*/
+
 	const int row = ROW;
 	const int col = COL;
 	const int total_xy = ROW * COL;
@@ -2250,7 +2273,7 @@ void C3DProcess::Erosion_3D(BYTE** src)
 	if (img_pro.empty())
 	{
 		state = 1;
-		pre_state = img_pro.back().status;
+		pre_state = 0;
 		oper_temp.operation = Operate::Erosion;
 		oper_temp.status = state;
 	}
@@ -2287,17 +2310,17 @@ void C3DProcess::Erosion_3D(BYTE** src)
 				if (temp[k][j * col + i] == pre_state)
 				{
 					if (
-						(temp[(k + -1)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + -1) * col + (i + 1)] == pre_state) &&
-						(temp[(k + -1)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 1)] == pre_state) &&
-						(temp[(k + -1)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 1) * col + (i + 1)] == pre_state) &&
+						(temp[(k + -1)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + -1)] == pre_state) &&
+						(temp[(k + -1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 1)] == pre_state) &&
+						(temp[(k + -1)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + -1)] == pre_state) &&
 
-						(temp[(k + 0)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + 1)] == pre_state) &&
-						(temp[(k + 0)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + 0) * col + (i + 1)] == pre_state) &&
-						(temp[(k + 0)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + 1) * col + (i + 1)] == pre_state) &&
+						(temp[(k + 0)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + 1)] == pre_state) &&
+						(temp[(k + 0)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 0) * col + (i + 1)] == pre_state) &&
+						(temp[(k + 0)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 1) * col + (i + 0)] == pre_state) &&
 
-						(temp[(k + 1)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + -1) * col + (i + 1)] == pre_state) &&
-						(temp[(k + 1)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + 0) * col + (i + 1)] == pre_state) &&
-						(temp[(k + 1)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 1)] == pre_state)
+						(temp[(k + 0)][(j + 1) * col + (i + 1)] == pre_state) && (temp[(k + 1)][(j + -1) * col + (i + 0)] == pre_state) &&
+						(temp[(k + 1)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + 0) * col + (i + 0)] == pre_state) &&
+						(temp[(k + 1)][(j + 0) * col + (i + 1)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 0)] == pre_state)
 						)
 					{
 						src[k][j * col + i] = state;		// 驗證一下結果，記得改回來!!
@@ -2312,6 +2335,7 @@ void C3DProcess::Erosion_3D(BYTE** src)
 		}
 	}
 	img_pro.push_back(oper_temp);
+	TRACE1("After Erosion : %f \n", (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000);
 	delete temp;
 }
 
@@ -2370,43 +2394,44 @@ void C3DProcess::Dilation_3D(BYTE** src)
 				{
 					if (temp[(k + -1)][(j + 0) * col + (i + 0)] != pre_state)
 					{
-						src[(k + -1)][(j + 0) * col + (i + 0)] = state;
+						src[(k + -1)][(j + 0) * col + (i + 0)] = pre_state;
 						n++;
 					}
 					if (temp[(k + 0)][(j + -1) * col + (i + 0)] != pre_state)
 					{
-						src[(k + 0)][(j + -1) * col + (i + 0)] = state;
+						src[(k + 0)][(j + -1) * col + (i + 0)] = pre_state;
 						n++;
 					}
 					if (temp[(k + 0)][(j + 0) * col + (i + -1)] != pre_state)
 					{
-						src[(k + 0)][(j + 0) * col + (i + -1)] = state;
+						src[(k + 0)][(j + 0) * col + (i + -1)] = pre_state;
 						n++;
 					}
 					if (temp[(k + 0)][(j + 0) * col + (i + 1)] != pre_state)
 					{
-						src[(k + 0)][(j + 0) * col + (i + 1)] = state;
+						src[(k + 0)][(j + 0) * col + (i + 1)] = pre_state;
 						n++;
 					}
 					if (temp[(k + 0)][(j + 1) * col + (i + 0)] != pre_state)
 					{
-						src[(k + 0)][(j + 1) * col + (i + 0)] = state;
+						src[(k + 0)][(j + 1) * col + (i + 0)] = pre_state;
 						n++;
 					}
 					if (temp[(k + 1)][(j + 0) * col + (i + 0)] != pre_state)
 					{
-						src[(k + 1)][(j + 0) * col + (i + 0)] = state;
+						src[(k + 1)][(j + 0) * col + (i + 0)] = pre_state;
 						n++;
 					}
 				}
 			}
 		}
 	}
-
+	img_pro.push_back(oper_temp);
+	TRACE1("After Dilation : %f \n", (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000);
 	delete temp;
 }
 
-void C3DProcess::Region_Growing_3D_Sec(C3DProcess::RG_Factor& factor)
+void C3DProcess::Region_Growing_3D_Connect(C3DProcess::RG_Factor& factor)
 {
 	//	DO : 3D 區域成長 - 二次成長(確認最終分割區域與體積)
 	//
@@ -2417,13 +2442,28 @@ void C3DProcess::Region_Growing_3D_Sec(C3DProcess::RG_Factor& factor)
 	register int i, j, k;
 	unsigned int n = 1;							// 計數成長的pixel數量
 	unsigned int state;
+	unsigned int pre_state;
 
 	Seed_s temp;								// 當前 判斷的周圍seed
 	Seed_s current;								// 當前 判斷的中心seed
 	Seed_s seed = factor.seed;					// 初始seed
 	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
+	Img_Operate oper_temp;
 
-	state = img_pro.back().status;
+	if (img_pro.empty())
+	{
+		state = 1;
+		pre_state = 0;
+		oper_temp.operation = Operate::Region_Growing;
+		oper_temp.status = state;
+	}
+	else
+	{
+		state = img_pro.back().status + 1;
+		pre_state = img_pro.back().status;
+		oper_temp.operation = Operate::Region_Growing;
+		oper_temp.status = state;
+	}
 	judge[seed.z][(seed.y) * col + (seed.x)] = state;
 	sd_que.push(seed);
 
@@ -2440,14 +2480,14 @@ void C3DProcess::Region_Growing_3D_Sec(C3DProcess::RG_Factor& factor)
 						(current.y + j) < (row) && (current.y + j) >= 0 &&
 						(current.z + k) < (factor.z_downLimit) && (current.z + k) >= factor.z_upLimit)
 					{
-						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] == state)
+						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] == pre_state)
 						{
 							temp.x = current.x + i;
 							temp.y = current.y + j;
 							temp.z = current.z + k;
 							sd_que.push(temp);
 
-							judge[current.z + k][(current.y + j) * col + (current.x + i)] = state + 1;
+							judge[current.z + k][(current.y + j) * col + (current.x + i)] = state;
 
 							n += 1;
 						}
@@ -2457,6 +2497,6 @@ void C3DProcess::Region_Growing_3D_Sec(C3DProcess::RG_Factor& factor)
 		}
 		sd_que.pop();
 	}
-
+	img_pro.push_back(oper_temp);
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	// 單位(cm3)
 }

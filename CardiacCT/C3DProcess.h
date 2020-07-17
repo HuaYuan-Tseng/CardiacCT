@@ -171,7 +171,7 @@ public:
 
 	void	Erosion_3D(BYTE** src);
 	void	Dilation_3D(BYTE** src);
-	void	Region_Growing_3D_Sec(RG_Factor& factor);
+	void	Region_Growing_3D_Connect(RG_Factor& factor);
 
 ///------------- °Ù πÍ≈Á∞œ °Ù -------------///
 	
