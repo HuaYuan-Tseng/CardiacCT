@@ -11,9 +11,10 @@
 #include "CCTDoc.h"
 #include "glew.h"
 #include "freeglut.h"
+#include <vector>
 
-#define _IN							
-#define _OUT		
+#define _IN								// 輸入用參數
+#define _OUT							// 輸出用參數
 
 class C3DProcess : public CDialogEx
 {
@@ -79,22 +80,23 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	typedef struct
 	{
 		short x, y, z;
-	}	Seed_s;
+	}	Seed_s;							// 紀錄影像矩陣上種子點的位置
 
 	typedef struct
 	{
 		double x, y, z;
-	}	Seed_d;
+	}	Seed_d;							// 紀錄3D影像上種子點的位置
 
 	typedef struct
 	{
 		_IN		Seed_s	seed;			// 種子點
-		_IN		int		kernel;			// 拜託務必保持奇數
+		_IN		int		kernel;			// (拜託務必保持奇數)
 		_IN		int		z_upLimit;		// Z軸成長上限(最多到 0)
 		_IN		int		z_downLimit;	// Z軸成長下限(最多到 TotalSlice)
 		_IN		double	threshold;		// 成長閾值
 		_OUT	double	growingVolume;	// 成長體積
-	}	RG_Factor;
+	}	RG_Factor;						// 區域成長的參數
+
 
 	RG_Factor		RG_Total;			// 區域成長條件與情況
 	Seed_d			seed_gl;			// 在3D視窗點擊的seed openGL世界座標
@@ -120,7 +122,20 @@ unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 
 ///------------- ↓ 實驗區 ↓ -------------///
 
+	enum class Operate					// 影像處理
+	{
+		Region_Growing,
+		Erosion,
+		Dilation
+	};
 
+	typedef struct
+	{
+		Operate			operation;		// 執行了什麼處理
+		unsigned int	status;			// 目前狀態
+	}	Img_Operate;					
+
+	vector<Img_Operate>	img_pro;		// 紀錄目前執行了哪些影像處理
 
 ///------------- ↑ 實驗區 ↑ -------------///
 
@@ -156,6 +171,7 @@ public:
 
 	void	Erosion_3D(BYTE** src);
 	void	Dilation_3D(BYTE** src);
+	void	Region_Growing_3D_Sec(RG_Factor& factor);
 
 ///------------- ↑ 實驗區 ↑ -------------///
 	

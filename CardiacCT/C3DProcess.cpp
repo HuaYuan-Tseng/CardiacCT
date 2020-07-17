@@ -11,6 +11,7 @@
 #include <ctime>
 #include <queue>
 #include <thread>
+#include <vector>
 using namespace std;
 
 constexpr auto M_PI = 3.1415926F;
@@ -953,23 +954,12 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		// 宣告 成長條件 與 評估的測量時間
 		//
 		clock_t start, end;
-		RG_Factor RG_Temp;
-
 		RG_Total = {
 			seed_img,
 			3,
 			0,
 			Total_Slice,
-			25.0L,
-			0.0L
-		};
-
-		RG_Temp = {
-			seed_img,
-			3,
-			seed_img.z,
-			Total_Slice,
-			20.0L,
+			30.0L,
 			0.0L
 		};
 
@@ -982,21 +972,16 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 		start = clock();
 		Region_Growing_3D(RG_Total);
-		
-		//thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
-		//thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
-		//mThread_1.join();
-		//mThread_2.join();
-		
 		end = clock();
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
-		//start = clock();
-		//Erosion_3D(judge);
+		start = clock();
+		Erosion_3D(judge);
 		//Erosion_3D(judge);
 		//Dilation_3D(judge);
-		//end = clock();
-		//TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		//Region_Growing_3D_Sec(RG_Total);
+		end = clock();
+		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		get_regionGrow = true;
 		m_result.Format("%lf", RG_Total.growingVolume);
@@ -1272,6 +1257,7 @@ void C3DProcess::PrepareVolume()
 	}
 	else
 	{
+		unsigned int state = img_pro.back().status;
 		while (k < 512)
 		{
 			if (k > Sample_start && k <= Sample_end)
@@ -1287,10 +1273,15 @@ void C3DProcess::PrepareVolume()
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 								pixel / 255.0F, 0);
 						}
-						else
+						else if (judge[k - (Mat_Offset + 1)][j * Col + i] == 1)
 						{
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 								pixel / 255.0F, 1);
+						}
+						else if (judge[k - (Mat_Offset + 1)][j * Col + i] == state)
+						{
+							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+								pixel / 255.0F, 2);
 						}
 					}
 				}
@@ -1840,11 +1831,12 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 	if (m_3Dseed)
 	{
 		CPoint pt;
-			
+		
 		// 於2D影像顯示在3D區域成長結果
 		//
 		if (get_regionGrow)
 		{
+			unsigned int state = img_pro.back().status;
 			for (j = 0; j < 512; j++)
 			{
 				for (i = 0; i < 512; i++)
@@ -1855,6 +1847,13 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 						pt.y = j;
 
 						dc.SetPixel(pt, RGB(255, 120, 190));
+					}
+					else if (judge[DisplaySlice][j * Col + i] == state)
+					{
+						pt.x = i;
+						pt.y = j;
+
+						dc.SetPixel(pt, RGB(100, 255, 30));
 					}
 				}
 			}
@@ -2133,19 +2132,20 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 {
 	//	DO : 3D 區域成長
 	//
-	const int Row = ROW;
-	const int Col = COL;
-	const int TotalSlice = Total_Slice;
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
 	const int range = (factor.kernel - 1) / 2;	// 判斷範圍
 	register int i, j, k;
 	unsigned int n = 1;							// 計數成長的pixel數量
+	unsigned int state;							// 利用此變數去做處理的紀錄
 
 	short S_pixel = 0;
 	short N_pixel = 0;
 	
 	double avg;
-	double up_limit;
-	double down_limit;
+	double up_limit;							// 成長像素強度上限
+	double down_limit;							// 成長像素強度下限
 	double threshold = factor.threshold;
 	
 	Seed_s temp;								// 當前 判斷的周圍seed
@@ -2153,9 +2153,23 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	Seed_s seed = factor.seed;					// 初始seed
 	queue<double> avg_que;						// 暫存某點成長判斷完，當下已成長區域的整體avg
 	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
+	Img_Operate oper_temp;						// 紀錄做了影像處理
 
-	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
-	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
+	if (img_pro.empty())
+	{
+		state = 1;
+		oper_temp.operation = Operate::Region_Growing;
+		oper_temp.status = state;
+	}
+	else
+	{
+		state = img_pro.back().status + 1;
+		oper_temp.operation = Operate::Region_Growing;
+		oper_temp.status = state;
+	}
+
+	avg = m_pDoc->m_img[seed.z][(seed.y) * col + (seed.x)];
+	judge[seed.z][(seed.y) * col + (seed.x)] = 1;
 	avg_que.push(avg);
 	sd_que.push(seed);
 
@@ -2172,13 +2186,13 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 			{
 				for (i = -range; i <= range; i++)
 				{
-					if ((current.x + i) < (Col) && (current.x + i) >= 0 &&
-						(current.y + j) < (Row) && (current.y + j) >= 0 &&
+					if ((current.x + i) < (col) && (current.x + i) >= 0 &&
+						(current.y + j) < (row) && (current.y + j) >= 0 &&
 						(current.z + k) < (factor.z_downLimit) && (current.z + k) >= factor.z_upLimit)
 					{
-						if (judge[current.z + k][(current.y + j) * Col + (current.x + i)] != 1)
+						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] != 1)
 						{
-							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Col + (current.x + i)];
+							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * col + (current.x + i)];
 
 							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
 							{
@@ -2187,7 +2201,7 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 								temp.z = current.z + k;
 								sd_que.push(temp);
 
-								judge[current.z + k][(current.y + j) * Col + (current.x + i)] = 1;
+								judge[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
 								
 								avg = (avg * n + N_pixel) / (n + 1);
 								avg_que.push(avg);
@@ -2201,9 +2215,7 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 		avg_que.pop();
 		sd_que.pop();
 	}
-
-	//TRACE1("sd : %d \n", sd_que.size());
-	//TRACE1("avg : %d \n", avg_que.size());
+	img_pro.push_back(oper_temp);
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
 
@@ -2211,40 +2223,44 @@ void C3DProcess::Erosion_3D(BYTE** src)
 {
 	// DO : 3D Erosion (侵蝕 -形態學處理)
 	//
-	short kernel[27] = {
-		0, 0, 0,
-		0, 1, 0,
-		0, 0, 0,
+	/*
+	(temp[(k + -1)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + -1) * col + (i + 1)] == pre_state) &&
+	(temp[(k + -1)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 1)] == pre_state) &&
+	(temp[(k + -1)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 1) * col + (i + 1)] == pre_state) &&
 
-		0, 1, 0,
-		1, 1, 1,
-		0, 1, 0,
+	(temp[(k + 0)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + 1)] == pre_state) &&
+	(temp[(k + 0)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + 0) * col + (i + 1)] == pre_state) &&
+	(temp[(k + 0)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + 1) * col + (i + 1)] == pre_state) &&
 
-		0, 0, 0,
-		0, 1, 0,
-		0, 0, 0,
-	};
-
-	const int Row = ROW;
-	const int Col = COL;
+	(temp[(k + 1)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + -1) * col + (i + 1)] == pre_state) &&
+	(temp[(k + 1)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + 0) * col + (i + 1)] == pre_state) &&
+	(temp[(k + 1)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 1)] == pre_state)
+	*/
+	
+	const int row = ROW;
+	const int col = COL;
 	const int total_xy = ROW * COL;
 	const int total_z = Total_Slice;
 	register int i, j, k;
 	unsigned int n = 0;
+	unsigned int state;							// 利用此變數去做處理的紀錄
+	unsigned int pre_state;
+	Img_Operate oper_temp;						// 紀錄做了影像處理
 
-	/*
-	(judge[(k + -1)][(j + -1) * Col + (i + -1)] == kernel[0]) && (judge[(k + -1)][(j + -1) * Col + (i + 0)] == kernel[1]) && (judge[(k + -1)][(j + -1) * Col + (i + 1)] == kernel[2]) &&
-	(judge[(k + -1)][(j + 0) * Col + (i + -1)] == kernel[3]) && (judge[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (judge[(k + -1)][(j + 0) * Col + (i + 1)] == kernel[5]) &&
-	(judge[(k + -1)][(j + 1) * Col + (i + -1)] == kernel[6]) && (judge[(k + -1)][(j + 1) * Col + (i + 0)] == kernel[7]) && (judge[(k + -1)][(j + 1) * Col + (i + 1)] == kernel[8]) &&
-
-	(judge[(k + 0)][(j + -1) * Col + (i + -1)] == kernel[9]) && (judge[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) && (judge[(k + 0)][(j + -1) * Col + (i + 1)] == kernel[11]) &&
-	(judge[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (judge[(k + 0)][(j + 0) * Col + (i + 0)] == kernel[13]) && (judge[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) &&
-	(judge[(k + 0)][(j + 1) * Col + (i + -1)] == kernel[15]) && (judge[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && (judge[(k + 0)][(j + 1) * Col + (i + 1)] == kernel[17]) &&
-
-	(judge[(k + 1)][(j + -1) * Col + (i + -1)] == kernel[18]) && (judge[(k + 1)][(j + -1) * Col + (i + 0)] == kernel[19]) && (judge[(k + 1)][(j + -1) * Col + (i + 1)] == kernel[20]) &&
-	(judge[(k + 1)][(j + 0) * Col + (i + -1)] == kernel[21]) && (judge[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22]) && (judge[(k + 1)][(j + 0) * Col + (i + 1)] == kernel[23]) &&
-	(judge[(k + 1)][(j + 1) * Col + (i + -1)] == kernel[24]) && (judge[(k + 1)][(j + 1) * Col + (i + 0)] == kernel[25]) && (judge[(k + 1)][(j + 1) * Col + (i + 1)] == kernel[26])
-	*/
+	if (img_pro.empty())
+	{
+		state = 1;
+		pre_state = img_pro.back().status;
+		oper_temp.operation = Operate::Erosion;
+		oper_temp.status = state;
+	}
+	else
+	{
+		state = img_pro.back().status + 1;
+		pre_state = img_pro.back().status;
+		oper_temp.operation = Operate::Erosion;
+		oper_temp.status = state;
+	}
 
 	// src : 原始以及將要被更改的矩陣
 	// temp : 暫存原始狀態的矩陣(不做更動)
@@ -2264,29 +2280,38 @@ void C3DProcess::Erosion_3D(BYTE** src)
 	//
 	for (k = 1; k < total_z - 1; k++)
 	{
-		for (j = 1; j < Row - 1; j++)
+		for (j = 1; j < row - 1; j++)
 		{
-			for (i = 1; i < Col - 1; i++)
+			for (i = 1; i < col - 1; i++)
 			{
-				if (temp[k][j * Col + i] == 1)
+				if (temp[k][j * col + i] == pre_state)
 				{
-					if ((temp[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (temp[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) &&
-						(temp[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (temp[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) &&
-						(temp[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && (temp[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22])
+					if (
+						(temp[(k + -1)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + -1) * col + (i + 1)] == pre_state) &&
+						(temp[(k + -1)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 0) * col + (i + 1)] == pre_state) &&
+						(temp[(k + -1)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + -1)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + -1)][(j + 1) * col + (i + 1)] == pre_state) &&
+
+						(temp[(k + 0)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + -1) * col + (i + 1)] == pre_state) &&
+						(temp[(k + 0)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + 0) * col + (i + 1)] == pre_state) &&
+						(temp[(k + 0)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + 0)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 0)][(j + 1) * col + (i + 1)] == pre_state) &&
+
+						(temp[(k + 1)][(j + -1) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + -1) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + -1) * col + (i + 1)] == pre_state) &&
+						(temp[(k + 1)][(j + 0) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + 0) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + 0) * col + (i + 1)] == pre_state) &&
+						(temp[(k + 1)][(j + 1) * col + (i + -1)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 0)] == pre_state) && (temp[(k + 1)][(j + 1) * col + (i + 1)] == pre_state)
 						)
 					{
-						src[k][j * Col + i] = 1;
+						src[k][j * col + i] = state;		// 驗證一下結果，記得改回來!!
 						n += 1;
 					}
 					else
 					{
-						src[k][j * Col + i] = 0;
+						src[k][j * col + i] = pre_state;
 					}
 				}
 			}
 		}
 	}
-
+	img_pro.push_back(oper_temp);
 	delete temp;
 }
 
@@ -2294,26 +2319,30 @@ void C3DProcess::Dilation_3D(BYTE** src)
 {
 	// DO : 3D Dilation (膨脹 - 形態學處理)
 	//
-	short kernel[27] = {
-		0, 0, 0,
-		0, 1, 0,
-		0, 0, 0,
-
-		0, 1, 0,
-		1, 1, 1,
-		0, 1, 0,
-
-		0, 0, 0,
-		0, 1, 0,
-		0, 0, 0,
-	};
-
-	const int Row = ROW;
-	const int Col = COL;
+	const int row = ROW;
+	const int col = COL;
 	const int total_xy = ROW * COL;
 	const int total_z = Total_Slice;
 	register int i, j, k;
 	unsigned int n = 0;
+	unsigned int state;							// 利用此變數去做處理的紀錄
+	unsigned int pre_state;
+	Img_Operate oper_temp;						// 紀錄做了影像處理
+
+	if (img_pro.empty())
+	{
+		state = 1;
+		pre_state = img_pro.back().status;
+		oper_temp.operation = Operate::Erosion;
+		oper_temp.status = state;
+	}
+	else
+	{
+		state = img_pro.back().status + 1;
+		pre_state = img_pro.back().status;
+		oper_temp.operation = Operate::Erosion;
+		oper_temp.status = state;
+	}
 
 	// src : 原始以及將要被更改的矩陣
 	// temp : 暫存原始狀態的矩陣(不做更動)
@@ -2333,40 +2362,40 @@ void C3DProcess::Dilation_3D(BYTE** src)
 	//
 	for (k = 1; k < total_z - 1; k++)
 	{
-		for (j = 1; j < Row - 1; j++)
+		for (j = 1; j < row - 1; j++)
 		{
-			for (i = 1; i < Col - 1; i++)
+			for (i = 1; i < col - 1; i++)
 			{
-				if (temp[k][j * Col + i] == 1)
+				if (temp[k][j * col + i] == pre_state)	// 驗證一下，記得改回來
 				{
-					if (temp[(k + -1)][(j + 0) * Col + (i + 0)] != 1)
+					if (temp[(k + -1)][(j + 0) * col + (i + 0)] != pre_state)
 					{
-						src[(k + -1)][(j + 0) * Col + (i + 0)] = 1;
+						src[(k + -1)][(j + 0) * col + (i + 0)] = state;
 						n++;
 					}
-					if (temp[(k + 0)][(j + -1) * Col + (i + 0)] != 1)
+					if (temp[(k + 0)][(j + -1) * col + (i + 0)] != pre_state)
 					{
-						src[(k + 0)][(j + -1) * Col + (i + 0)] = 1;
+						src[(k + 0)][(j + -1) * col + (i + 0)] = state;
 						n++;
 					}
-					if (temp[(k + 0)][(j + 0) * Col + (i + -1)] != 1)
+					if (temp[(k + 0)][(j + 0) * col + (i + -1)] != pre_state)
 					{
-						src[(k + 0)][(j + 0) * Col + (i + -1)] = 1;
+						src[(k + 0)][(j + 0) * col + (i + -1)] = state;
 						n++;
 					}
-					if (temp[(k + 0)][(j + 0) * Col + (i + 1)] != 1)
+					if (temp[(k + 0)][(j + 0) * col + (i + 1)] != pre_state)
 					{
-						src[(k + 0)][(j + 0) * Col + (i + 1)] = 1;
+						src[(k + 0)][(j + 0) * col + (i + 1)] = state;
 						n++;
 					}
-					if (temp[(k + 0)][(j + 1) * Col + (i + 0)] != 1)
+					if (temp[(k + 0)][(j + 1) * col + (i + 0)] != pre_state)
 					{
-						src[(k + 0)][(j + 1) * Col + (i + 0)] = 1;
+						src[(k + 0)][(j + 1) * col + (i + 0)] = state;
 						n++;
 					}
-					if (temp[(k + 1)][(j + 0) * Col + (i + 0)] != 1)
+					if (temp[(k + 1)][(j + 0) * col + (i + 0)] != pre_state)
 					{
-						src[(k + 1)][(j + 0) * Col + (i + 0)] = 1;
+						src[(k + 1)][(j + 0) * col + (i + 0)] = state;
 						n++;
 					}
 				}
@@ -2375,4 +2404,59 @@ void C3DProcess::Dilation_3D(BYTE** src)
 	}
 
 	delete temp;
+}
+
+void C3DProcess::Region_Growing_3D_Sec(C3DProcess::RG_Factor& factor)
+{
+	//	DO : 3D 區域成長 - 二次成長(確認最終分割區域與體積)
+	//
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int range = (factor.kernel - 1)/2;	// 判斷範圍
+	register int i, j, k;
+	unsigned int n = 1;							// 計數成長的pixel數量
+	unsigned int state;
+
+	Seed_s temp;								// 當前 判斷的周圍seed
+	Seed_s current;								// 當前 判斷的中心seed
+	Seed_s seed = factor.seed;					// 初始seed
+	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
+
+	state = img_pro.back().status;
+	judge[seed.z][(seed.y) * col + (seed.x)] = state;
+	sd_que.push(seed);
+
+	while (!sd_que.empty())
+	{
+		current = sd_que.front();
+		for (k = -range; k <= range; k++)
+		{
+			for (j = -range; j <= range; j++)
+			{
+				for (i = -range; i <= range; i++)
+				{
+					if ((current.x + i) < (col) && (current.x + i) >= 0 &&
+						(current.y + j) < (row) && (current.y + j) >= 0 &&
+						(current.z + k) < (factor.z_downLimit) && (current.z + k) >= factor.z_upLimit)
+					{
+						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] == state)
+						{
+							temp.x = current.x + i;
+							temp.y = current.y + j;
+							temp.z = current.z + k;
+							sd_que.push(temp);
+
+							judge[current.z + k][(current.y + j) * col + (current.x + i)] = state + 1;
+
+							n += 1;
+						}
+					}
+				}
+			}
+		}
+		sd_que.pop();
+	}
+
+	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	// 單位(cm3)
 }
