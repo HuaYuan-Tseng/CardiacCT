@@ -964,15 +964,6 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 			0.0L
 		};
 
-		RG_Temp = {
-			seed_img,
-			3,
-			seed_img.z,
-			Total_Slice,
-			20.0L,
-			0.0L
-		};
-
 		// 開始執行 3D_Region Growing
 		//
 		CWait* m_wait = new CWait();
@@ -987,18 +978,19 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//mThread_1.join();
 		//mThread_2.join();
 		end = clock();
+		TRACE1("Org Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
 		start = clock();
-		//Erosion_3D(judge);
-		//Erosion_3D(judge);
-		//Dilation_3D(judge);
+		Erosion_3D(judge, 18);
+		Region_Growing_3D_Connect(RG_Total);
+		//Dilation_3D(judge, 18);
 		end = clock();
-		//TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		get_regionGrow = true;
 		m_result.Format("%lf", RG_Total.growingVolume);
-		TRACE1("Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
+		TRACE1("Last Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
 		
 		PrepareVolume();
 		UpdateData(FALSE);
@@ -2384,26 +2376,26 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 				{
 					if (temp[k][j * col + i] == 1)
 					{
-						src[(k + -1)][(j + -1) * col + (i + 0)] == 1;
-						src[(k + -1)][(j + 0) * col + (i + -1)] == 1;
-						src[(k + -1)][(j + 0) * col + (i + 0)] == 1;
-						src[(k + -1)][(j + 0) * col + (i + 1)] == 1;
-						src[(k + -1)][(j + 1) * col + (i + 0)] == 1;
+						src[(k + -1)][(j + -1) * col + (i + 0)] = 1;
+						src[(k + -1)][(j + 0) * col + (i + -1)] = 1;
+						src[(k + -1)][(j + 0) * col + (i + 0)] = 1;
+						src[(k + -1)][(j + 0) * col + (i + 1)] = 1;
+						src[(k + -1)][(j + 1) * col + (i + 0)] = 1;
 						
-						src[(k + 0)][(j + -1) * col + (i + -1)] == 1;
-						src[(k + 0)][(j + -1) * col + (i + 0)] == 1;
-						src[(k + 0)][(j + -1) * col + (i + 1)] == 1;
-						src[(k + 0)][(j + 0) * col + (i + -1)] == 1;
-						src[(k + 0)][(j + 0) * col + (i + 1)] == 1;
-						src[(k + 0)][(j + 1) * col + (i + -1)] == 1;
-						src[(k + 0)][(j + 1) * col + (i + 0)] == 1;
-						src[(k + 0)][(j + 1) * col + (i + 1)] == 1;
+						src[(k + 0)][(j + -1) * col + (i + -1)] = 1;
+						src[(k + 0)][(j + -1) * col + (i + 0)] = 1;
+						src[(k + 0)][(j + -1) * col + (i + 1)] = 1;
+						src[(k + 0)][(j + 0) * col + (i + -1)] = 1;
+						src[(k + 0)][(j + 0) * col + (i + 1)] = 1;
+						src[(k + 0)][(j + 1) * col + (i + -1)] = 1;
+						src[(k + 0)][(j + 1) * col + (i + 0)] = 1;
+						src[(k + 0)][(j + 1) * col + (i + 1)] = 1;
 						
-						src[(k + 1)][(j + -1) * col + (i + 0)] == 1;
-						src[(k + 1)][(j + 0) * col + (i + -1)] == 1;
-						src[(k + 1)][(j + 0) * col + (i + 0)] == 1;
-						src[(k + 1)][(j + 0) * col + (i + 1)] == 1;
-						src[(k + 1)][(j + 1) * col + (i + 0)] == 1;
+						src[(k + 1)][(j + -1) * col + (i + 0)] = 1;
+						src[(k + 1)][(j + 0) * col + (i + -1)] = 1;
+						src[(k + 1)][(j + 0) * col + (i + 0)] = 1;
+						src[(k + 1)][(j + 0) * col + (i + 1)] = 1;
+						src[(k + 1)][(j + 1) * col + (i + 0)] = 1;
 					}
 				}
 			}
@@ -2419,35 +2411,35 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 				{
 					if (temp[k][j * col + i] == 1)
 					{
-						src[(k + -1)][(j + -1) * col + (i + -1)] == 1;
-						src[(k + -1)][(j + -1) * col + (i + 0)] == 1;
-						src[(k + -1)][(j + -1) * col + (i + 1)] == 1;
-						src[(k + -1)][(j + 0) * col + (i + -1)] == 1;
-						src[(k + -1)][(j + 0) * col + (i + 0)] == 1;
-						src[(k + -1)][(j + 0) * col + (i + 1)] == 1;
-						src[(k + -1)][(j + 1) * col + (i + -1)] == 1;
-						src[(k + -1)][(j + 1) * col + (i + 0)] == 1;
-						src[(k + -1)][(j + 1) * col + (i + 1)] == 1;
+						src[(k + -1)][(j + -1) * col + (i + -1)] = 1;
+						src[(k + -1)][(j + -1) * col + (i + 0)] = 1;
+						src[(k + -1)][(j + -1) * col + (i + 1)] = 1;
+						src[(k + -1)][(j + 0) * col + (i + -1)] = 1;
+						src[(k + -1)][(j + 0) * col + (i + 0)] = 1;
+						src[(k + -1)][(j + 0) * col + (i + 1)] = 1;
+						src[(k + -1)][(j + 1) * col + (i + -1)] = 1;
+						src[(k + -1)][(j + 1) * col + (i + 0)] = 1;
+						src[(k + -1)][(j + 1) * col + (i + 1)] = 1;
 						
-						src[(k + 0)][(j + -1) * col + (i + -1)] == 1;
-						src[(k + 0)][(j + -1) * col + (i + 0)] == 1;
-						src[(k + 0)][(j + -1) * col + (i + 1)] == 1;
-						src[(k + 0)][(j + 0) * col + (i + -1)] == 1;
-						//src[(k + 0)][(j + 0) * col + (i + 0)] == 1;
-						src[(k + 0)][(j + 0) * col + (i + 1)] == 1;
-						src[(k + 0)][(j + 1) * col + (i + -1)] == 1;
-						src[(k + 0)][(j + 1) * col + (i + 0)] == 1;
-						src[(k + 0)][(j + 1) * col + (i + 1)] == 1;
+						src[(k + 0)][(j + -1) * col + (i + -1)] = 1;
+						src[(k + 0)][(j + -1) * col + (i + 0)] = 1;
+						src[(k + 0)][(j + -1) * col + (i + 1)] = 1;
+						src[(k + 0)][(j + 0) * col + (i + -1)] = 1;
+						//src[(k + 0)][(j + 0) * col + (i + 0)] = 1;
+						src[(k + 0)][(j + 0) * col + (i + 1)] = 1;
+						src[(k + 0)][(j + 1) * col + (i + -1)] = 1;
+						src[(k + 0)][(j + 1) * col + (i + 0)] = 1;
+						src[(k + 0)][(j + 1) * col + (i + 1)] = 1;
 						
-						src[(k + 1)][(j + -1) * col + (i + -1)] == 1;
-						src[(k + 1)][(j + -1) * col + (i + 0)] == 1;
-						src[(k + 1)][(j + -1) * col + (i + 1)] == 1;
-						src[(k + 1)][(j + 0) * col + (i + -1)] == 1;
-						src[(k + 1)][(j + 0) * col + (i + 0)] == 1;
-						src[(k + 1)][(j + 0) * col + (i + 1)] == 1;
-						src[(k + 1)][(j + 1) * col + (i + -1)] == 1;
-						src[(k + 1)][(j + 1) * col + (i + 0)] == 1;
-						src[(k + 1)][(j + 1) * col + (i + 1)] == 1;
+						src[(k + 1)][(j + -1) * col + (i + -1)] = 1;
+						src[(k + 1)][(j + -1) * col + (i + 0)] = 1;
+						src[(k + 1)][(j + -1) * col + (i + 1)] = 1;
+						src[(k + 1)][(j + 0) * col + (i + -1)] = 1;
+						src[(k + 1)][(j + 0) * col + (i + 0)] = 1;
+						src[(k + 1)][(j + 0) * col + (i + 1)] = 1;
+						src[(k + 1)][(j + 1) * col + (i + -1)] = 1;
+						src[(k + 1)][(j + 1) * col + (i + 0)] = 1;
+						src[(k + 1)][(j + 1) * col + (i + 1)] = 1;
 					}
 				}
 			}
@@ -2459,5 +2451,69 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 
 void C3DProcess::Region_Growing_3D_Connect(RG_Factor& factor)
 {
+	//	DO : 3D 區域成長 - 二次成長(確認最終分割區域與體積)
+	//
+	const int row = ROW;
+	const int col = COL;
+	const int total_xy = ROW * COL;
+	const int totalSlice = Total_Slice;
+	const int range = (factor.kernel - 1) / 2;	// 判斷範圍
+	register int i, j, k;
+	unsigned int n = 1;							// 計數成長的pixel數量
 
+	// src : 原始以及將要被更改的矩陣
+	// temp : 暫存原始狀態的矩陣(不做更動)
+	BYTE** judge_temp = New2Dmatrix(totalSlice, total_xy, BYTE);
+
+	// Deep copy (目前先以這樣的方式處理QQ)
+	//
+	for (j = 0; j < totalSlice; j++)
+	{
+		for (i = 0; i < total_xy; i++)
+		{
+			judge_temp[j][i] = judge[j][i];
+			judge[j][i] = 0;
+		}
+	}
+
+	Seed_s temp;								// 當前 判斷的周圍seed
+	Seed_s current;								// 當前 判斷的中心seed
+	Seed_s seed = factor.seed;					// 初始seed
+	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
+
+	judge[seed.z][(seed.y) * col + (seed.x)] = 1;
+	sd_que.push(seed);
+
+	while (!sd_que.empty())
+	{
+		current = sd_que.front();
+		for (k = -range; k <= range; k++)
+		{
+			for (j = -range; j <= range; j++)
+			{
+				for (i = -range; i <= range; i++)
+				{
+					if ((current.x + i) < (col) && (current.x + i) >= 0 &&
+						(current.y + j) < (row) && (current.y + j) >= 0 &&
+						(current.z + k) < (factor.z_downLimit) && (current.z + k) >= factor.z_upLimit)
+					{
+						if (judge_temp[current.z + k][(current.y + j) * col + (current.x + i)] == 1)
+						{
+							temp.x = current.x + i;
+							temp.y = current.y + j;
+							temp.z = current.z + k;
+							sd_que.push(temp);
+
+							judge[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
+
+							n += 1;
+						}
+					}
+				}
+			}
+		}
+		sd_que.pop();
+	}
+	delete judge_temp;
+	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	// 單位(cm3)
 }
