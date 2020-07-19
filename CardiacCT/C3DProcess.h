@@ -154,8 +154,9 @@ public:
 
 ///------------- ↓ 實驗區 ↓ -------------///
 
-	void	Erosion_3D(BYTE** src);
-	void	Dilation_3D(BYTE** src);
+	void	Erosion_3D(BYTE** src, short element);
+	void	Dilation_3D(BYTE** src, short element);
+	void	Region_Growing_3D_Connect(RG_Factor& factor);
 
 ///------------- ↑ 實驗區 ↑ -------------///
 	

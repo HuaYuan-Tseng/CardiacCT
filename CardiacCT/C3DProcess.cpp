@@ -982,20 +982,18 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 		start = clock();
 		Region_Growing_3D(RG_Total);
-		
 		//thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
 		//thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
 		//mThread_1.join();
 		//mThread_2.join();
-		
 		end = clock();
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
-		//start = clock();
+		start = clock();
 		//Erosion_3D(judge);
 		//Erosion_3D(judge);
 		//Dilation_3D(judge);
-		//end = clock();
+		end = clock();
 		//TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		get_regionGrow = true;
@@ -2201,50 +2199,20 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 		avg_que.pop();
 		sd_que.pop();
 	}
-
 	//TRACE1("sd : %d \n", sd_que.size());
 	//TRACE1("avg : %d \n", avg_que.size());
 	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
 
-void C3DProcess::Erosion_3D(BYTE** src)
+void C3DProcess::Erosion_3D(BYTE** src, short element)
 {
 	// DO : 3D Erosion (侵蝕 -形態學處理)
 	//
-	short kernel[27] = {
-		0, 0, 0,
-		0, 1, 0,
-		0, 0, 0,
-
-		0, 1, 0,
-		1, 1, 1,
-		0, 1, 0,
-
-		0, 0, 0,
-		0, 1, 0,
-		0, 0, 0,
-	};
-
-	const int Row = ROW;
-	const int Col = COL;
+	const int row = ROW;
+	const int col = COL;
 	const int total_xy = ROW * COL;
 	const int total_z = Total_Slice;
 	register int i, j, k;
-	unsigned int n = 0;
-
-	/*
-	(judge[(k + -1)][(j + -1) * Col + (i + -1)] == kernel[0]) && (judge[(k + -1)][(j + -1) * Col + (i + 0)] == kernel[1]) && (judge[(k + -1)][(j + -1) * Col + (i + 1)] == kernel[2]) &&
-	(judge[(k + -1)][(j + 0) * Col + (i + -1)] == kernel[3]) && (judge[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (judge[(k + -1)][(j + 0) * Col + (i + 1)] == kernel[5]) &&
-	(judge[(k + -1)][(j + 1) * Col + (i + -1)] == kernel[6]) && (judge[(k + -1)][(j + 1) * Col + (i + 0)] == kernel[7]) && (judge[(k + -1)][(j + 1) * Col + (i + 1)] == kernel[8]) &&
-
-	(judge[(k + 0)][(j + -1) * Col + (i + -1)] == kernel[9]) && (judge[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) && (judge[(k + 0)][(j + -1) * Col + (i + 1)] == kernel[11]) &&
-	(judge[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (judge[(k + 0)][(j + 0) * Col + (i + 0)] == kernel[13]) && (judge[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) &&
-	(judge[(k + 0)][(j + 1) * Col + (i + -1)] == kernel[15]) && (judge[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && (judge[(k + 0)][(j + 1) * Col + (i + 1)] == kernel[17]) &&
-
-	(judge[(k + 1)][(j + -1) * Col + (i + -1)] == kernel[18]) && (judge[(k + 1)][(j + -1) * Col + (i + 0)] == kernel[19]) && (judge[(k + 1)][(j + -1) * Col + (i + 1)] == kernel[20]) &&
-	(judge[(k + 1)][(j + 0) * Col + (i + -1)] == kernel[21]) && (judge[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22]) && (judge[(k + 1)][(j + 0) * Col + (i + 1)] == kernel[23]) &&
-	(judge[(k + 1)][(j + 1) * Col + (i + -1)] == kernel[24]) && (judge[(k + 1)][(j + 1) * Col + (i + 0)] == kernel[25]) && (judge[(k + 1)][(j + 1) * Col + (i + 1)] == kernel[26])
-	*/
 
 	// src : 原始以及將要被更改的矩陣
 	// temp : 暫存原始狀態的矩陣(不做更動)
@@ -2259,28 +2227,97 @@ void C3DProcess::Erosion_3D(BYTE** src)
 			temp[j][i] = src[j][i];
 		}
 	}
-
 	// Erosion
 	//
-	for (k = 1; k < total_z - 1; k++)
+	if (element == 6)
 	{
-		for (j = 1; j < Row - 1; j++)
+		for (k = 1; k < total_z - 1; k++)
 		{
-			for (i = 1; i < Col - 1; i++)
+			for (j = 1; j < row - 1; j++)
 			{
-				if (temp[k][j * Col + i] == 1)
+				for (i = 1; i < col - 1; i++)
 				{
-					if ((temp[(k + -1)][(j + 0) * Col + (i + 0)] == kernel[4]) && (temp[(k + 0)][(j + -1) * Col + (i + 0)] == kernel[10]) &&
-						(temp[(k + 0)][(j + 0) * Col + (i + -1)] == kernel[12]) && (temp[(k + 0)][(j + 0) * Col + (i + 1)] == kernel[14]) &&
-						(temp[(k + 0)][(j + 1) * Col + (i + 0)] == kernel[16]) && (temp[(k + 1)][(j + 0) * Col + (i + 0)] == kernel[22])
-						)
+					if (temp[k][j * col + i] == 1)
 					{
-						src[k][j * Col + i] = 1;
-						n += 1;
+						if ((temp[(k + -1)][(j + 0) * col + (i + 0)] == 1) && (temp[(k + 0)][(j + -1) * col + (i + 0)] == 1) &&
+							(temp[(k + 0)][(j + 0) * col + (i + -1)] == 1) && (temp[(k + 0)][(j + 0) * col + (i + 1)] == 1) &&
+							(temp[(k + 0)][(j + 1) * col + (i + 0)] == 1) && (temp[(k + 1)][(j + 0) * col + (i + 0)] == 1)
+							)
+						{
+							src[k][j * col + i] = 1;
+						}
+						else
+						{
+							src[k][j * col + i] = 0;
+						}
 					}
-					else
+				}
+			}
+		}
+	}
+	else if (element == 18)
+	{
+		for (k = 1; k < total_z - 1; k++)
+		{
+			for (j = 1; j < row - 1; j++)
+			{
+				for (i = 1; i < col - 1; i++)
+				{
+					if (temp[k][j * col + i] == 1)
 					{
-						src[k][j * Col + i] = 0;
+						if ((temp[(k + -1)][(j + -1) * col + (i + 0)] == 1) && (temp[(k + -1)][(j + 0) * col + (i + -1)] == 1) &&
+							(temp[(k + -1)][(j + 0) * col + (i + 0)] == 1) && (temp[(k + -1)][(j + 0) * col + (i + 1)] == 1) &&
+							(temp[(k + -1)][(j + 1) * col + (i + 0)] == 1) && (temp[(k + 0)][(j + -1) * col + (i + -1)] == 1) &&
+
+							(temp[(k + 0)][(j + -1) * col + (i + 0)] == 1) && (temp[(k + 0)][(j + -1) * col + (i + 1)] == 1) &&
+							(temp[(k + 0)][(j + 0) * col + (i + -1)] == 1) && (temp[(k + 0)][(j + 0) * col + (i + 1)] == 1) &&
+							(temp[(k + 0)][(j + 1) * col + (i + -1)] == 1) && (temp[(k + 0)][(j + 1) * col + (i + 0)] == 1) &&
+
+							(temp[(k + 0)][(j + 1) * col + (i + 1)] == 1) && (temp[(k + 1)][(j + -1) * col + (i + 0)] == 1) &&
+							(temp[(k + 1)][(j + 0) * col + (i + -1)] == 1) && (temp[(k + 1)][(j + 0) * col + (i + 0)] == 1) &&
+							(temp[(k + 1)][(j + 0) * col + (i + 1)] == 1) && (temp[(k + 1)][(j + 1) * col + (i + 0)] == 1)
+							)
+						{
+							src[k][j * col + i] = 1;
+						}
+						else
+						{
+							src[k][j * col + i] = 0;
+						}
+					}
+				}
+			}
+		}
+	}
+	else if (element == 26)
+	{
+		for (k = 1; k < total_z - 1; k++)
+		{
+			for (j = 1; j < row - 1; j++)
+			{
+				for (i = 1; i < col - 1; i++)
+				{
+					if (temp[k][j * col + i] == 1)
+					{
+						if ((temp[(k + -1)][(j + -1) * col + (i + -1)] == 1) && (temp[(k + -1)][(j + -1) * col + (i + 0)] == 1) && (temp[(k + -1)][(j + -1) * col + (i + 1)] == 1) &&
+							(temp[(k + -1)][(j + 0) * col + (i + -1)] == 1) && (temp[(k + -1)][(j + 0) * col + (i + 0)] == 1) && (temp[(k + -1)][(j + 0) * col + (i + 1)] == 1) &&
+							(temp[(k + -1)][(j + 1) * col + (i + -1)] == 1) && (temp[(k + -1)][(j + 1) * col + (i + 0)] == 1) && (temp[(k + -1)][(j + 1) * col + (i + 1)] == 1) &&
+
+							(temp[(k + 0)][(j + -1) * col + (i + -1)] == 1) && (temp[(k + 0)][(j + -1) * col + (i + 0)] == 1) && (temp[(k + 0)][(j + -1) * col + (i + 1)] == 1) &&
+							(temp[(k + 0)][(j + 0) * col + (i + -1)] == 1) && (temp[(k + 0)][(j + 0) * col + (i + 0)] == 1) && (temp[(k + 0)][(j + 0) * col + (i + 1)] == 1) &&
+							(temp[(k + 0)][(j + 1) * col + (i + -1)] == 1) && (temp[(k + 0)][(j + 1) * col + (i + 0)] == 1) && (temp[(k + 0)][(j + 1) * col + (i + 1)] == 1) &&
+
+							(temp[(k + 1)][(j + -1) * col + (i + -1)] == 1) && (temp[(k + 1)][(j + -1) * col + (i + 0)] == 1) && (temp[(k + 1)][(j + -1) * col + (i + 1)] == 1) &&
+							(temp[(k + 1)][(j + 0) * col + (i + -1)] == 1) && (temp[(k + 1)][(j + 0) * col + (i + 0)] == 1) && (temp[(k + 1)][(j + 0) * col + (i + 1)] == 1) &&
+							(temp[(k + 1)][(j + 1) * col + (i + -1)] == 1) && (temp[(k + 1)][(j + 1) * col + (i + 0)] == 1) && (temp[(k + 1)][(j + 1) * col + (i + 1)] == 1)
+							)
+						{
+							src[k][j * col + i] = 1;
+						}
+						else
+						{
+							src[k][j * col + i] = 0;
+						}
 					}
 				}
 			}
@@ -2290,30 +2327,15 @@ void C3DProcess::Erosion_3D(BYTE** src)
 	delete temp;
 }
 
-void C3DProcess::Dilation_3D(BYTE** src)
+void C3DProcess::Dilation_3D(BYTE** src, short element)
 {
 	// DO : 3D Dilation (膨脹 - 形態學處理)
 	//
-	short kernel[27] = {
-		0, 0, 0,
-		0, 1, 0,
-		0, 0, 0,
-
-		0, 1, 0,
-		1, 1, 1,
-		0, 1, 0,
-
-		0, 0, 0,
-		0, 1, 0,
-		0, 0, 0,
-	};
-
-	const int Row = ROW;
-	const int Col = COL;
+	const int row = ROW;
+	const int col = COL;
 	const int total_xy = ROW * COL;
 	const int total_z = Total_Slice;
 	register int i, j, k;
-	unsigned int n = 0;
 
 	// src : 原始以及將要被更改的矩陣
 	// temp : 暫存原始狀態的矩陣(不做更動)
@@ -2331,43 +2353,101 @@ void C3DProcess::Dilation_3D(BYTE** src)
 
 	// Dilation
 	//
-	for (k = 1; k < total_z - 1; k++)
+	if (element == 6)
 	{
-		for (j = 1; j < Row - 1; j++)
+		for (k = 1; k < total_z - 1; k++)
 		{
-			for (i = 1; i < Col - 1; i++)
+			for (j = 1; j < row - 1; j++)
 			{
-				if (temp[k][j * Col + i] == 1)
+				for (i = 1; i < col - 1; i++)
 				{
-					if (temp[(k + -1)][(j + 0) * Col + (i + 0)] != 1)
+					if (temp[k][j * col + i] == 1)
 					{
-						src[(k + -1)][(j + 0) * Col + (i + 0)] = 1;
-						n++;
+						src[(k + -1)][(j + 0) * col + (i + 0)] = 1;
+						src[(k + 0)][(j + -1) * col + (i + 0)] = 1;
+						src[(k + 0)][(j + 0) * col + (i + -1)] = 1;
+						src[(k + 0)][(j + 0) * col + (i + 1)] = 1;
+						src[(k + 0)][(j + 1) * col + (i + 0)] = 1;
+						src[(k + 1)][(j + 0) * col + (i + 0)] = 1;
 					}
-					if (temp[(k + 0)][(j + -1) * Col + (i + 0)] != 1)
+				}
+			}
+		}
+	}
+	else if (element == 18)
+	{
+		for (k = 1; k < total_z - 1; k++)
+		{
+			for (j = 1; j < row - 1; j++)
+			{
+				for (i = 1; i < col - 1; i++)
+				{
+					if (temp[k][j * col + i] == 1)
 					{
-						src[(k + 0)][(j + -1) * Col + (i + 0)] = 1;
-						n++;
+						src[(k + -1)][(j + -1) * col + (i + 0)] == 1;
+						src[(k + -1)][(j + 0) * col + (i + -1)] == 1;
+						src[(k + -1)][(j + 0) * col + (i + 0)] == 1;
+						src[(k + -1)][(j + 0) * col + (i + 1)] == 1;
+						src[(k + -1)][(j + 1) * col + (i + 0)] == 1;
+						
+						src[(k + 0)][(j + -1) * col + (i + -1)] == 1;
+						src[(k + 0)][(j + -1) * col + (i + 0)] == 1;
+						src[(k + 0)][(j + -1) * col + (i + 1)] == 1;
+						src[(k + 0)][(j + 0) * col + (i + -1)] == 1;
+						src[(k + 0)][(j + 0) * col + (i + 1)] == 1;
+						src[(k + 0)][(j + 1) * col + (i + -1)] == 1;
+						src[(k + 0)][(j + 1) * col + (i + 0)] == 1;
+						src[(k + 0)][(j + 1) * col + (i + 1)] == 1;
+						
+						src[(k + 1)][(j + -1) * col + (i + 0)] == 1;
+						src[(k + 1)][(j + 0) * col + (i + -1)] == 1;
+						src[(k + 1)][(j + 0) * col + (i + 0)] == 1;
+						src[(k + 1)][(j + 0) * col + (i + 1)] == 1;
+						src[(k + 1)][(j + 1) * col + (i + 0)] == 1;
 					}
-					if (temp[(k + 0)][(j + 0) * Col + (i + -1)] != 1)
+				}
+			}
+		}
+	}
+	else if (element == 26)
+	{
+		for (k = 1; k < total_z - 1; k++)
+		{
+			for (j = 1; j < row - 1; j++)
+			{
+				for (i = 1; i < col - 1; i++)
+				{
+					if (temp[k][j * col + i] == 1)
 					{
-						src[(k + 0)][(j + 0) * Col + (i + -1)] = 1;
-						n++;
-					}
-					if (temp[(k + 0)][(j + 0) * Col + (i + 1)] != 1)
-					{
-						src[(k + 0)][(j + 0) * Col + (i + 1)] = 1;
-						n++;
-					}
-					if (temp[(k + 0)][(j + 1) * Col + (i + 0)] != 1)
-					{
-						src[(k + 0)][(j + 1) * Col + (i + 0)] = 1;
-						n++;
-					}
-					if (temp[(k + 1)][(j + 0) * Col + (i + 0)] != 1)
-					{
-						src[(k + 1)][(j + 0) * Col + (i + 0)] = 1;
-						n++;
+						src[(k + -1)][(j + -1) * col + (i + -1)] == 1;
+						src[(k + -1)][(j + -1) * col + (i + 0)] == 1;
+						src[(k + -1)][(j + -1) * col + (i + 1)] == 1;
+						src[(k + -1)][(j + 0) * col + (i + -1)] == 1;
+						src[(k + -1)][(j + 0) * col + (i + 0)] == 1;
+						src[(k + -1)][(j + 0) * col + (i + 1)] == 1;
+						src[(k + -1)][(j + 1) * col + (i + -1)] == 1;
+						src[(k + -1)][(j + 1) * col + (i + 0)] == 1;
+						src[(k + -1)][(j + 1) * col + (i + 1)] == 1;
+						
+						src[(k + 0)][(j + -1) * col + (i + -1)] == 1;
+						src[(k + 0)][(j + -1) * col + (i + 0)] == 1;
+						src[(k + 0)][(j + -1) * col + (i + 1)] == 1;
+						src[(k + 0)][(j + 0) * col + (i + -1)] == 1;
+						//src[(k + 0)][(j + 0) * col + (i + 0)] == 1;
+						src[(k + 0)][(j + 0) * col + (i + 1)] == 1;
+						src[(k + 0)][(j + 1) * col + (i + -1)] == 1;
+						src[(k + 0)][(j + 1) * col + (i + 0)] == 1;
+						src[(k + 0)][(j + 1) * col + (i + 1)] == 1;
+						
+						src[(k + 1)][(j + -1) * col + (i + -1)] == 1;
+						src[(k + 1)][(j + -1) * col + (i + 0)] == 1;
+						src[(k + 1)][(j + -1) * col + (i + 1)] == 1;
+						src[(k + 1)][(j + 0) * col + (i + -1)] == 1;
+						src[(k + 1)][(j + 0) * col + (i + 0)] == 1;
+						src[(k + 1)][(j + 0) * col + (i + 1)] == 1;
+						src[(k + 1)][(j + 1) * col + (i + -1)] == 1;
+						src[(k + 1)][(j + 1) * col + (i + 0)] == 1;
+						src[(k + 1)][(j + 1) * col + (i + 1)] == 1;
 					}
 				}
 			}
@@ -2375,4 +2455,9 @@ void C3DProcess::Dilation_3D(BYTE** src)
 	}
 
 	delete temp;
+}
+
+void C3DProcess::Region_Growing_3D_Connect(RG_Factor& factor)
+{
+
 }
