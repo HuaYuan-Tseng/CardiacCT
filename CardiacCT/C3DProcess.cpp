@@ -953,7 +953,6 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		// 宣告 成長條件 與 評估的測量時間
 		//
 		clock_t start, end;
-		RG_Factor RG_Temp;
 
 		RG_Total = {
 			seed_img,
@@ -2465,6 +2464,14 @@ void C3DProcess::Region_Growing_3D_Connect(RG_Factor& factor)
 	// temp : 暫存原始狀態的矩陣(不做更動)
 	BYTE** judge_temp = New2Dmatrix(totalSlice, total_xy, BYTE);
 
+	Seed_s temp;								// 當前 判斷的周圍seed
+	Seed_s current;								// 當前 判斷的中心seed
+	Seed_s seed = factor.seed;					// 初始seed
+	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
+
+	judge[seed.z][(seed.y) * col + (seed.x)] = 1;
+	sd_que.push(seed);
+
 	// Deep copy (目前先以這樣的方式處理QQ)
 	//
 	for (j = 0; j < totalSlice; j++)
@@ -2475,14 +2482,6 @@ void C3DProcess::Region_Growing_3D_Connect(RG_Factor& factor)
 			judge[j][i] = 0;
 		}
 	}
-
-	Seed_s temp;								// 當前 判斷的周圍seed
-	Seed_s current;								// 當前 判斷的中心seed
-	Seed_s seed = factor.seed;					// 初始seed
-	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
-
-	judge[seed.z][(seed.y) * col + (seed.x)] = 1;
-	sd_que.push(seed);
 
 	while (!sd_que.empty())
 	{
@@ -2497,7 +2496,8 @@ void C3DProcess::Region_Growing_3D_Connect(RG_Factor& factor)
 						(current.y + j) < (row) && (current.y + j) >= 0 &&
 						(current.z + k) < (factor.z_downLimit) && (current.z + k) >= factor.z_upLimit)
 					{
-						if (judge_temp[current.z + k][(current.y + j) * col + (current.x + i)] == 1)
+						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] != 1 &&
+							judge_temp[current.z + k][(current.y + j) * col + (current.x + i)] == 1)
 						{
 							temp.x = current.x + i;
 							temp.y = current.y + j;
