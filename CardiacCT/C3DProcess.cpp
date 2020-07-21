@@ -983,7 +983,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		start = clock();
 		Erosion_3D(judge, 18);
 		Region_Growing_3D_Connect(RG_Total);
-		//Dilation_3D(judge, 18);
+		Dilation_3D(judge, 26);
 		end = clock();
 		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
@@ -2444,6 +2444,22 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 			}
 		}
 	}
+
+	unsigned int n = 0;
+	for (k = 1; k < total_z - 1; k++)
+	{
+		for (j = 1; j < row - 1; j++)
+		{
+			for (i = 1; i < col - 1; i++)
+			{
+				if (src[k][j * col + i] == 1)
+				{
+					n++;
+				}
+			}
+		}
+	}
+	RG_Total.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;
 
 	delete temp;
 }
