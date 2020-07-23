@@ -981,9 +981,10 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
 		start = clock();
-		Erosion_3D(judge, 18);
+		Erosion_3D(judge, 26);
 		Region_Growing_3D_Connect(RG_Total);
 		Dilation_3D(judge, 26);
+
 		end = clock();
 		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
@@ -2155,6 +2156,16 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 		up_limit = avg + threshold;
 		down_limit = avg - threshold;
 
+		if (up_limit > 255)
+		{
+			up_limit = 255;
+			down_limit = 255 - 2 * threshold;
+		}
+		if (down_limit < 0)
+		{
+			down_limit = 0;
+			up_limit = 0 + 2 * threshold;
+		}
 		for (k = -range; k <= range; k++)
 		{
 			for (j = -range; j <= range; j++)
@@ -2444,7 +2455,7 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 			}
 		}
 	}
-
+	//
 	unsigned int n = 0;
 	for (k = 1; k < total_z - 1; k++)
 	{
@@ -2460,7 +2471,7 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 		}
 	}
 	RG_Total.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;
-
+	//
 	delete temp;
 }
 
@@ -2472,7 +2483,8 @@ void C3DProcess::Region_Growing_3D_Connect(RG_Factor& factor)
 	const int col = COL;
 	const int total_xy = ROW * COL;
 	const int totalSlice = Total_Slice;
-	const int range = (factor.kernel - 1) / 2;	// 判斷範圍
+	const int kernel = 3;
+	const int range = (kernel - 1) / 2;	// 判斷範圍
 	register int i, j, k;
 	unsigned int n = 1;							// 計數成長的pixel數量
 
