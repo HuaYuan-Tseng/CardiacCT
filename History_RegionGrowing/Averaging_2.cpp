@@ -30,6 +30,11 @@ typedef struct
 	_OUT	double	growingVolume;	// 成長體積
 }	RG_Factor;
 
+//thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
+//thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
+//mThread_1.join();
+//mThread_2.join();
+
 void C3DProcess::Region_Growing_3D(RG_Factor& factor)
 {
 	//	DO : 3D 區域成長

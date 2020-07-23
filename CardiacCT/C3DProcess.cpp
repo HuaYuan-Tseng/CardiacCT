@@ -2475,7 +2475,7 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 	delete temp;
 }
 
-void C3DProcess::Region_Growing_3D_Connect(RG_Factor& factor)
+void C3DProcess::Region_Growing_3D_Connect(C3DProcess::RG_Factor& factor)
 {
 	//	DO : 3D 區域成長 - 二次成長(確認最終分割區域與體積)
 	//
