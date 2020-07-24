@@ -2123,9 +2123,9 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 {
 	//	DO : 3D 區域成長
 	//
-	const int Row = ROW;
-	const int Col = COL;
-	const int TotalSlice = Total_Slice;
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
 	const int range = (factor.kernel - 1) / 2;	// 判斷範圍
 	register int i, j, k;
 	unsigned int n = 1;							// 計數成長的pixel數量
@@ -2144,8 +2144,8 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	queue<double> avg_que;						// 暫存某點成長判斷完，當下已成長區域的整體avg
 	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
 
-	avg = m_pDoc->m_img[seed.z][(seed.y) * Col + (seed.x)];
-	judge[seed.z][(seed.y) * Col + (seed.x)] = 1;
+	avg = m_pDoc->m_img[seed.z][(seed.y) * col + (seed.x)];
+	judge[seed.z][(seed.y) * col + (seed.x)] = 1;
 	avg_que.push(avg);
 	sd_que.push(seed);
 
@@ -2172,13 +2172,13 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 			{
 				for (i = -range; i <= range; i++)
 				{
-					if ((current.x + i) < (Col) && (current.x + i) >= 0 &&
-						(current.y + j) < (Row) && (current.y + j) >= 0 &&
+					if ((current.x + i) < (col) && (current.x + i) >= 0 &&
+						(current.y + j) < (row) && (current.y + j) >= 0 &&
 						(current.z + k) < (factor.z_downLimit) && (current.z + k) >= factor.z_upLimit)
 					{
-						if (judge[current.z + k][(current.y + j) * Col + (current.x + i)] != 1)
+						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] != 1)
 						{
-							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * Col + (current.x + i)];
+							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * col + (current.x + i)];
 
 							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
 							{
@@ -2187,7 +2187,7 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 								temp.z = current.z + k;
 								sd_que.push(temp);
 
-								judge[current.z + k][(current.y + j) * Col + (current.x + i)] = 1;
+								judge[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
 								
 								avg = (avg * n + N_pixel) / (n + 1);
 								avg_que.push(avg);
