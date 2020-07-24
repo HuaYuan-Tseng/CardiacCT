@@ -950,47 +950,40 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	//
 	if (get_3Dseed)
 	{
-		// 宣告 成長條件 與 評估的測量時間
+		// 宣告 成長條件
 		//
-		clock_t start, end;
-
-		RG_Total = {
+		RG_totalTerm = {
 			seed_img,
 			3,
-			0,
-			Total_Slice,
-			25.0L,
-			0.0L
+			25.0L
 		};
 
 		// 開始執行 3D_Region Growing
 		//
+		clock_t start, end;
 		CWait* m_wait = new CWait();
 		m_wait->Create(IDD_DIALOG_WAIT);
 		m_wait->ShowWindow(SW_NORMAL);
 		m_wait->setDisplay("Region growing...");
 
 		start = clock();
-		Region_Growing_3D(RG_Total);
-		//thread	mThread_1(&C3DProcess::Region_Growing_3D, this, ref(RG_Total));
-		//thread	mThread_2(&C3DProcess::Region_Growing_3D, this, ref(RG_Temp));
-		//mThread_1.join();
-		//mThread_2.join();
+		Region_Growing_3D(judge, RG_totalTerm);
 		end = clock();
-		TRACE1("Org Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
+		RG_totalVolume = Calculate_Volume(judge, 1);
+		TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
 		start = clock();
 		Erosion_3D(judge, 26);
-		Region_Growing_3D_Connect(RG_Total);
+		Region_Growing_3D_Link(judge, RG_totalTerm);
 		Dilation_3D(judge, 26);
-
 		end = clock();
 		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		get_regionGrow = true;
-		m_result.Format("%lf", RG_Total.growingVolume);
-		TRACE1("Last Growing Volume : %f (cm3) \n", RG_Total.growingVolume);
+		RG_totalVolume = Calculate_Volume(judge, 1);
+		m_result.Format("%lf", RG_totalVolume);
+		TRACE1("Last Growing Volume : %f (cm3) \n", RG_totalVolume);
 		
 		PrepareVolume();
 		UpdateData(FALSE);
@@ -1009,20 +1002,20 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	//
 	if (!get_regionGrow)	return;
 
-	get_regionGrow = false;
 	m_result = _T("0.0");
-	RG_Total.growingVolume = 0.0L;
+	RG_totalVolume = 0.0L;
+	get_regionGrow = false;
 	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 	//------------------------------------------------------------//
 
 	float pixel;
-	const int Row = ROW;
-	const int Col = COL;
+	const int row = ROW;
+	const int col = COL;
 	const int totalx = ROW * COL;
 	const int totaly = Total_Slice;
-	const int TotalSlice = Total_Slice;
-	const int Sample_start = 0 + Mat_Offset;
-	const int Sample_end = 0 + Mat_Offset + TotalSlice;
+	const int totalSlice = Total_Slice;
+	const int sample_start = 0 + Mat_Offset;
+	const int sample_end = 0 + Mat_Offset + totalSlice;
 
 	// 恢復 : 成長判定矩陣
 	//
@@ -1040,13 +1033,13 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	k = 0;
 	while (k < 512)
 	{
-		if (k > Sample_start && k <= Sample_end)
+		if (k > sample_start && k <= sample_end)
 		{
-			for (j = 2; j < Row - 2; j += 2)
+			for (j = 2; j < row - 2; j += 2)
 			{
-				for (i = 2; i < Col - 2; i += 2)
+				for (i = 2; i < col - 2; i += 2)
 				{
-					pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
+					pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
 
 					getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 						pixel / 255.0F, 0);
@@ -1222,11 +1215,11 @@ void C3DProcess::PrepareVolume()
 
 	// 預備要用來建立紋理的資料矩陣
 	//
-	const int Row = ROW;
-	const int Col = COL;
-	const int TotalSlice = Total_Slice;
-	const int Sample_start = 0 + Mat_Offset;
-	const int Sample_end = 0 + Mat_Offset + TotalSlice;
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int sample_start = 0 + Mat_Offset;
+	const int sample_end = 0 + Mat_Offset + totalSlice;
 	
 	float pixel = 0.0F;
 	register int i, j, k;
@@ -1243,13 +1236,13 @@ void C3DProcess::PrepareVolume()
 	{
 		while (k < 512)
 		{
-			if (k > Sample_start && k <= Sample_end)
+			if (k > sample_start && k <= sample_end)
 			{
-				for (j = 2; j < Row - 2; j += 2)
+				for (j = 2; j < row - 2; j += 2)
 				{
-					for (i = 2; i < Col - 2; i += 2)
+					for (i = 2; i < col - 2; i += 2)
 					{
-						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
+						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
 
 						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 							pixel / 255.0F, 0);
@@ -1264,15 +1257,15 @@ void C3DProcess::PrepareVolume()
 	{
 		while (k < 512)
 		{
-			if (k > Sample_start && k <= Sample_end)
+			if (k > sample_start && k <= sample_end)
 			{
-				for (j = 2; j < Row - 2; j += 2)
+				for (j = 2; j < row - 2; j += 2)
 				{
-					for (i = 2; i < Col - 2; i += 2)
+					for (i = 2; i < col - 2; i += 2)
 					{
-						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * Col + i];
+						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
 
-						if (judge[k - (Mat_Offset + 1)][j * Col + i] == 0)
+						if (judge[k - (Mat_Offset + 1)][j * col + i] == 0)
 						{
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 								pixel / 255.0F, 0);
@@ -2119,7 +2112,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
+void C3DProcess::Region_Growing_3D(BYTE** src, RG_factor& factor)
 {
 	//	DO : 3D 區域成長
 	//
@@ -2129,9 +2122,8 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	const int range = (factor.kernel - 1) / 2;	// 判斷範圍
 	register int i, j, k;
 	unsigned int n = 1;							// 計數成長的pixel數量
-
-	short S_pixel = 0;
-	short N_pixel = 0;
+	short s_pixel = 0;
+	short n_pixel = 0;
 	
 	double avg;
 	double up_limit;
@@ -2145,7 +2137,7 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
 
 	avg = m_pDoc->m_img[seed.z][(seed.y) * col + (seed.x)];
-	judge[seed.z][(seed.y) * col + (seed.x)] = 1;
+	src[seed.z][(seed.y) * col + (seed.x)] = 1;
 	avg_que.push(avg);
 	sd_que.push(seed);
 
@@ -2172,24 +2164,24 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 			{
 				for (i = -range; i <= range; i++)
 				{
-					if ((current.x + i) < (col) && (current.x + i) >= 0 &&
-						(current.y + j) < (row) && (current.y + j) >= 0 &&
-						(current.z + k) < (factor.z_downLimit) && (current.z + k) >= factor.z_upLimit)
+					if ((current.x + i) < (col)			&& (current.x + i) >= 0 &&
+						(current.y + j) < (row)			&& (current.y + j) >= 0 &&
+						(current.z + k) < (totalSlice)	&& (current.z + k) >= 0)
 					{
-						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] != 1)
+						if (src[current.z + k][(current.y + j) * col + (current.x + i)] != 1)
 						{
-							N_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * col + (current.x + i)];
+							n_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * col + (current.x + i)];
 
-							if ((N_pixel <= up_limit) && (N_pixel >= down_limit))
+							if ((n_pixel <= up_limit) && (n_pixel >= down_limit))
 							{
 								temp.x = current.x + i;
 								temp.y = current.y + j;
 								temp.z = current.z + k;
 								sd_que.push(temp);
 
-								judge[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
+								src[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
 								
-								avg = (avg * n + N_pixel) / (n + 1);
+								avg = (avg * n + n_pixel) / (n + 1);
 								avg_que.push(avg);
 								n += 1;
 							}
@@ -2202,8 +2194,6 @@ void C3DProcess::Region_Growing_3D(C3DProcess::RG_Factor& factor)
 		sd_que.pop();
 	}
 	//TRACE1("sd : %d \n", sd_que.size());
-	//TRACE1("avg : %d \n", avg_que.size());
-	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z)/1000;	// 單位(cm3)
 }
 
 void C3DProcess::Erosion_3D(BYTE** src, short element)
@@ -2325,7 +2315,6 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 			}
 		}
 	}
-
 	delete temp;
 }
 
@@ -2455,27 +2444,10 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 			}
 		}
 	}
-	//
-	unsigned int n = 0;
-	for (k = 1; k < total_z - 1; k++)
-	{
-		for (j = 1; j < row - 1; j++)
-		{
-			for (i = 1; i < col - 1; i++)
-			{
-				if (src[k][j * col + i] == 1)
-				{
-					n++;
-				}
-			}
-		}
-	}
-	RG_Total.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;
-	//
 	delete temp;
 }
 
-void C3DProcess::Region_Growing_3D_Connect(C3DProcess::RG_Factor& factor)
+void C3DProcess::Region_Growing_3D_Link(BYTE** src, RG_factor& factor)
 {
 	//	DO : 3D 區域成長 - 二次成長(確認最終分割區域與體積)
 	//
@@ -2484,9 +2456,8 @@ void C3DProcess::Region_Growing_3D_Connect(C3DProcess::RG_Factor& factor)
 	const int total_xy = ROW * COL;
 	const int totalSlice = Total_Slice;
 	const int kernel = 3;
-	const int range = (kernel - 1) / 2;	// 判斷範圍
+	const int range = (kernel - 1) / 2;			// 判斷範圍
 	register int i, j, k;
-	unsigned int n = 1;							// 計數成長的pixel數量
 
 	// src : 原始以及將要被更改的矩陣
 	// temp : 暫存原始狀態的矩陣(不做更動)
@@ -2520,9 +2491,9 @@ void C3DProcess::Region_Growing_3D_Connect(C3DProcess::RG_Factor& factor)
 			{
 				for (i = -range; i <= range; i++)
 				{
-					if ((current.x + i) < (col) && (current.x + i) >= 0 &&
-						(current.y + j) < (row) && (current.y + j) >= 0 &&
-						(current.z + k) < (factor.z_downLimit) && (current.z + k) >= factor.z_upLimit)
+					if ((current.x + i) < (col)			&& (current.x + i) >= 0 &&
+						(current.y + j) < (row)			&& (current.y + j) >= 0 &&
+						(current.z + k) < (totalSlice)	&& (current.z + k) >= 0)
 					{
 						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] != 1 &&
 							judge_temp[current.z + k][(current.y + j) * col + (current.x + i)] == 1)
@@ -2533,8 +2504,6 @@ void C3DProcess::Region_Growing_3D_Connect(C3DProcess::RG_Factor& factor)
 							sd_que.push(temp);
 
 							judge[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
-
-							n += 1;
 						}
 					}
 				}
@@ -2543,5 +2512,28 @@ void C3DProcess::Region_Growing_3D_Connect(C3DProcess::RG_Factor& factor)
 		sd_que.pop();
 	}
 	delete judge_temp;
-	factor.growingVolume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	// 單位(cm3)
+}
+
+double C3DProcess::Calculate_Volume(BYTE** src, short target)
+{
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	register int i, j, k;
+	unsigned int n = 0;							// 計數成長的pixel數量
+	double volume = 0L;
+
+	for (k = 0; k < totalSlice; k++)
+	{
+		for (j = 0; j < row; j++)
+		{
+			for (i = 0; i < col; i++)
+			{
+				if (src[k][j * col + i] == target)
+					n += 1;
+			}
+		}
+	}
+	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;		// 單位 (cm3)
+	return volume;
 }

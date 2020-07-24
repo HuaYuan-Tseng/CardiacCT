@@ -76,27 +76,27 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 ///-------------------------↓ 3D seed 宣告參數 ↓---------------------------------------///
 
-	typedef struct
+	struct Seed_s
 	{
 		short x, y, z;
-	}	Seed_s;
+		Seed_s() : x(0), y(0), z(0) {};
+		Seed_s(short a, short b, short c) : x(a), y(b), z(c) {};
+	};
 
-	typedef struct
+	struct Seed_d
 	{
 		double x, y, z;
-	}	Seed_d;
+		Seed_d() : x(0), y(0), z(0) {};
+		Seed_d(double a, double b, double c) : x(a), y(b), z(c) {};
+	};
 
-	typedef struct
+	struct RG_factor
 	{
 		_IN		Seed_s	seed;			// 種子點
 		_IN		int		kernel;			// 拜託務必保持奇數
-		_IN		int		z_upLimit;		// Z軸成長上限(最多到 0)
-		_IN		int		z_downLimit;	// Z軸成長下限(最多到 TotalSlice)
 		_IN		double	threshold;		// 成長閾值
-		_OUT	double	growingVolume;	// 成長體積
-	}	RG_Factor;
+	};
 
-	RG_Factor		RG_Total;			// 區域成長條件與情況
 	Seed_d			seed_gl;			// 在3D視窗點擊的seed openGL世界座標
 	Seed_s			seed_pt;			// 在2D視窗點擊的seed座標
 	Seed_s			seed_img;			// 3D_seed的世界座標轉換為原影像"矩陣"(512*512)座標
@@ -120,7 +120,8 @@ unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 
 ///------------- ↓ 實驗區 ↓ -------------///
 
-
+	RG_factor		RG_totalTerm;		// 3D區域成長 : 條件因子
+	double			RG_totalVolume;		// 3D區域成長 : 總體積(1)
 
 ///------------- ↑ 實驗區 ↑ -------------///
 
@@ -149,14 +150,16 @@ public:
 	void	ActStart(UINT nFlags, int x, int y);		// 「開始旋轉」的動作設定
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
-	void	Region_Growing_3D(RG_Factor& factor);		// 3D 區域成長(成長結果存於judge)
 	Seed_s	coordiConvert(Seed_d& pt);					// openGL coordinate -> data array site
 
 ///------------- ↓ 實驗區 ↓ -------------///
 
 	void	Erosion_3D(BYTE** src, short element);
 	void	Dilation_3D(BYTE** src, short element);
-	void	Region_Growing_3D_Connect(RG_Factor& factor);
+	void	Region_Growing_3D(BYTE** src, RG_factor& factor);		// 3D 區域成長(成長結果紀錄於judge)
+	void	Region_Growing_3D_Link(BYTE** src, RG_factor& factor);
+
+	double	Calculate_Volume(BYTE** src, short target);
 
 ///------------- ↑ 實驗區 ↑ -------------///
 	
