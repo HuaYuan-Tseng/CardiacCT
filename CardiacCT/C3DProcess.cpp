@@ -954,7 +954,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//
 		RG_totalTerm = {
 			seed_img,
-			3,
+			5,
 			25.0L
 		};
 
@@ -969,7 +969,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		start = clock();
 		Region_Growing_3D(judge, RG_totalTerm);
 		end = clock();
-		RG_totalVolume = Calculate_Volume(judge, 1);
+		//RG_totalVolume = Calculate_Volume(judge, 1);
 		TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
@@ -2148,7 +2148,7 @@ void C3DProcess::Region_Growing_3D(BYTE** src, RG_factor& factor)
 		up_limit = avg + threshold;
 		down_limit = avg - threshold;
 
-		if (up_limit > 255)
+ 		if (up_limit > 255)
 		{
 			up_limit = 255;
 			down_limit = 255 - 2 * threshold;
