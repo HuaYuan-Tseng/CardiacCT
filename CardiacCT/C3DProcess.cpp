@@ -2114,7 +2114,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 
 void C3DProcess::Region_Growing_3D(BYTE** src, RG_factor& factor)
 {
-	//	DO : 3D 區域成長
+	//	DO : 3D 區域成長(利用周圍平均值判斷該點是否加入sd_que,試試看)
 	//
 	const int row = ROW;
 	const int col = COL;
