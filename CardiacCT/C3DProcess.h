@@ -109,7 +109,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	float			y_index;			// タ Y 禸ゑㄒ把计
 	float			z_index;			// タ Z 禸ゑㄒ把计
 
-	BYTE**			judge;				// 跋办Θ﹚
+	BYTE**			judge;				// 癘魁跋办Θ挡狦(Θ﹚)
 	BYTE			m_image0[256*256*256][4];
 
 ///-------------------------◆ 3D seed 把计 ◆---------------------------------------///
@@ -156,8 +156,9 @@ public:
 
 	void	Erosion_3D(BYTE** src, short element);
 	void	Dilation_3D(BYTE** src, short element);
-	void	Region_Growing_3D(BYTE** src, RG_factor& factor);		// 3D 跋办Θ(Θ挡狦魁judge)
-	void	Region_Growing_3D_Link(BYTE** src, RG_factor& factor);
+	void	RG_3D_Link(BYTE** src, RG_factor& factor);
+	void	RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor);		// 3D 跋办Θ(办キА)
+	
 
 	double	Calculate_Volume(BYTE** src, short target);
 
