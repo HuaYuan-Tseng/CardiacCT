@@ -954,7 +954,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//
 		RG_totalTerm = {
 			seed_img,
-			5,
+			3,
 			25.0L
 		};
 
