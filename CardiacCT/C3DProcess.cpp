@@ -953,11 +953,12 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		// 宣告 成長條件
 		//
 		RG_totalTerm = {
-			seed_img,
-			3,
-			25.0L
+			RG_totalTerm.seed = seed_img,
+			RG_totalTerm.s_kernel = 3,
+			RG_totalTerm.n_kernel = 3,
+			RG_totalTerm.threshold = 20.0L
 		};
-
+		
 		// 開始執行 3D_Region Growing
 		//
 		clock_t start, end;
@@ -967,18 +968,19 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		m_wait->setDisplay("Region growing...");
 
 		start = clock();
-		RG_3D_GlobalAvgConnected(judge, RG_totalTerm);
+		//RG_3D_GlobalAvgConnected(judge, RG_totalTerm);
+		RG_3D_LocalAvgConnected(judge, RG_totalTerm);
 		end = clock();
-		//RG_totalVolume = Calculate_Volume(judge, 1);
+		RG_totalVolume = Calculate_Volume(judge, 1);
 		TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
-		start = clock();
-		Erosion_3D(judge, 26);
-		RG_3D_Link(judge, RG_totalTerm);
-		Dilation_3D(judge, 26);
-		end = clock();
-		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		//start = clock();
+		//Erosion_3D(judge, 26);
+		//RG_3D_Link(judge, RG_totalTerm);
+		//Dilation_3D(judge, 26);
+		//end = clock();
+		//TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		get_regionGrow = true;
 		RG_totalVolume = Calculate_Volume(judge, 1);
@@ -2114,14 +2116,15 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 
 void C3DProcess::RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor)
 {
-	//	DO : 3D 區域成長 (利用「當前已成長的全域平均值」來界定成長標準)
+	//	DO : 3D 區域成長 
+	//	利用「當前已成長的全域平均值」來界定成長標準，並用「目前的像素強度」來判斷
 	//
 	const int row = ROW;
 	const int col = COL;
 	const int totalSlice = Total_Slice;
-	const int range = (factor.kernel - 1) / 2;	// 判斷範圍
+	const int range = (factor.s_kernel - 1) / 2;	// 判斷範圍
 	register int i, j, k;
-	unsigned int n = 1;							// 計數成長的pixel數量
+	unsigned int cnt = 1;							// 計數成長的pixel數量
 	short n_pixel = 0;
 	
 	double avg;
@@ -2180,9 +2183,9 @@ void C3DProcess::RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor)
 
 								src[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
 								
-								avg = (avg * n + n_pixel) / (n + 1);
+								avg = (avg * cnt + n_pixel) / (cnt + 1);
 								avg_que.push(avg);
-								n += 1;
+								cnt += 1;
 							}
 						}
 					}
@@ -2195,9 +2198,117 @@ void C3DProcess::RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor)
 	//TRACE1("sd : %d \n", sd_que.size());
 }
 
+void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
+{
+	//	DO : 3D 區域成長 (s_ : seed ; n_ : nerighbor)
+	//	利用「當前已成長的全域平均值」來界定成長標準，並用「目前像素鄰近區域的平均值」來判斷
+	//
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	const int n_range = (factor.n_kernel - 1) / 2;
+	register int si, sj, sk;
+	register int ni, nj, nk;
+	unsigned int s_cnt = 1;
+	unsigned int n_cnt = 0;
+	int n_pixel = 0;
+
+	double	s_avg;
+	double	n_avg;
+	double	up_limit;
+	double	down_limit;
+	double	threshold = factor.threshold;
+
+	Seed_s	temp;
+	Seed_s	s_current;
+	Seed_s	n_current;
+	Seed_s	seed = factor.seed;
+	queue<Seed_s>	sd_que;
+	queue<double>	avg_que;
+	
+	s_avg = m_pDoc->m_img[seed.z][seed.y * col + seed.x];
+	src[seed.z][seed.y * col + seed.x] = 1;
+	avg_que.push(s_avg);
+	sd_que.push(seed);
+
+	while (!sd_que.empty())
+	{
+		s_avg = avg_que.front();
+		s_current = sd_que.front();
+		up_limit = s_avg + threshold;
+		down_limit = s_avg - threshold;
+
+		if (up_limit > 255)
+		{
+			up_limit = 255;
+			down_limit = 255 - 2 * threshold;
+		}
+		if (down_limit < 0)
+		{
+			down_limit = 0;
+			up_limit = 0 + 2 * threshold;
+		}
+		for (sk = -s_range; sk <= s_range; sk++)
+		{
+			for (sj = -s_range; sj <= s_range; sj++)
+			{
+				for (si = -s_range; si <= s_range; si++)
+				{
+					if ((s_current.x + si) < col		&& (s_current.x + si) >= 0 &&
+						(s_current.y + sj) < row		&& (s_current.y + sj) >= 0 &&
+						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0	)
+					{
+						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+						{
+							n_current.x = s_current.x + si;
+							n_current.y = s_current.y + sj;
+							n_current.z = s_current.z + sk;
+							n_pixel = 0;	n_cnt = 0;
+							for (nk = -n_range; nk <= n_range; nk++)
+							{
+								for (nj = -n_range; nj <= n_range; nj++)
+								{
+									for (ni = -n_range; ni <= n_range; ni++)
+									{
+										if ((n_current.x + ni) < col && (n_current.x + ni) >= 0 &&
+											(n_current.y + nj) < row && (n_current.y + nj) >= 0 &&
+											(n_current.z + nk) < totalSlice && (n_current.z + nk) >= 0)
+										{
+											n_pixel +=
+												m_pDoc->m_img[n_current.z + nk][(n_current.y + nj) * col + (n_current.x + ni)];
+											n_cnt += 1;
+										}
+									}
+								}
+							}
+							// end 3 layer for (n
+							n_avg = (double)n_pixel / n_cnt;
+							if ((n_avg <= up_limit) && (n_avg >= down_limit))
+							{
+								sd_que.push(n_current);
+								src[n_current.z][n_current.y * col + n_current.x] = 1;
+								n_pixel = m_pDoc->m_img[n_current.z][n_current.y * col + n_current.x];
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
+							}
+						}
+					}
+				}
+			}
+		}
+		// end 3 layer for (s
+		sd_que.pop();
+		avg_que.pop();
+	}
+	// end while
+}
+
 void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
 {
-	//	DO : 3D 區域成長 - 二次成長(確認最終分割區域與體積)
+	//	DO : 3D 區域成長
+	//	將與種子點連接的像素點連接起來(確認最終分割區域與體積)
 	//
 	const int row = ROW;
 	const int col = COL;
@@ -2209,14 +2320,14 @@ void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
 
 	// src : 原始以及將要被更改的矩陣
 	// temp : 暫存原始狀態的矩陣(不做更動)
-	BYTE** judge_temp = New2Dmatrix(totalSlice, total_xy, BYTE);
+	BYTE** src_temp = New2Dmatrix(totalSlice, total_xy, BYTE);
 
 	Seed_s temp;								// 當前 判斷的周圍seed
 	Seed_s current;								// 當前 判斷的中心seed
 	Seed_s seed = factor.seed;					// 初始seed
 	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
 
-	judge[seed.z][(seed.y) * col + (seed.x)] = 1;
+	src[seed.z][(seed.y) * col + (seed.x)] = 1;
 	sd_que.push(seed);
 
 	// Deep copy (目前先以這樣的方式處理QQ)
@@ -2225,8 +2336,8 @@ void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
 	{
 		for (i = 0; i < total_xy; i++)
 		{
-			judge_temp[j][i] = judge[j][i];
-			judge[j][i] = 0;
+			src_temp[j][i] = src[j][i];
+			src[j][i] = 0;
 		}
 	}
 
@@ -2243,15 +2354,15 @@ void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
 						(current.y + j) < (row) && (current.y + j) >= 0 &&
 						(current.z + k) < (totalSlice) && (current.z + k) >= 0)
 					{
-						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] != 1 &&
-							judge_temp[current.z + k][(current.y + j) * col + (current.x + i)] == 1)
+						if (src[current.z + k][(current.y + j) * col + (current.x + i)] != 1 &&
+							src_temp[current.z + k][(current.y + j) * col + (current.x + i)] == 1)
 						{
 							temp.x = current.x + i;
 							temp.y = current.y + j;
 							temp.z = current.z + k;
 							sd_que.push(temp);
 
-							judge[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
+							src[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
 						}
 					}
 				}
@@ -2259,7 +2370,7 @@ void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
 		}
 		sd_que.pop();
 	}
-	delete judge_temp;
+	delete src_temp;
 }
 
 void C3DProcess::Erosion_3D(BYTE** src, short element)

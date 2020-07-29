@@ -93,7 +93,8 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	struct RG_factor
 	{
 		_IN		Seed_s	seed;			// 種子點
-		_IN		int		kernel;			// 拜託務必保持奇數
+		_IN		int		s_kernel;		// 種子點鄰近範圍
+		_IN		int		n_kernel;		// 種子點鄰近像素的周邊範圍
 		_IN		double	threshold;		// 成長閾值
 	};
 
@@ -157,8 +158,8 @@ public:
 	void	Erosion_3D(BYTE** src, short element);
 	void	Dilation_3D(BYTE** src, short element);
 	void	RG_3D_Link(BYTE** src, RG_factor& factor);
-	void	RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor);		// 3D 區域成長(全域平均)
-	
+	void	RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor);		// 3D 區域成長(全域平均與當前強度)
+	void	RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor);
 
 	double	Calculate_Volume(BYTE** src, short target);
 
