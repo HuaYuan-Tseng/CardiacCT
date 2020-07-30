@@ -975,12 +975,12 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
-		//start = clock();
-		//Erosion_3D(judge, 26);
-		//RG_3D_Link(judge, RG_totalTerm);
-		//Dilation_3D(judge, 26);
-		//end = clock();
-		//TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		start = clock();
+		Erosion_3D(judge, 18);
+		RG_3D_Link(judge, RG_totalTerm);
+		Dilation_3D(judge, 26);
+		end = clock();
+		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		get_regionGrow = true;
 		RG_totalVolume = Calculate_Volume(judge, 1);
