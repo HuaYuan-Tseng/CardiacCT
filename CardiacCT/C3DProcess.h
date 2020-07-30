@@ -122,7 +122,7 @@ unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 ///------------- ↓ 實驗區 ↓ -------------///
 
 	RG_factor		RG_totalTerm;		// 3D區域成長 : 條件因子
-	double			RG_totalVolume;		// 3D區域成長 : 總體積(1)
+	double			RG_totalVolume;		// 3D區域成長 : 總體積(judge = 1)
 
 ///------------- ↑ 實驗區 ↑ -------------///
 
