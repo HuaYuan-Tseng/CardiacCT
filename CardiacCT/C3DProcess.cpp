@@ -956,7 +956,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 			RG_totalTerm.seed = seed_img,
 			RG_totalTerm.s_kernel = 3,
 			RG_totalTerm.n_kernel = 3,
-			RG_totalTerm.threshold = 20.0L
+			RG_totalTerm.threshold = 25.0L
 		};
 		
 		// ¶}©l°õ¦æ 3D_Region Growing
