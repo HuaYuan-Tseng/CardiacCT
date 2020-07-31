@@ -968,8 +968,8 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		m_wait->setDisplay("Region growing...");
 
 		start = clock();
-		RG_3D_GlobalAvgConnected(judge, RG_totalTerm);
-		//RG_3D_LocalAvgConnected(judge, RG_totalTerm);
+		//RG_3D_GlobalAvgConnected(judge, RG_totalTerm);
+		RG_3D_LocalAvgConnected(judge, RG_totalTerm);
 		end = clock();
 		RG_totalVolume = Calculate_Volume(judge, 1);
 		TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
@@ -2232,12 +2232,11 @@ void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
 	avg_que.push(s_avg);
 	sd_que.push(seed);
 
-	double n_diff = 0L;//
 	while (!sd_que.empty())
 	{
-		//s_avg = avg_que.front();
+		s_avg = avg_que.front();
 		s_current = sd_que.front();
-		/*up_limit = s_avg + threshold;
+		up_limit = s_avg + threshold;
 		down_limit = s_avg - threshold;
 
 		if (up_limit > 255)
@@ -2249,7 +2248,7 @@ void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
 		{
 			down_limit = 0;
 			up_limit = 0 + 2 * threshold;
-		}*/
+		}
 		for (sk = -s_range; sk <= s_range; sk++)
 		{
 			for (sj = -s_range; sj <= s_range; sj++)
@@ -2285,18 +2284,14 @@ void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
 							}
 							// end 3 layer for (n
 							n_avg = (double)n_pixel / n_cnt;
-							n_pixel = m_pDoc->m_img[n_current.z][n_current.y * col + n_current.x];
-							n_diff = n_pixel - n_avg;
-							n_diff = (n_diff > 0) ? n_diff : -n_diff;
-							//if ((n_avg <= up_limit) && (n_avg >= down_limit))
-							if (n_diff <= 10)
+							if ((n_avg <= up_limit) && (n_avg >= down_limit))
 							{
 								sd_que.push(n_current);
 								src[n_current.z][n_current.y * col + n_current.x] = 1;
-								//n_pixel = m_pDoc->m_img[n_current.z][n_current.y * col + n_current.x];
-								//s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
-								//avg_que.push(s_avg);
-								//s_cnt += 1;
+								n_pixel = m_pDoc->m_img[n_current.z][n_current.y * col + n_current.x];
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
 							}
 						}
 					}
@@ -2305,7 +2300,7 @@ void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
 		}
 		// end 3 layer for (s
 		sd_que.pop();
-		//avg_que.pop();
+		avg_que.pop();
 	}
 	// end while
 }
