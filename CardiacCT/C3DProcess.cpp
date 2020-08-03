@@ -956,7 +956,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 			RG_totalTerm.seed = seed_img,
 			RG_totalTerm.s_kernel = 3,
 			RG_totalTerm.n_kernel = 3,
-			RG_totalTerm.threshold = 25.0L
+			RG_totalTerm.threshold = 20.0L
 		};
 		
 		// ¶}©l°õ¦æ 3D_Region Growing
@@ -978,6 +978,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		start = clock();
 		Erosion_3D(judge, 18);
 		RG_3D_Link(judge, RG_totalTerm);
+		Dilation_3D(judge, 26);
 		Dilation_3D(judge, 26);
 		end = clock();
 		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
