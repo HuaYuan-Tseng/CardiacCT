@@ -2232,7 +2232,7 @@ void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
 	src[seed.z][seed.y * col + seed.x] = 1;
 	avg_que.push(s_avg);
 	sd_que.push(seed);
-
+	
 	while (!sd_que.empty())
 	{
 		s_avg = avg_que.front();
@@ -2304,6 +2304,21 @@ void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
 		avg_que.pop();
 	}
 	// end while
+}
+
+void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
+{
+	// DO : 3D 區域成長
+	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
+	//
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	unsigned int s_cnt = 0;
+	unsigned int n_cnt = 0;
+
+
 }
 
 void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)

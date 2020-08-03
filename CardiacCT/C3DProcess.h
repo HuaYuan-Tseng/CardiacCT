@@ -160,6 +160,7 @@ public:
 	void	RG_3D_Link(BYTE** src, RG_factor& factor);
 	void	RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor);		// 3D 區域成長(全域平均與當前強度)
 	void	RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor);
+	void	RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor);
 
 	double	Calculate_Volume(BYTE** src, short target);
 
