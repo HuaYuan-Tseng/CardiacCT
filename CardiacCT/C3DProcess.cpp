@@ -11,8 +11,9 @@
 #include <ctime>
 #include <queue>
 #include <thread>
+#include <numeric>
+#include <unordered_map>
 using namespace std;
-
 constexpr auto M_PI = 3.1415926F;
 
 #define ROW m_pDoc->m_dir->Row
@@ -2331,13 +2332,17 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	Seed_s	temp;
 	Seed_s	s_current;
 	Seed_s	seed = factor.seed;
-	queue<Seed_s>	sd_que;
+	queue<Seed_s> sd_que;
+	vector<int>	n_record;
+	vector<int>::iterator n_record_iter;
+	n_record.reserve(27);
 
 	src[seed.z][seed.y * col + seed.x] = 1;
 	sd_que.push(seed);
 
 	while (!sd_que.empty())
 	{
+		n_record.assign(27, 0);
 		s_current = sd_que.front();
 		n_pixel_sum = 0, n_cnt = 0,	n_SD = 0;
 		for (sk = -s_range; sk <= s_range; ++sk)
@@ -2350,15 +2355,24 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 						(s_current.y + sj) < row		&& (s_current.y + sj) >= 0 &&
 						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0	)
 					{
-						n_pixel_sum +=
+						//n_pixel_sum +=
+						//	m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+						n_record.at(n_cnt) =
 							m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 						n_cnt += 1;
 					}
 				}
 			}
 		}
+		n_pixel_sum = accumulate(n_record.begin(), n_record.end(), 0);
 		n_avg = (double)n_pixel_sum / n_cnt;
-		for (sk = -s_range; sk <= s_range; ++sk)
+		
+		for (n_record_iter = n_record.begin(); n_record_iter != n_record.end(); n_record_iter++)
+		{
+			n_SD += pow((*n_record_iter - n_avg), 2);
+		}
+
+		/*for (sk = -s_range; sk <= s_range; ++sk)
 		{
 			for (sj = -s_range; sj <= s_range; ++sj)
 			{
@@ -2374,7 +2388,8 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 					}
 				}
 			}
-		}
+		}*/
+
 		n_SD = sqrt(n_SD / n_cnt);
 		up_limit = n_avg + coefficient * n_SD;
 		down_limit = n_avg - coefficient * n_SD;
