@@ -955,7 +955,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//
 		RG_totalTerm = {
 			RG_totalTerm.seed = seed_img,
-			RG_totalTerm.s_kernel = 3,
+			RG_totalTerm.s_kernel = 5,
 			RG_totalTerm.n_kernel = 3,
 			RG_totalTerm.threshold = 20.0L,
 			RG_totalTerm.coefficient = 1.0L
