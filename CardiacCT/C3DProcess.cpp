@@ -966,7 +966,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 			RG_totalTerm.threshold = 50.0L,
 			RG_totalTerm.coefficient = 1.0L
 		};
-
+		
 		// 執行 3D_Region growing
 		//
 		start = clock();
@@ -980,17 +980,17 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 		// 3D_形態學處理
 		//
-		if (1)
+		if (0)
 		{
 			//start = clock();
-			//Erosion_3D(judge, 18);
-			//RG_3D_Link(judge, RG_totalTerm);
+			Erosion_3D(judge, 18);
+			RG_3D_Link(judge, RG_totalTerm);
 			//Dilation_3D(judge, 26);
 			//Dilation_3D(judge, 26);
 			//end = clock();
 			//TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		}
-			
+		
 		// 確認最後分割體積
 		//
 		get_regionGrow = true;
@@ -2338,7 +2338,6 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	register int si, sj, sk;
 	unsigned int n_cnt = 0;
 	unsigned int s_cnt = 0;//
-	int	n_pixel_sum = 0;
 	int n_pixel = 0;
 
 	double	n_SD;
@@ -2346,6 +2345,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	double	s_avg; //
 	double	up_limit;
 	double	down_limit;
+	double  n_pixel_sum = 0;
 	double	threshold = factor.threshold;
 	double	coefficient = factor.coefficient;
 
@@ -2463,7 +2463,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 				}
 			}
 		}
-		n_avg = (double)n_pixel_sum / n_cnt;
+		n_avg = n_pixel_sum / n_cnt;
 
 		// 計算 標準差
 		for (sk = -s_range; sk <= s_range; sk++)
@@ -2486,8 +2486,8 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 		n_SD = sqrt(n_SD / n_cnt);
 
 		// 判斷是否符合成長標準
-		up_limit = n_avg + n_SD;
-		down_limit = n_avg - n_SD;
+		up_limit = n_avg + coefficient * n_SD;
+		down_limit = n_avg - coefficient * n_SD;
 		for (sk = -s_range; sk <= s_range; sk++)
 		{
 			for (sj = -s_range; sj <= s_range; sj++)
