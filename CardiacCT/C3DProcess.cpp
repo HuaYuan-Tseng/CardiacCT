@@ -980,11 +980,11 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 		// 3D_篈厩矪瞶
 		//
-#if _DEBUG
+#if 0
 		start = clock();
-		Erosion_3D(judge, 18);
-		Dilation_3D(judge, 18);
-		RG_3D_Link(judge, RG_totalTerm);
+		//Erosion_3D(judge, 18);
+		//Dilation_3D(judge, 18);
+		//RG_3D_Link(judge, RG_totalTerm);
 		//Dilation_3D(judge, 26);
 		//Dilation_3D(judge, 26);
 		end = clock();
@@ -2596,7 +2596,7 @@ void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
 
 void C3DProcess::Erosion_3D(BYTE** src, short element)
 {
-	// DO : 3D Erosion (獻籯 -篈厩矪瞶)
+	// DO : 3D Erosion (獻籯 - 篈厩矪瞶)
 	//
 	const int row = ROW;
 	const int col = COL;
@@ -2619,6 +2619,7 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 	}
 	// Erosion
 	//
+	// 6 綟办
 	if (element == 6)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2645,6 +2646,7 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 			}
 		}
 	}
+	// 18 綟办
 	else if (element == 18)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2679,6 +2681,7 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 			}
 		}
 	}
+	// 26 綟办
 	else if (element == 26)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2739,9 +2742,9 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 			temp[j][i] = src[j][i];
 		}
 	}
-
 	// Dilation
 	//
+	// 6 綟办
 	if (element == 6)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2763,6 +2766,7 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 			}
 		}
 	}
+	// 18 綟办
 	else if (element == 18)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2798,6 +2802,7 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 			}
 		}
 	}
+	// 26 綟办
 	else if (element == 26)
 	{
 		for (k = 1; k < total_z - 1; k++)
