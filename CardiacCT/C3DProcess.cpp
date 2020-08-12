@@ -961,7 +961,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//
 		RG_totalTerm = {
 			RG_totalTerm.seed = seed_img,
-			RG_totalTerm.s_kernel = 5,
+			RG_totalTerm.s_kernel = 3,
 			RG_totalTerm.n_kernel = 3,
 			RG_totalTerm.threshold = 20.0L,
 			RG_totalTerm.coefficient = 2.5L
@@ -978,13 +978,15 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
+#if _DEBUG
 		// 3D_形態學處理
 		//
-#if 0
 		start = clock();
-		//Erosion_3D(judge, 18);
+		Erosion_3D(judge, 0);
+		Erosion_3D(judge, 0);
+		Erosion_3D(judge, 0);
 		//Dilation_3D(judge, 18);
-		//RG_3D_Link(judge, RG_totalTerm);
+		RG_3D_Link(judge, RG_totalTerm);
 		//Dilation_3D(judge, 26);
 		//Dilation_3D(judge, 26);
 		end = clock();
@@ -2602,6 +2604,7 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 	const int col = COL;
 	const int total_xy = ROW * COL;
 	const int total_z = Total_Slice;
+	register int si, sj, sk;
 	register int i, j, k;
 
 	// src : 原始以及將要被更改的矩陣
@@ -2619,8 +2622,53 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 	}
 	// Erosion
 	//
+	// 計算周圍符合條件的pixel的數量
+	// 若數量符合條件，則為 1 (不侵蝕)
+	if (element == 0)
+	{
+		int amount = 13;					// 數量目標
+		int range = (3 - 1) / 2;			// 判定區域的範圍
+		int n = 0;							// 計算周圍符合條件的pixel數量
+		
+		// 遍歷所有為 1 的 pixel
+		for (sk = range; sk < total_z - range; sk++)
+		{
+			for (sj = range; sj < row - range; sj++)
+			{
+				for (si = range; si < col - range; si++)
+				{
+					n = 0;
+					// 判斷周圍區域也為 1 的數量
+					if (temp[sk][sj * col + si] == 1)
+					{
+						for (k = -range; k <= range; k++)
+						{
+							for (j = -range; j <= range; j++)
+							{
+								for (i = -range; i <= range; i++)
+								{
+									if (temp[sk + k][(sj + j) * col + (si + i)] == 1)
+									{
+										n += 1;
+									}
+								}
+							}
+						}
+						if (n >= amount)
+						{
+							src[sk][sj * col + si] = 1;
+						}
+						else
+						{
+							src[sk][sj * col + si] = 0;
+						}
+					}
+				}
+			}
+		}
+	}
 	// 6 鄰域
-	if (element == 6)
+	else if (element == 6)
 	{
 		for (k = 1; k < total_z - 1; k++)
 		{
