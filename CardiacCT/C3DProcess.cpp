@@ -961,10 +961,10 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//
 		RG_totalTerm = {
 			RG_totalTerm.seed = seed_img,
-			RG_totalTerm.s_kernel = 3,
+			RG_totalTerm.s_kernel = 5,
 			RG_totalTerm.n_kernel = 3,
-			RG_totalTerm.threshold = 20.0L,
-			RG_totalTerm.coefficient = 2.5L
+			RG_totalTerm.threshold = 40.0L,
+			RG_totalTerm.coefficient = 0.5L
 		};
 		
 		// 執行 3D_Region growing
@@ -978,15 +978,15 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
-#if _DEBUG
+#if 0
 		// 3D_形態學處理
 		//
 		start = clock();
-		Erosion_3D(judge, 0);
-		Erosion_3D(judge, 0);
-		Erosion_3D(judge, 0);
+		//Erosion_3D(judge, 0);
+		//Erosion_3D(judge, 0);
+		//Erosion_3D(judge, 0);
 		//Dilation_3D(judge, 18);
-		RG_3D_Link(judge, RG_totalTerm);
+		//RG_3D_Link(judge, RG_totalTerm);
 		//Dilation_3D(judge, 26);
 		//Dilation_3D(judge, 26);
 		end = clock();
@@ -2439,7 +2439,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	//}
 	
 	// 三維
-	//
+	//	
 	while (!sd_que.empty())
 	{
 		s_avg = avg_que.front();
@@ -2487,8 +2487,8 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 		n_SD = sqrt(n_SD / n_cnt);
 
 		// 判斷是否符合成長標準
-		up_limit = n_avg + coefficient * n_SD;
-		down_limit = n_avg - coefficient * n_SD;
+		up_limit = n_avg + (coefficient * n_SD);
+		down_limit = n_avg - (coefficient * n_SD);
 		for (sk = -s_range; sk <= s_range; sk++)
 		{
 			for (sj = -s_range; sj <= s_range; sj++)
@@ -2505,7 +2505,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 								m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 							
 							if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= threshold)
-							{ 
+							{
 								n_site.x = s_current.x + si;
 								n_site.y = s_current.y + sj;
 								n_site.z = s_current.z + sk;
