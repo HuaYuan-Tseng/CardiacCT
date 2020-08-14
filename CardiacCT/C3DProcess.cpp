@@ -961,10 +961,10 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//
 		RG_totalTerm = {
 			RG_totalTerm.seed = seed_img,
-			RG_totalTerm.s_kernel = 5,
+			RG_totalTerm.s_kernel = 33,
 			RG_totalTerm.n_kernel = 3,
-			RG_totalTerm.threshold = 40.0L,
-			RG_totalTerm.coefficient = 0.5L
+			RG_totalTerm.threshold = 10.0L,
+			RG_totalTerm.coefficient = 1.5L
 		};
 		
 		// 執行 3D_Region growing
@@ -2341,6 +2341,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	unsigned int n_cnt = 0;
 	unsigned int s_cnt = 0;
 	int n_pixel = 0;
+	int s_pixel = 0;
 
 	double	n_SD;
 	double	n_avg;
@@ -2366,164 +2367,165 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	// 二維
 	//
 	//while (!sd_que.empty())
-	//{
-	//	s_avg = avg_que.front();//
-	//	s_current = sd_que.front();
-	//	n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
-	//
-	//	// 計算 總合 與 平均
-	//	for (sj = -s_range; sj <= s_range; sj++)
-	//	{
-	//		for (si = -s_range; si <= s_range; si++)
-	//		{
-	//			if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-	//				(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
-	//			{
-	//				n_pixel_sum +=
-	//					m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
-	//				n_cnt += 1;
-	//			}
-	//		}
-	//	}
-	//	n_avg = (double)n_pixel_sum / n_cnt;
-	//
-	//	// 計算 標準差
-	//	for (sj = -s_range; sj <= s_range; sj++)
-	//	{
-	//		for (si = -s_range; si <= s_range; si++)
-	//		{
-	//			if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-	//				(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
-	//			{
-	//				n_pixel =
-	//					m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
-	//				n_SD += pow((n_pixel - n_avg), 2);
-	//			}
-	//		}
-	//	}
-	//	n_SD = sqrt(n_SD / n_cnt);
-	//
-	//	// 判斷是否符合成長標準
-	//	up_limit = n_avg + n_SD;
-	//	down_limit = n_avg - n_SD;
-	//	for (sj = -s_range; sj <= s_range; sj++)
-	//	{
-	//		for (si = -s_range; si <= s_range; si++)
-	//		{
-	//			if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-	//				(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
-	//			{
-	//				if (src[s_current.z][(s_current.y + sj) * col + (s_current.x + si)] != 1)
-	//				{
-	//					n_pixel =
-	//						m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
-	//					if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= 50 )
-	//					{
-	//						n_site.x = s_current.x + si;
-	//						n_site.y = s_current.y + sj;
-	//						n_site.z = s_current.z;
-	//						sd_que.push(n_site);
-	//
-	//						src[s_current.z][(s_current.y + sj) * col + (s_current.x + si)] = 1;
-	//						
-	//						s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);//
-	//						avg_que.push(s_avg);//
-	//						s_cnt += 1;//
-	//					}
-	//				}
-	//			}
-	//		}
-	//	}
-	//	sd_que.pop();
-	//	avg_que.pop();//
-	//}
-	
-	// 三維
-	//	
-	while (!sd_que.empty())
 	{
 		s_avg = avg_que.front();
 		s_current = sd_que.front();
 		n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
 		
 		// 計算 總合 與 平均
-		for (sk = -s_range; sk <= s_range; sk++)
+		for (sj = -s_range; sj <= s_range; sj++)
 		{
-			for (sj = -s_range; sj <= s_range; sj++)
+			for (si = -s_range; si <= s_range; si++)
 			{
-				for (si = -s_range; si <= s_range; si++)
+				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+					(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
 				{
-					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
-						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
-					{
-						n_pixel_sum += 
-							m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
-						n_cnt += 1;
-					}
+					n_pixel_sum +=
+						m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
+					n_cnt += 1;
 				}
 			}
 		}
-		n_avg = n_pixel_sum / n_cnt;
-
+		n_avg = (double)n_pixel_sum / n_cnt;
+	
 		// 計算 標準差
-		for (sk = -s_range; sk <= s_range; sk++)
+		for (sj = -s_range; sj <= s_range; sj++)
 		{
-			for (sj = -s_range; sj <= s_range; sj++)
+			for (si = -s_range; si <= s_range; si++)
 			{
-				for (si = -s_range; si <= s_range; si++)
+				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+					(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
 				{
-					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
-						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
-					{
-						n_pixel =
-							m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
-						n_SD += pow((n_pixel - n_avg), 2);
-					}
+					n_pixel =
+						m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
+					n_SD += pow((n_pixel - n_avg), 2);
 				}
 			}
 		}
 		n_SD = sqrt(n_SD / n_cnt);
-
+		
 		// 判斷是否符合成長標準
-		up_limit = n_avg + (coefficient * n_SD);
-		down_limit = n_avg - (coefficient * n_SD);
-		for (sk = -s_range; sk <= s_range; sk++)
+		up_limit = n_avg + coefficient * n_SD;
+		down_limit = n_avg - coefficient * n_SD;
+		for (sj = -s_range; sj <= s_range; sj++)
 		{
-			for (sj = -s_range; sj <= s_range; sj++)
+			for (si = -s_range; si <= s_range; si++)
 			{
-				for (si = -s_range; si <= s_range; si++)
+				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+					(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
 				{
-					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
-						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					if (src[s_current.z][(s_current.y + sj) * col + (s_current.x + si)] != 1)
 					{
-						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+						n_pixel =
+							m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
+						
+						if (n_pixel <= up_limit && n_pixel >= down_limit)
 						{
-							n_pixel =
-								m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+							n_site.x = s_current.x + si;
+							n_site.y = s_current.y + sj;
+							n_site.z = s_current.z;
+							sd_que.push(n_site);
+	
+							src[s_current.z][(s_current.y + sj) * col + (s_current.x + si)] = 1;
 							
-							if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= threshold)
-							{
-								n_site.x = s_current.x + si;
-								n_site.y = s_current.y + sj;
-								n_site.z = s_current.z + sk;
-								sd_que.push(n_site);
-
-								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
-								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
-								avg_que.push(s_avg);
-								s_cnt += 1;
-							}
+							s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+							avg_que.push(s_avg);
+							s_cnt += 1;
 						}
 					}
 				}
 			}
 		}
+		sd_que.pop();
 		avg_que.pop();
-		sd_que.pop();  
 	}
+	
+	// 三維
+	//	
+	//while (!sd_que.empty())
+	//{
+	//	s_avg = avg_que.front();
+	//	s_current = sd_que.front();
+	//	n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
+	//	
+	//	// 計算 總合 與 平均
+	//	for (sk = -s_range; sk <= s_range; sk++)
+	//	{
+	//		for (sj = -s_range; sj <= s_range; sj++)
+	//		{
+	//			for (si = -s_range; si <= s_range; si++)
+	//			{
+	//				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+	//					(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+	//					(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+	//				{
+	//					n_pixel_sum += 
+	//						m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+	//					n_cnt += 1;
+	//				}
+	//			}
+	//		}
+	//	}
+	//	n_avg = n_pixel_sum / n_cnt;
+
+	//	// 計算 標準差
+	//	for (sk = -s_range; sk <= s_range; sk++)
+	//	{
+	//		for (sj = -s_range; sj <= s_range; sj++)
+	//		{
+	//			for (si = -s_range; si <= s_range; si++)
+	//			{
+	//				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+	//					(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+	//					(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+	//				{
+	//					n_pixel =
+	//						m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+	//					n_SD += pow((n_pixel - n_avg), 2);
+	//				}
+	//			}
+	//		}
+	//	}
+	//	n_SD = sqrt(n_SD / n_cnt);
+
+	//	// 判斷是否符合成長標準
+	//	up_limit = n_avg + (coefficient * n_SD);
+	//	down_limit = n_avg - (coefficient * n_SD);
+	//	for (sk = -s_range; sk <= s_range; sk++)
+	//	{
+	//		for (sj = -s_range; sj <= s_range; sj++)
+	//		{
+	//			for (si = -s_range; si <= s_range; si++)
+	//			{
+	//				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+	//					(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+	//					(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+	//				{
+	//					if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+	//					{
+	//						n_pixel =
+	//							m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+	//						
+	//						if (n_pixel <= up_limit && n_pixel >= down_limit)
+	//						{
+	//							n_site.x = s_current.x + si;
+	//							n_site.y = s_current.y + sj;
+	//							n_site.z = s_current.z + sk;
+	//							sd_que.push(n_site);
+
+	//							src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
+	//							s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+	//							avg_que.push(s_avg);
+	//							s_cnt += 1;
+	//						}
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//	avg_que.pop();
+	//	sd_que.pop();  
+	//}
 	
 
 }
