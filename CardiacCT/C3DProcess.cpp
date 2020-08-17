@@ -12,6 +12,7 @@
 #include <queue>
 #include <thread>
 #include <numeric>
+#include <algorithm>
 #include <unordered_map>
 using namespace std;
 constexpr auto M_PI = 3.1415926F;
@@ -961,10 +962,10 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//
 		RG_totalTerm = {
 			RG_totalTerm.seed = seed_img,
-			RG_totalTerm.s_kernel = 33,
+			RG_totalTerm.s_kernel = 17,
 			RG_totalTerm.n_kernel = 3,
 			RG_totalTerm.threshold = 10.0L,
-			RG_totalTerm.coefficient = 1.5L
+			RG_totalTerm.coefficient = 1.0L
 		};
 		
 		// 磅︽ 3D_Region growing
@@ -2358,6 +2359,9 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	queue<Seed_s> sd_que;
 	queue<double> avg_que;
 
+	vector<int>	pixel;		//
+	pixel.assign(factor.s_kernel*factor.s_kernel, 0);	//
+
 	s_avg = m_pDoc->m_img[seed.z][seed.y * col + seed.x];
 	src[seed.z][seed.y * col + seed.x] = 1;
 	avg_que.push(s_avg);
@@ -2380,6 +2384,8 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
 					(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
 				{
+					pixel[n_cnt] =	//
+						m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
 					n_pixel_sum +=
 						m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
 					n_cnt += 1;
@@ -2387,14 +2393,14 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 			}
 		}
 		n_avg = (double)n_pixel_sum / n_cnt;
-	
+		
 		// 璸衡 夹非畉
 		for (sj = -s_range; sj <= s_range; sj++)
 		{
 			for (si = -s_range; si <= s_range; si++)
 			{
 				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-					(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
+					(s_current.y + sj) < row && (s_current.y + sj) >= 0)
 				{
 					n_pixel =
 						m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
@@ -2403,10 +2409,20 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 			}
 		}
 		n_SD = sqrt(n_SD / n_cnt);
-		
-		// 耞琌才Θ夹非
+
+		// 耞タΘ夹非
 		up_limit = n_avg + coefficient * n_SD;
 		down_limit = n_avg - coefficient * n_SD;
+		s_pixel = m_pDoc->m_img[s_current.z][s_current.y * col + s_current.x];
+		if (s_pixel >= up_limit || s_pixel <= down_limit)
+		{
+			up_limit = s_avg + coefficient * n_SD;
+			down_limit = s_avg - coefficient * n_SD;
+		}
+		sort(pixel.begin(), pixel.end());	//
+		if (true);
+		
+		// 耞琌才Θ夹非
 		for (sj = -s_range; sj <= s_range; sj++)
 		{
 			for (si = -s_range; si <= s_range; si++)
@@ -2467,7 +2483,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	//		}
 	//	}
 	//	n_avg = n_pixel_sum / n_cnt;
-
+	//
 	//	// 璸衡 夹非畉
 	//	for (sk = -s_range; sk <= s_range; sk++)
 	//	{
@@ -2487,7 +2503,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	//		}
 	//	}
 	//	n_SD = sqrt(n_SD / n_cnt);
-
+	//
 	//	// 耞琌才Θ夹非
 	//	up_limit = n_avg + (coefficient * n_SD);
 	//	down_limit = n_avg - (coefficient * n_SD);
@@ -2512,7 +2528,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	//							n_site.y = s_current.y + sj;
 	//							n_site.z = s_current.z + sk;
 	//							sd_que.push(n_site);
-
+	//
 	//							src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
 	//							s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
 	//							avg_que.push(s_avg);

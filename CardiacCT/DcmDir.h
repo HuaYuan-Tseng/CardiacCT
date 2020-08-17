@@ -18,7 +18,7 @@ class DcmDir
 {
 public:
 	DcmDir();
-	DcmDir(Action act, CString &pathName);	// Delegate DcmDir()
+	DcmDir(Action act, CString &pathName);	// ©e¬£«Øºc¤l Delegate DcmDir() 
 
 	~DcmDir();
 

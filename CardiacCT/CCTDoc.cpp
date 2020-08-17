@@ -191,7 +191,7 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 	CString filter = "All Files(*.*)|*.*||";	// 文件過濾類型
 
 	CFileDialog openDirDlg(isOpen, initDir, initName, OFN_HIDEREADONLY, filter, NULL);
-
+	
 	if (openDirDlg.DoModal() == IDOK)
 	{
 		// 確認檔案名稱是否為DICOMDIR
@@ -248,6 +248,8 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 				BuildDataMatrix();
 			}
 			delete m_dirFormDlg;
+
+			OnToolButton3DProcess();	//
 		}
 	}
 
