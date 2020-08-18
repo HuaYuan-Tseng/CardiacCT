@@ -244,10 +244,9 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 			if (m_dirFormDlg->DoModal() == IDOK)
 			{
 				BuildDataMatrix();
+				OnToolButton3DProcess();	//
 			}
 			delete m_dirFormDlg;
-
-			OnToolButton3DProcess();	//
 		}
 	}
 
