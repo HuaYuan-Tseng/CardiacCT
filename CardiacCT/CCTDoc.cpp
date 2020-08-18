@@ -195,14 +195,13 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 	if (openDirDlg.DoModal() == IDOK)
 	{
 		// 確認檔案名稱是否為DICOMDIR
-		//
 		if (openDirDlg.GetFileTitle() != "DICOMDIR")
 		{
 			AfxMessageBox("This file is not DICOMDIR!!");
 			return;
 		}
+
 		// 確認檔案格式是否為DICOM
-		//
 		if ((err = fopen_s(&file, openDirDlg.GetPathName(), "rb")) == 0)
 		{
 			fseek(file, 128, SEEK_SET);
@@ -219,8 +218,7 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 			return;
 		}
 
-		// 建立檔案前進行初始化
-		//
+		// 開啟DICOMDIR檔案前進行初始化
 		if (m_dir != nullptr)
 		{
 			delete	m_dir;
@@ -228,14 +226,14 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 			displaySeries = 0;
 		}
 		
+		// 讀取並存取DICOMDIR內容(影像路徑)
 		m_dir = new DcmDir(Action::Dir_SingleSeries, openDirDlg.GetPathName());
-
 		m_dir->DirFileName = openDirDlg.GetFileName();
 		m_dir->DirFileTitle = openDirDlg.GetFileTitle();
 		m_dir->DirFileExtension = openDirDlg.GetFileExt();
-
 		SetTitle("Cardiac CT - " + m_dir->PatientName);
 
+		// 選擇顯示的時序並建立影像陣列
 		if (m_dir != nullptr)
 		{
 			CDirForm* m_dirFormDlg = new CDirForm();
