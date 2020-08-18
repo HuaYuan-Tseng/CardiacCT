@@ -964,8 +964,8 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 			RG_totalTerm.seed = seed_img,
 			RG_totalTerm.s_kernel = 3,
 			RG_totalTerm.n_kernel = 3,
-			RG_totalTerm.threshold = 55.0L,
-			RG_totalTerm.coefficient = 1.0L
+			RG_totalTerm.threshold = 50.0L,
+			RG_totalTerm.coefficient = 0.5L
 		};
 		
 		// 執行 3D_Region growing
@@ -979,16 +979,16 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
-#if 0
+#if 1
 		// 3D_形態學處理
 		//
 		start = clock();
 		//Erosion_3D(judge, 0);
 		//Erosion_3D(judge, 0);
-		//Erosion_3D(judge, 0);
+		//Erosion_3D(judge, 18);
 		//Dilation_3D(judge, 18);
 		//RG_3D_Link(judge, RG_totalTerm);
-		//Dilation_3D(judge, 26);
+		Dilation_3D(judge, 26);
 		//Dilation_3D(judge, 26);
 		end = clock();
 		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
@@ -2562,7 +2562,7 @@ void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
 	const int col = COL;
 	const int total_xy = ROW * COL;
 	const int totalSlice = Total_Slice;
-	const int kernel = 3;
+	const int kernel = factor.n_kernel;
 	const int range = (kernel - 1) / 2;			// 判斷範圍
 	register int i, j, k;
 
