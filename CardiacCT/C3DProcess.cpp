@@ -958,13 +958,13 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		m_wait->ShowWindow(SW_NORMAL);
 		m_wait->setDisplay("Region growing...");
 
-		// 宣告 成長條件
+		// 宣告 成長標準 參數
 		//
 		RG_totalTerm = {
 			RG_totalTerm.seed = seed_img,
 			RG_totalTerm.s_kernel = 3,
 			RG_totalTerm.n_kernel = 3,
-			RG_totalTerm.threshold = 55.0L,
+			RG_totalTerm.threshold = 55.5L,
 			RG_totalTerm.coefficient = 0.5L
 		};
 		
