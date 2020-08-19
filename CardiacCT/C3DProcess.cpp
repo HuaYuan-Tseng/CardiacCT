@@ -9,10 +9,12 @@
 #include "CWait.h"
 #include "afxdialogex.h"
 #include <ctime>
+#include <cmath>
 #include <queue>
 #include <thread>
+#include <numeric>
+#include <algorithm>
 using namespace std;
-
 constexpr auto M_PI = 3.1415926F;
 
 #define ROW m_pDoc->m_dir->Row
@@ -950,36 +952,50 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	//
 	if (get_3Dseed)
 	{
-		// 宣告 成長條件
-		//
-		RG_totalTerm = {
-			seed_img,
-			3,
-			25.0L
-		};
-
-		// 開始執行 3D_Region Growing
-		//
 		clock_t start, end;
 		CWait* m_wait = new CWait();
 		m_wait->Create(IDD_DIALOG_WAIT);
 		m_wait->ShowWindow(SW_NORMAL);
 		m_wait->setDisplay("Region growing...");
 
+		// 宣告 成長標準 參數
+		//
+		RG_totalTerm = {
+			RG_totalTerm.seed = seed_img,
+			RG_totalTerm.s_kernel = 3,
+			RG_totalTerm.n_kernel = 3,
+			RG_totalTerm.threshold = 55.5L,
+			RG_totalTerm.coefficient = 0.5L
+		};
+		
+		// 執行 3D_Region growing
+		//
 		start = clock();
-		Region_Growing_3D(judge, RG_totalTerm);
+		//RG_3D_GlobalAvgConnected(judge, RG_totalTerm);
+		//RG_3D_LocalAvgConnected(judge, RG_totalTerm);
+		RG_3D_ConfidenceConnected(judge, RG_totalTerm);
 		end = clock();
 		//RG_totalVolume = Calculate_Volume(judge, 1);
-		TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
+		//TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
+#if 0
+		// 3D_形態學處理
+		//
 		start = clock();
-		Erosion_3D(judge, 26);
-		Region_Growing_3D_Link(judge, RG_totalTerm);
+		//Erosion_3D(judge, 0);
+		//Erosion_3D(judge, 0);
+		//Erosion_3D(judge, 18);
+		//Dilation_3D(judge, 18);
+		//RG_3D_Link(judge, RG_totalTerm);
 		Dilation_3D(judge, 26);
+		//Dilation_3D(judge, 26);
 		end = clock();
 		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
-		
+#endif
+
+		// 確認最後分割體積
+		//
 		get_regionGrow = true;
 		RG_totalVolume = Calculate_Volume(judge, 1);
 		m_result.Format("%lf", RG_totalVolume);
@@ -2112,17 +2128,17 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-void C3DProcess::Region_Growing_3D(BYTE** src, RG_factor& factor)
+void C3DProcess::RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor)
 {
-	//	DO : 3D 區域成長
+	//	DO : 3D 區域成長 
+	//	利用「當前已成長的全域平均值」來界定成長標準，並用「目前的像素強度」來判斷
 	//
 	const int row = ROW;
 	const int col = COL;
 	const int totalSlice = Total_Slice;
-	const int range = (factor.kernel - 1) / 2;	// 判斷範圍
+	const int range = (factor.s_kernel - 1) / 2;	// 判斷範圍
 	register int i, j, k;
-	unsigned int n = 1;							// 計數成長的pixel數量
-	short s_pixel = 0;
+	unsigned int cnt = 1;							// 計數成長的pixel數量
 	short n_pixel = 0;
 	
 	double avg;
@@ -2148,6 +2164,7 @@ void C3DProcess::Region_Growing_3D(BYTE** src, RG_factor& factor)
 		up_limit = avg + threshold;
 		down_limit = avg - threshold;
 
+		// 重新界定成長標準上下限
  		if (up_limit > 255)
 		{
 			up_limit = 255;
@@ -2158,6 +2175,9 @@ void C3DProcess::Region_Growing_3D(BYTE** src, RG_factor& factor)
 			down_limit = 0;
 			up_limit = 0 + 2 * threshold;
 		}
+
+		// 判斷周圍區域是否符合成長標準
+		// 並同時計算「已成長區域」的總平均
 		for (k = -range; k <= range; k++)
 		{
 			for (j = -range; j <= range; j++)
@@ -2181,9 +2201,9 @@ void C3DProcess::Region_Growing_3D(BYTE** src, RG_factor& factor)
 
 								src[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
 								
-								avg = (avg * n + n_pixel) / (n + 1);
+								avg = (avg * cnt + n_pixel) / (cnt + 1);
 								avg_que.push(avg);
-								n += 1;
+								cnt += 1;
 							}
 						}
 					}
@@ -2196,14 +2216,414 @@ void C3DProcess::Region_Growing_3D(BYTE** src, RG_factor& factor)
 	//TRACE1("sd : %d \n", sd_que.size());
 }
 
+void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
+{
+	//	DO : 3D 區域成長
+	//	利用「當前已成長的全域平均值」來界定成長標準，並用「目前像素鄰近區域的平均值」來判斷
+	//  (s_ : seed ; n_ : nerighbor)
+	//
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	const int n_range = (factor.n_kernel - 1) / 2;
+	register int si, sj, sk;
+	register int ni, nj, nk;
+	unsigned int s_cnt = 1;
+	unsigned int n_cnt = 0;
+	int n_pixel = 0;
+
+	double	s_avg;
+	double	n_avg;
+	double	up_limit;
+	double	down_limit;
+	double	threshold = factor.threshold;
+
+	Seed_s	temp;
+	Seed_s	s_current;
+	Seed_s	n_current;
+	Seed_s	seed = factor.seed;
+	queue<Seed_s>	sd_que;
+	queue<double>	avg_que;
+	
+	s_avg = m_pDoc->m_img[seed.z][seed.y * col + seed.x];
+	src[seed.z][seed.y * col + seed.x] = 1;
+	avg_que.push(s_avg);
+	sd_que.push(seed);
+
+	while (!sd_que.empty())
+	{
+		s_avg = avg_que.front();
+		s_current = sd_que.front();
+		up_limit = s_avg + threshold;
+		down_limit = s_avg - threshold;
+
+		// 重新界定成長標準
+		if (up_limit > 255)
+		{
+			up_limit = 255;
+			down_limit = 255 - 2 * threshold;
+		}
+		if (down_limit < 0)
+		{
+			down_limit = 0;
+			up_limit = 0 + 2 * threshold;
+		}
+
+		// 判斷周圍區域
+		for (sk = -s_range; sk <= s_range; sk++)
+		{
+			for (sj = -s_range; sj <= s_range; sj++)
+			{
+				for (si = -s_range; si <= s_range; si++)
+				{
+					if ((s_current.x + si) < col		&& (s_current.x + si) >= 0 &&
+						(s_current.y + sj) < row		&& (s_current.y + sj) >= 0 &&
+						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0	)
+					{
+						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+						{
+							n_current.x = s_current.x + si;
+							n_current.y = s_current.y + sj;
+							n_current.z = s_current.z + sk;
+							n_pixel = 0;	n_cnt = 0;
+
+							// 計算周圍區域像素強度的平均值
+							for (nk = -n_range; nk <= n_range; nk++)
+							{
+								for (nj = -n_range; nj <= n_range; nj++)
+								{
+									for (ni = -n_range; ni <= n_range; ni++)
+									{
+										if ((n_current.x + ni) < col && (n_current.x + ni) >= 0 &&
+											(n_current.y + nj) < row && (n_current.y + nj) >= 0 &&
+											(n_current.z + nk) < totalSlice && (n_current.z + nk) >= 0)
+										{
+											n_pixel +=
+												m_pDoc->m_img[n_current.z + nk][(n_current.y + nj) * col + (n_current.x + ni)];
+											n_cnt += 1;
+										}
+									}
+								}
+							}
+							n_avg = (double)n_pixel / n_cnt;
+
+							// 判斷是否符合成長標準
+							if ((n_avg <= up_limit) && (n_avg >= down_limit))
+							{
+								sd_que.push(n_current);
+								src[n_current.z][n_current.y * col + n_current.x] = 1;
+								n_pixel = m_pDoc->m_img[n_current.z][n_current.y * col + n_current.x];
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
+							}
+						}
+					}
+				}
+			}
+		}
+		sd_que.pop();
+		avg_que.pop();
+	}
+
+}
+
+void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
+{
+	// DO : 3D 區域成長
+	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
+	//
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	register int si, sj, sk;
+	unsigned int n_cnt = 0;
+	unsigned int s_cnt = 0;
+	int n_pixel = 0;
+	int s_pixel = 0;
+
+	double	n_SD;
+	double	n_avg;
+	double	s_avg; 
+	double	up_limit;
+	double	down_limit;
+	double  n_pixel_sum = 0;
+	double	threshold = factor.threshold;
+	double	coefficient = factor.coefficient;
+
+	Seed_s	n_site;
+	Seed_s	s_current;
+	Seed_s	seed = factor.seed;
+	queue<Seed_s> sd_que;
+	queue<double> avg_que;
+
+	s_avg = m_pDoc->m_img[seed.z][seed.y * col + seed.x];
+	src[seed.z][seed.y * col + seed.x] = 1;
+	avg_que.push(s_avg);
+	sd_que.push(seed);
+	s_cnt += 1;
+
+	// 二維
+	//
+	//while (!sd_que.empty())
+	//{
+	//	s_avg = avg_que.front();
+	//	s_current = sd_que.front();
+	//	n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
+	//	
+	//	// 計算 總合 與 平均
+	//	for (sj = -s_range; sj <= s_range; sj++)
+	//	{
+	//		for (si = -s_range; si <= s_range; si++)
+	//		{
+	//			if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+	//				(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
+	//			{
+	//				n_pixel_sum +=
+	//					m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
+	//				n_cnt += 1;
+	//			}
+	//		}
+	//	}
+	//	n_avg = (double)n_pixel_sum / n_cnt;
+	//	
+	//	// 計算 標準差
+	//	for (sj = -s_range; sj <= s_range; sj++)
+	//	{
+	//		for (si = -s_range; si <= s_range; si++)
+	//		{
+	//			if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+	//				(s_current.y + sj) < row && (s_current.y + sj) >= 0)
+	//			{
+	//				n_pixel =
+	//					m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
+	//				n_SD += pow((n_pixel - n_avg), 2);
+	//			}
+	//		}
+	//	}
+	//	n_SD = sqrt(n_SD / n_cnt);
+	//
+	//	// 判斷並修正成長標準
+	//	up_limit = n_avg + coefficient * n_SD;
+	//	down_limit = n_avg - coefficient * n_SD;
+	//	//s_pixel = m_pDoc->m_img[s_current.z][s_current.y * col + s_current.x];
+	//	if (s_avg > n_avg)
+	//	{
+	//		up_limit += threshold;
+	//		down_limit += threshold;
+	//	}
+	//	else if (s_avg < n_avg)
+	//	{
+	//		up_limit -= threshold;
+	//		down_limit -= threshold;
+	//	}
+	//	if (1);
+	//	
+	//	// 判斷是否符合成長標準
+	//	for (sj = -s_range; sj <= s_range; sj++)
+	//	{
+	//		for (si = -s_range; si <= s_range; si++)
+	//		{
+	//			if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+	//				(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
+	//			{
+	//				if (src[s_current.z][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+	//				{
+	//					n_pixel =
+	//						m_pDoc->m_img[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
+	//
+	//					if (n_pixel <= up_limit && n_pixel >= down_limit)
+	//					{
+	//						n_site.x = s_current.x + si;
+	//						n_site.y = s_current.y + sj;
+	//						n_site.z = s_current.z;
+	//						sd_que.push(n_site);
+	//
+	//						src[s_current.z][(s_current.y + sj) * col + (s_current.x + si)] = 1;
+	//
+	//						s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+	//						avg_que.push(s_avg);
+	//						s_cnt += 1;
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//	sd_que.pop();
+	//	avg_que.pop();
+	//}
+	
+	// 三維
+	//	
+	while (!sd_que.empty())
+	{
+		s_avg = avg_que.front();
+		s_current = sd_que.front();
+		n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
+
+		// 計算 總合 與 平均
+		for (sk = -s_range; sk <= s_range; sk++)
+		{
+			for (sj = -s_range; sj <= s_range; sj++)
+			{
+				for (si = -s_range; si <= s_range; si++)
+				{
+					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					{
+						n_pixel_sum +=
+							m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+						n_cnt += 1;
+					}
+				}
+			}
+		}
+		n_avg = n_pixel_sum / n_cnt;
+
+		// 計算 標準差
+		for (sk = -s_range; sk <= s_range; sk++)
+		{
+			for (sj = -s_range; sj <= s_range; sj++)
+			{
+				for (si = -s_range; si <= s_range; si++)
+				{
+					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					{
+						n_pixel =
+							m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+						n_SD += pow((n_pixel - n_avg), 2);
+					}
+				}
+			}
+		}
+		n_SD = sqrt(n_SD / n_cnt);
+
+		// 制定、修正成長標準上下限
+		up_limit = n_avg + (coefficient * n_SD);
+		down_limit = n_avg - (coefficient * n_SD);
+		
+		// 判斷是否符合成長標準
+		for (sk = -s_range; sk <= s_range; sk++)
+		{
+			for (sj = -s_range; sj <= s_range; sj++)
+			{
+				for (si = -s_range; si <= s_range; si++)
+				{
+					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					{
+						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+						{
+							n_pixel =
+								m_pDoc->m_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+
+							if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= threshold)
+							{
+								n_site.x = s_current.x + si;
+								n_site.y = s_current.y + sj;
+								n_site.z = s_current.z + sk;
+								sd_que.push(n_site);
+
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
+							}
+						}
+					}
+				}
+			}
+		}
+		avg_que.pop();
+		sd_que.pop();
+	}
+	
+
+}
+
+void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
+{
+	//	DO : 3D 區域成長
+	//	將與種子點連接的像素點「連接」起來(確認最終分割區域與體積)
+	//
+	const int row = ROW;
+	const int col = COL;
+	const int total_xy = ROW * COL;
+	const int totalSlice = Total_Slice;
+	const int kernel = factor.n_kernel;
+	const int range = (kernel - 1) / 2;			// 判斷範圍
+	register int i, j, k;
+
+	// src : 原始以及將要被更改的矩陣
+	// temp : 暫存原始狀態的矩陣(不做更動)
+	BYTE** src_temp = New2Dmatrix(totalSlice, total_xy, BYTE);
+
+	Seed_s temp;								// 當前 判斷的周圍seed
+	Seed_s current;								// 當前 判斷的中心seed
+	Seed_s seed = factor.seed;					// 初始seed
+	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
+
+	// Deep copy (目前先以這樣的方式處理QQ)
+	//
+	for (j = 0; j < totalSlice; j++)
+	{
+		for (i = 0; i < total_xy; i++)
+		{
+			src_temp[j][i] = src[j][i];
+			src[j][i] = 0;
+		}
+	}
+
+	src[seed.z][(seed.y) * col + (seed.x)] = 1;
+	sd_que.push(seed);
+
+	while (!sd_que.empty())
+	{
+		current = sd_que.front();
+		for (k = -range; k <= range; k++)
+		{
+			for (j = -range; j <= range; j++)
+			{
+				for (i = -range; i <= range; i++)
+				{
+					if ((current.x + i) < (col) && (current.x + i) >= 0 &&
+						(current.y + j) < (row) && (current.y + j) >= 0 &&
+						(current.z + k) < (totalSlice) && (current.z + k) >= 0)
+					{
+						if (src[current.z + k][(current.y + j) * col + (current.x + i)] != 1 &&
+							src_temp[current.z + k][(current.y + j) * col + (current.x + i)] == 1)
+						{
+							temp.x = current.x + i;
+							temp.y = current.y + j;
+							temp.z = current.z + k;
+							sd_que.push(temp);
+
+							src[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
+						}
+					}
+				}
+			}
+		}
+		sd_que.pop();
+	}
+	delete src_temp;
+}
+
 void C3DProcess::Erosion_3D(BYTE** src, short element)
 {
-	// DO : 3D Erosion (侵蝕 -形態學處理)
+	// DO : 3D Erosion (侵蝕 - 形態學處理)
 	//
 	const int row = ROW;
 	const int col = COL;
 	const int total_xy = ROW * COL;
 	const int total_z = Total_Slice;
+	register int si, sj, sk;
 	register int i, j, k;
 
 	// src : 原始以及將要被更改的矩陣
@@ -2221,7 +2641,53 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 	}
 	// Erosion
 	//
-	if (element == 6)
+	// 計算周圍符合條件的pixel的數量
+	// 若數量符合條件，則為 1 (不侵蝕)
+	if (element == 0)
+	{
+		int amount = 13;					// 數量目標
+		int range = (3 - 1) / 2;			// 判定區域的範圍
+		int n = 0;							// 計算周圍符合條件的pixel數量
+		
+		// 遍歷所有為 1 的 pixel
+		for (sk = range; sk < total_z - range; sk++)
+		{
+			for (sj = range; sj < row - range; sj++)
+			{
+				for (si = range; si < col - range; si++)
+				{
+					n = 0;
+					// 判斷周圍區域也為 1 的數量
+					if (temp[sk][sj * col + si] == 1)
+					{
+						for (k = -range; k <= range; k++)
+						{
+							for (j = -range; j <= range; j++)
+							{
+								for (i = -range; i <= range; i++)
+								{
+									if (temp[sk + k][(sj + j) * col + (si + i)] == 1)
+									{
+										n += 1;
+									}
+								}
+							}
+						}
+						if (n >= amount)
+						{
+							src[sk][sj * col + si] = 1;
+						}
+						else
+						{
+							src[sk][sj * col + si] = 0;
+						}
+					}
+				}
+			}
+		}
+	}
+	// 6 鄰域
+	else if (element == 6)
 	{
 		for (k = 1; k < total_z - 1; k++)
 		{
@@ -2247,6 +2713,7 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 			}
 		}
 	}
+	// 18 鄰域
 	else if (element == 18)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2281,6 +2748,7 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 			}
 		}
 	}
+	// 26 鄰域
 	else if (element == 26)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2341,9 +2809,9 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 			temp[j][i] = src[j][i];
 		}
 	}
-
 	// Dilation
 	//
+	// 6 鄰域
 	if (element == 6)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2365,6 +2833,7 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 			}
 		}
 	}
+	// 18 鄰域
 	else if (element == 18)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2400,6 +2869,7 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 			}
 		}
 	}
+	// 26 鄰域
 	else if (element == 26)
 	{
 		for (k = 1; k < total_z - 1; k++)
@@ -2445,73 +2915,6 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 		}
 	}
 	delete temp;
-}
-
-void C3DProcess::Region_Growing_3D_Link(BYTE** src, RG_factor& factor)
-{
-	//	DO : 3D 區域成長 - 二次成長(確認最終分割區域與體積)
-	//
-	const int row = ROW;
-	const int col = COL;
-	const int total_xy = ROW * COL;
-	const int totalSlice = Total_Slice;
-	const int kernel = 3;
-	const int range = (kernel - 1) / 2;			// 判斷範圍
-	register int i, j, k;
-
-	// src : 原始以及將要被更改的矩陣
-	// temp : 暫存原始狀態的矩陣(不做更動)
-	BYTE** judge_temp = New2Dmatrix(totalSlice, total_xy, BYTE);
-
-	Seed_s temp;								// 當前 判斷的周圍seed
-	Seed_s current;								// 當前 判斷的中心seed
-	Seed_s seed = factor.seed;					// 初始seed
-	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
-
-	judge[seed.z][(seed.y) * col + (seed.x)] = 1;
-	sd_que.push(seed);
-
-	// Deep copy (目前先以這樣的方式處理QQ)
-	//
-	for (j = 0; j < totalSlice; j++)
-	{
-		for (i = 0; i < total_xy; i++)
-		{
-			judge_temp[j][i] = judge[j][i];
-			judge[j][i] = 0;
-		}
-	}
-
-	while (!sd_que.empty())
-	{
-		current = sd_que.front();
-		for (k = -range; k <= range; k++)
-		{
-			for (j = -range; j <= range; j++)
-			{
-				for (i = -range; i <= range; i++)
-				{
-					if ((current.x + i) < (col)			&& (current.x + i) >= 0 &&
-						(current.y + j) < (row)			&& (current.y + j) >= 0 &&
-						(current.z + k) < (totalSlice)	&& (current.z + k) >= 0)
-					{
-						if (judge[current.z + k][(current.y + j) * col + (current.x + i)] != 1 &&
-							judge_temp[current.z + k][(current.y + j) * col + (current.x + i)] == 1)
-						{
-							temp.x = current.x + i;
-							temp.y = current.y + j;
-							temp.z = current.z + k;
-							sd_que.push(temp);
-
-							judge[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
-						}
-					}
-				}
-			}
-		}
-		sd_que.pop();
-	}
-	delete judge_temp;
 }
 
 double C3DProcess::Calculate_Volume(BYTE** src, short target)

@@ -93,8 +93,10 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	struct RG_factor
 	{
 		_IN		Seed_s	seed;			// 種子點
-		_IN		int		kernel;			// 拜託務必保持奇數
-		_IN		double	threshold;		// 成長閾值
+		_IN		int		s_kernel;		// 種子點鄰近範圍
+		_IN		int		n_kernel;		// 種子點鄰近像素的周邊範圍
+		_IN		double	threshold;		// 成長條件 : 閾值
+		_IN		double	coefficient;	// 成長條件 : 倍率
 	};
 
 	Seed_d			seed_gl;			// 在3D視窗點擊的seed openGL世界座標
@@ -109,7 +111,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	float			y_index;			// 校正 Y 軸比例的參數
 	float			z_index;			// 校正 Z 軸比例的參數
 
-	BYTE**			judge;				// 區域成長判定
+	BYTE**			judge;				// 記錄區域成長結果(成長判定)
 	BYTE			m_image0[256*256*256][4];
 
 ///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
@@ -121,7 +123,7 @@ unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 ///------------- ↓ 實驗區 ↓ -------------///
 
 	RG_factor		RG_totalTerm;		// 3D區域成長 : 條件因子
-	double			RG_totalVolume;		// 3D區域成長 : 總體積(1)
+	double			RG_totalVolume;		// 3D區域成長 : 總體積(judge = 1)
 
 ///------------- ↑ 實驗區 ↑ -------------///
 
@@ -156,8 +158,11 @@ public:
 
 	void	Erosion_3D(BYTE** src, short element);
 	void	Dilation_3D(BYTE** src, short element);
-	void	Region_Growing_3D(BYTE** src, RG_factor& factor);		// 3D 區域成長(成長結果紀錄於judge)
-	void	Region_Growing_3D_Link(BYTE** src, RG_factor& factor);
+
+	void	RG_3D_Link(BYTE** src, RG_factor& factor);
+	void	RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor);		// 3D 區域成長(全域平均與當前強度)
+	void	RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor);
+	void	RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor);
 
 	double	Calculate_Volume(BYTE** src, short target);
 
