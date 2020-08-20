@@ -979,6 +979,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
+		// 把形態學處理另外用button做
 #if 0
 		// 3D_形態學處理
 		//
@@ -2358,7 +2359,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	Seed_s	seed = factor.seed;
 	queue<Seed_s> sd_que;
 	queue<double> avg_que;
-
+	
 	s_avg = m_pDoc->m_img[seed.z][seed.y * col + seed.x];
 	src[seed.z][seed.y * col + seed.x] = 1;
 	avg_que.push(s_avg);
