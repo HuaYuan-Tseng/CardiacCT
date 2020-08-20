@@ -1676,12 +1676,12 @@ void C3DProcess::Draw3DImage(bool which)
 	glDisable(GL_TEXTURE_GEN_T);
 	glDisable(GL_TEXTURE_GEN_R);
 
-	// 繪製周圍藍色邊框
+	// 繪製空間周圍邊框
 	//
-	glLineWidth(3);
+	glLineWidth(2);
 	glBegin(GL_LINES);
 	{
-		glColor3f(0.0f, 0.0f, 1.0f);
+		glColor3f(0.902f, 1.0f, 1.0f);
 
 		glVertex3f(1.0f, 1.0f, 1.0f);
 		glVertex3f(1.0f, 1.0f, -1.0f);
