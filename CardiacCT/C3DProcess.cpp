@@ -979,6 +979,8 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
 		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
+		// 形態學另外分別開button處理
+		// 目前開分支 feat/add-btn_morphology
 #if 0
 		// 3D_形態學處理
 		//
