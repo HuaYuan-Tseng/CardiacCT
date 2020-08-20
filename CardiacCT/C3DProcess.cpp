@@ -93,6 +93,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	obj_angle = 0.0F;
 	pln_angle = 0.0F;
 	DisplaySlice = 0;
+	RG_totalVolume = 0.0F;
 	HUThreshold = atoi(m_HUThreshold);
 	PixelThreshold = atoi(m_pixelThreshold);
 
@@ -222,10 +223,12 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_2DSEED_CLEAR, &C3DProcess::OnBnClickedButton2dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
+	ON_BN_CLICKED(IDC_BUTTON_DILATION, &C3DProcess::OnBnClickedButtonDilation)
 
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
+	
 END_MESSAGE_MAP()
 
 //=================================//
@@ -975,32 +978,15 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		//RG_3D_LocalAvgConnected(judge, RG_totalTerm);
 		RG_3D_ConfidenceConnected(judge, RG_totalTerm);
 		end = clock();
-		//RG_totalVolume = Calculate_Volume(judge, 1);
-		//TRACE1("Org Growing Volume : %f (cm3) \n", RG_totalVolume);
-		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 
-		// 把形態學處理另外用button做
-#if 0
-		// 3D_形態學處理
-		//
-		start = clock();
-		//Erosion_3D(judge, 0);
-		//Erosion_3D(judge, 0);
-		//Erosion_3D(judge, 18);
-		//Dilation_3D(judge, 18);
-		//RG_3D_Link(judge, RG_totalTerm);
-		Dilation_3D(judge, 26);
-		//Dilation_3D(judge, 26);
-		end = clock();
-		TRACE1("Morphology Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
-#endif
-
-		// 確認最後分割體積
+		// 確認分割體積
 		//
 		get_regionGrow = true;
-		RG_totalVolume = Calculate_Volume(judge, 1);
+		RG_totalVolume += Calculate_Volume(judge, 1);
 		m_result.Format("%lf", RG_totalVolume);
-		TRACE1("Last Growing Volume : %f (cm3) \n", RG_totalVolume);
+
+		TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
+		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		PrepareVolume();
 		UpdateData(FALSE);
@@ -1071,6 +1057,35 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
 }
+
+void C3DProcess::OnBnClickedButtonDilation()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Dilation (形態學處理)
+	//
+	clock_t start, end;
+	CWait* m_wait = new CWait();
+	m_wait->Create(IDD_DIALOG_WAIT);
+	m_wait->ShowWindow(SW_NORMAL);
+	m_wait->setDisplay("Region growing...");
+
+	start = clock();
+	Dilation_3D(judge, 26);
+	end = clock();
+	RG_totalVolume += Calculate_Volume(judge, 1);
+
+	TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
+	TRACE1("Dilation Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+
+	PrepareVolume();
+	UpdateData(FALSE);
+	Draw3DImage(true);
+	Draw2DImage(DisplaySlice);
+	m_wait->DestroyWindow();
+	delete m_wait;
+}
+
+
 
 //==========================//
 //   C3DProcess Functions   //
