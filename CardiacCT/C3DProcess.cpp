@@ -1015,6 +1015,7 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 {
 	// TODO: Add your control notification handler code here
 	// Button : Growing Remove
+	// 把分割出來的部分(紅色標記)變透明
 	//
 	if (!get_regionGrow)	return;
 
@@ -1052,6 +1053,7 @@ void C3DProcess::OnBnClickedButtonGrowingRecovery()
 {
 	// TODO: Add your control notification handler code here
 	// Button : Growing Recovery
+	// 把變透明的部分變回原本的顏色標記
 	//
 	if (!get_regionGrow)	return;
 
