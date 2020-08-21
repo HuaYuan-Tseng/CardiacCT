@@ -986,7 +986,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		m_result.Format("%lf", RG_totalVolume);
 
 		TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
-		TRACE1("RG Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+		TRACE1("RG Time : %f (s) \n\n", (double)((end - start)) / CLOCKS_PER_SEC);
 		
 		PrepareVolume();
 		UpdateData(FALSE);
@@ -1067,7 +1067,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	CWait* m_wait = new CWait();
 	m_wait->Create(IDD_DIALOG_WAIT);
 	m_wait->ShowWindow(SW_NORMAL);
-	m_wait->setDisplay("Region growing...");
+	m_wait->setDisplay("Dilationing...");
 
 	start = clock();
 	Dilation_3D(judge, 26);
