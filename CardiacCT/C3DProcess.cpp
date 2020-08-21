@@ -219,6 +219,8 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_PLUS, &C3DProcess::OnBnClickedButtonIntensityPlus)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_MINUS, &C3DProcess::OnBnClickedButtonIntensityMinus)
 	ON_BN_CLICKED(IDC_BUTTON_REGION_GROWING, &C3DProcess::OnBnClickedButtonRegionGrowing)
+	ON_BN_CLICKED(IDC_BUTTON_GROWING_RECOVERY, &C3DProcess::OnBnClickedButtonGrowingRecovery)
+	ON_BN_CLICKED(IDC_BUTTON_GROWING_REMOVE, &C3DProcess::OnBnClickedButtonGrowingRemove)
 	ON_BN_CLICKED(IDC_BUTTON_GROWING_CLEAR, &C3DProcess::OnBnClickedButtonGrowingClear)
 	ON_BN_CLICKED(IDC_BUTTON_2DSEED_CLEAR, &C3DProcess::OnBnClickedButton2dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
@@ -228,7 +230,6 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
-	
 END_MESSAGE_MAP()
 
 //=================================//
@@ -269,10 +270,13 @@ BOOL C3DProcess::OnInitDialog()
 	//-------------------------------------------------------------------------------------//
 	// 設定Button初始狀態
 	//
-	GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
-	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
-	GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_GROWING_REMOVE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_GROWING_RECOVERY)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
 
 	//-------------------------------------------------------------------------------------//
 	// 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值
@@ -759,15 +763,21 @@ void C3DProcess::OnBnClickedCheck3dSeed()
 		}
 		if (get_regionGrow)
 		{
+			GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(TRUE);
 			GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
+			GetDlgItem(IDC_BUTTON_GROWING_REMOVE)->EnableWindow(TRUE);
+			GetDlgItem(IDC_BUTTON_GROWING_RECOVERY)->EnableWindow(TRUE);
 		}
 	}
 	else
 	{
 		GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_GROWING_RECOVERY)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_GROWING_REMOVE)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
 	}
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
@@ -953,49 +963,129 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	// TODO: Add your control notification handler code here
 	// Button : 3D Region Growing
 	//
-	if (get_3Dseed)
+	if (!get_3Dseed)	return;
+	
+	clock_t start, end;
+	CWait* m_wait = new CWait();
+	m_wait->Create(IDD_DIALOG_WAIT);
+	m_wait->ShowWindow(SW_NORMAL);
+	m_wait->setDisplay("Region growing...");
+
+	// 宣告 成長標準 參數
+	//
+	RG_totalTerm = {
+		RG_totalTerm.seed = seed_img,
+		RG_totalTerm.s_kernel = 3,
+		RG_totalTerm.n_kernel = 3,
+		RG_totalTerm.threshold = 55.5L,
+		RG_totalTerm.coefficient = 0.5L
+	};
+		
+	// 執行 3D_Region growing
+	//
+	start = clock();
+	//RG_3D_GlobalAvgConnected(judge, RG_totalTerm);
+	//RG_3D_LocalAvgConnected(judge, RG_totalTerm);
+	RG_3D_ConfidenceConnected(judge, RG_totalTerm);
+	end = clock();
+
+	// 確認分割體積
+	//
+	get_regionGrow = true;
+	RG_totalVolume += Calculate_Volume(judge, 1);
+	m_result.Format("%lf", RG_totalVolume);
+
+	TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
+	TRACE1("RG Time : %f (s) \n\n", (double)((end - start)) / CLOCKS_PER_SEC);
+	
+	GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(TRUE);
+	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
+	GetDlgItem(IDC_BUTTON_GROWING_REMOVE)->EnableWindow(TRUE);
+	GetDlgItem(IDC_BUTTON_GROWING_RECOVERY)->EnableWindow(TRUE);
+	
+	PrepareVolume();
+	UpdateData(FALSE);
+	Draw3DImage(true);
+	Draw2DImage(DisplaySlice);
+	m_wait->DestroyWindow();
+	delete m_wait;
+}
+
+void C3DProcess::OnBnClickedButtonGrowingRemove()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Growing Remove
+	//
+	if (!get_regionGrow)	return;
+
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int sample_start = 0 + Mat_Offset;
+	const int sample_end = 0 + Mat_Offset + totalSlice;
+	register int i, j, k;
+
+	k = 0;
+	while (k < 512)
 	{
-		clock_t start, end;
-		CWait* m_wait = new CWait();
-		m_wait->Create(IDD_DIALOG_WAIT);
-		m_wait->ShowWindow(SW_NORMAL);
-		m_wait->setDisplay("Region growing...");
-
-		// 宣告 成長標準 參數
-		//
-		RG_totalTerm = {
-			RG_totalTerm.seed = seed_img,
-			RG_totalTerm.s_kernel = 3,
-			RG_totalTerm.n_kernel = 3,
-			RG_totalTerm.threshold = 55.5L,
-			RG_totalTerm.coefficient = 0.5L
-		};
-		
-		// 執行 3D_Region growing
-		//
-		start = clock();
-		//RG_3D_GlobalAvgConnected(judge, RG_totalTerm);
-		//RG_3D_LocalAvgConnected(judge, RG_totalTerm);
-		RG_3D_ConfidenceConnected(judge, RG_totalTerm);
-		end = clock();
-
-		// 確認分割體積
-		//
-		get_regionGrow = true;
-		RG_totalVolume += Calculate_Volume(judge, 1);
-		m_result.Format("%lf", RG_totalVolume);
-
-		TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
-		TRACE1("RG Time : %f (s) \n\n", (double)((end - start)) / CLOCKS_PER_SEC);
-		
-		PrepareVolume();
-		UpdateData(FALSE);
-		Draw3DImage(true);
-		Draw2DImage(DisplaySlice);
-		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
-		m_wait->DestroyWindow();
-		delete m_wait;
+		if (k > sample_start && k <= sample_end)
+		{
+			for (j = 2; j < row - 2; j += 2)
+			{
+				for (i = 2; i < col - 2; i += 2)
+				{
+					if (judge[k - (Mat_Offset + 1)][j * col + i] != 0)
+					{
+						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+							0, 0);
+					}
+				}
+			}
+		}
+		k += 2;
 	}
+	LoadVolume();
+	Draw3DImage(true);
+}
+
+void C3DProcess::OnBnClickedButtonGrowingRecovery()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Growing Recovery
+	//
+	if (!get_regionGrow)	return;
+
+	float pixel;
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int sample_start = 0 + Mat_Offset;
+	const int sample_end = 0 + Mat_Offset + totalSlice;
+	register int i, j, k;
+
+	k = 0;
+	while (k < 512)
+	{
+		if (k > sample_start && k <= sample_end)
+		{
+			for (j = 2; j < row - 2; j += 2)
+			{
+				for (i = 2; i < col - 2; i += 2)
+				{
+					pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
+
+					if (judge[k - (Mat_Offset + 1)][j * col + i] != 0)
+					{
+						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+							pixel / 255.0F, 1);
+					}
+				}
+			}
+		}
+		k += 2;
+	}
+	LoadVolume();
+	Draw3DImage(true);
 }
 
 void C3DProcess::OnBnClickedButtonGrowingClear()
@@ -1008,7 +1098,10 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	m_result = _T("0.0");
 	RG_totalVolume = 0.0L;
 	get_regionGrow = false;
+	GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_GROWING_REMOVE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_GROWING_RECOVERY)->EnableWindow(FALSE);
 	//------------------------------------------------------------//
 
 	float pixel;
@@ -1051,7 +1144,6 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 		}
 		k += 2;
 	}
-
 	LoadVolume();
 	UpdateData(FALSE);
 	Draw3DImage(true);
@@ -1063,6 +1155,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 	// TODO: Add your control notification handler code here
 	// Button : Dilation (形態學處理)
 	//
+	if (!get_regionGrow)	return;
+
 	clock_t start, end;
 	CWait* m_wait = new CWait();
 	m_wait->Create(IDD_DIALOG_WAIT);
@@ -1075,7 +1169,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	RG_totalVolume += Calculate_Volume(judge, 1);
 
 	TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
-	TRACE1("Dilation Time : %f (s) \n", (double)((end - start)) / CLOCKS_PER_SEC);
+	TRACE1("Dilation Time : %f (s) \n\n", (double)((end - start)) / CLOCKS_PER_SEC);
 
 	PrepareVolume();
 	UpdateData(FALSE);
@@ -1084,8 +1178,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 	m_wait->DestroyWindow();
 	delete m_wait;
 }
-
-
 
 //==========================//
 //   C3DProcess Functions   //
@@ -2956,3 +3048,6 @@ double C3DProcess::Calculate_Volume(BYTE** src, short target)
 	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;		// 單位 (cm3)
 	return volume;
 }
+
+
+
