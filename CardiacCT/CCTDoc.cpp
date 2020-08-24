@@ -16,6 +16,9 @@
 #include "C3DProcess.h"
 #include "dcmtk/dcmimgle/dcmimage.h"
 #include <propkey.h>
+#include "CWait.h"
+#include <ctime>
+#include <thread>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -58,6 +61,7 @@ CCTDoc::CCTDoc() noexcept
 	m_dir = nullptr;
 	m_img = nullptr;
 	m_HUimg = nullptr;
+	m_imgPro = nullptr;
 	displaySeries = 0;
 }
 
@@ -69,6 +73,8 @@ CCTDoc::~CCTDoc()
 		delete[] m_HUimg;
 	if (m_img != nullptr)
 		delete[] m_img;
+	if (m_imgPro != nullptr)
+		delete[] m_imgPro;
 }
 
 BOOL CCTDoc::OnNewDocument()
@@ -316,63 +322,74 @@ void CCTDoc::BuildDataMatrix()
 	const double Window_low = Window_Center_1 - 0.5 - (Window_Width_1 - 1) / 2;
 	const double Window_high = Window_Center_1 - 0.5 + (Window_Width_1 - 1) / 2;
 
-	int slice = 0;
-	short value = 0;
-	CString dir_temp;
-	register int i = 0;
-
 	if (m_HUimg != nullptr)		delete[] m_HUimg;
 	if (m_img != nullptr)		delete[] m_img;
+	if (m_imgPro != nullptr)	delete[] m_imgPro;
 	m_HUimg = New2Dmatrix(TotalSlice, Row*Col, short);
 	m_img = New2Dmatrix(TotalSlice, Row*Col, BYTE);
+	m_imgPro = New2Dmatrix(TotalSlice, Row * Col, BYTE);
 
-	CProgress* m_progress = new CProgress();
-	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
-	m_progress->ShowWindow(SW_NORMAL);
-	m_progress->Set(TotalSlice, slice);
-	m_progress->SetStatic("Open DICOM Image...");
+	CWait* m_wait = new CWait();
 
-	while (slice < TotalSlice)
+	auto loadImage = [&](int start)
 	{
-		dir_temp = m_dir->SeriesList[displaySeries]->ImageList[slice]->AbsFilePath;
-		DicomImage* image = new DicomImage(dir_temp);
+		short value = 0;
+		CString dir_temp;
+		register int i = 0;
+		int slice = start;
 
-		if (image != NULL)
+		while (slice < TotalSlice)
 		{
-			Uint16* data = (Uint16*)(image->getOutputData(BitStored));			// 獲得原始影像數據
-			if (data != NULL)
-			{
-				i = 0;
-				while (i < Row * Col)
-				{
-					value = *(data + i) * RescaleSlope + RescaleIntercept;
-					m_HUimg[slice][i] = value;
+			dir_temp = m_dir->SeriesList[displaySeries]->ImageList[slice]->AbsFilePath;
+			DicomImage* image = new DicomImage(dir_temp);
 
-					if (value <= Window_low)
+			if (image != NULL)
+			{
+				Uint16* data = (Uint16*)(image->getOutputData(BitStored));			// 獲得原始影像數據
+				if (data != NULL)
+				{
+					i = 0;
+					while (i < Row * Col)
 					{
-						m_img[slice][i] = 0;
-					}
-					else if (value > Window_high)
-					{
-						if (value > 60000)
+						value = *(data + i) * RescaleSlope + RescaleIntercept;
+						m_HUimg[slice][i] = value;
+
+						if (value <= Window_low)
+						{
 							m_img[slice][i] = 0;
+						}
+						else if (value > Window_high)
+						{
+							if (value > 60000)
+								m_img[slice][i] = 0;
+							else
+								m_img[slice][i] = 255;
+						}
 						else
-							m_img[slice][i] = 255;
+						{
+							m_img[slice][i] = (BYTE)(255 * ((value - (WindowCenter_1 - 0.5)) / (WindowWidth_1 + 1) + 0.5));
+						}
+						m_imgPro[slice][i] = std::move(m_img[slice][i]);
+						i += 1;
 					}
-					else
-					{
-						m_img[slice][i] = (BYTE)(255 * ((value - (WindowCenter_1 - 0.5)) / (WindowWidth_1 + 1) + 0.5));
-					}
-					i += 1;
 				}
 			}
-		}
-		delete image;
-		slice += 1;
-		m_progress->GetPro(slice);
-	}
-	m_progress->DestroyWindow();
-	delete m_progress;
+			delete image;
+			slice += 2;
+		} 
+	};
+
+	m_wait->Create(IDD_DIALOG_WAIT);
+	m_wait->ShowWindow(SW_NORMAL);
+	m_wait->setDisplay("Open DICOM Image...");
+	
+	thread th0(loadImage, 0);
+	thread th1(loadImage, 1);
+	th0.join();
+	th1.join();
+
+	m_wait->DestroyWindow();
+	delete m_wait;
 }
 
 void* CCTDoc::new2Dmatrix(int h, int w, int size)

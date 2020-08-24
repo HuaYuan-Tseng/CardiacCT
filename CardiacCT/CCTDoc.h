@@ -19,7 +19,8 @@ protected: // create from serialization only
 public:
 	DcmDir*		m_dir;					// 紀錄開啟的DICOMDIR資訊
 	short**		m_HUimg;				// 紀錄HU的影像矩陣
-	BYTE**		m_img;					// 紀錄pixel的影像矩陣
+	BYTE**		m_img;					// 紀錄pixel的影像矩陣 ( 原始. 絕不更改
+	BYTE**		m_imgPro;				// 紀錄pixel的影像矩陣 ( 可更改.處理
 	
 unsigned int	displaySeries;			// 整個程式要顯示的時序
 

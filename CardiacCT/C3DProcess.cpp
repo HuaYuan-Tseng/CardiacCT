@@ -1355,7 +1355,7 @@ void C3DProcess::PrepareVolume()
 	CProgress* m_progress = new CProgress();
 	m_progress->Create(IDD_DIALOG_PROGRESSBAR);
 	m_progress->ShowWindow(SW_NORMAL);
-	m_progress->Set(Total_Slice/2, 0);
+	m_progress->SetInitial(0, 1, Total_Slice/2);
 	m_progress->SetStatic("Construct 3D Image...");
 
 	i = 0;	j = 0;	k = 0;
@@ -1378,7 +1378,7 @@ void C3DProcess::PrepareVolume()
 				}
 			}
 			k += 2;
-			m_progress->GetPro(k);
+			m_progress->Run();
 		}
 	}
 	else
@@ -1407,7 +1407,7 @@ void C3DProcess::PrepareVolume()
 				}
 			}
 			k += 2;
-			m_progress->GetPro(k);
+			m_progress->Run();
 		}
 	}
 	

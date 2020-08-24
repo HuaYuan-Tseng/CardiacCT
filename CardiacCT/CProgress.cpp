@@ -35,20 +35,15 @@ END_MESSAGE_MAP()
 //   CProgress message handlers   //
 //================================//
 
-void CProgress::GetPro(int index)
-{
-	// DO : 設定進度條位置
-	//
-	m_ProgressBar.SetPos(index);
-	m_ProgressBar.UpdateWindow();
-}
-
-void CProgress::Set(int range, int pos)
+void CProgress::SetInitial(int pos, int step, int range)
 {
 	// DO : 設定進度條長度與初始位置
 	//
 	m_ProgressBar.SetRange(0, range);
 	m_ProgressBar.SetPos(pos);
+	m_Cur_pos = pos;
+	m_Range = range;
+	m_Step = step;
 }
 
 void CProgress::SetStatic(CString str)
@@ -60,3 +55,20 @@ void CProgress::SetStatic(CString str)
 	pDC.TextOut(15, 10, str);
 	pDC.UpdateColors();
 }
+
+void CProgress::Run()
+{
+	m_Cur_pos += m_Step;
+	m_ProgressBar.SetPos(m_Cur_pos);
+	m_ProgressBar.UpdateWindow();
+}
+
+void CProgress::SetPosition(int index)
+{
+	// DO : 設定進度條位置
+	//
+	m_ProgressBar.SetPos(index);
+	m_ProgressBar.UpdateWindow();
+}
+
+
