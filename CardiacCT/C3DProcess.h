@@ -242,5 +242,8 @@ public:
 	afx_msg void OnBnClickedButtonIntensityPlus();
 	afx_msg void OnBnClickedButtonIntensityMinus();
 	afx_msg void OnBnClickedButtonRegionGrowing();
+	afx_msg void OnBnClickedButtonGrowingRecovery();
+	afx_msg void OnBnClickedButtonGrowingRemove();
 	afx_msg void OnBnClickedButtonGrowingClear();
+	afx_msg void OnBnClickedButtonDilation();
 };
