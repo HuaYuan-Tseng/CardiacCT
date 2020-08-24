@@ -1165,6 +1165,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 	m_wait->ShowWindow(SW_NORMAL);
 	m_wait->setDisplay("Dilationing...");
 
+	// 後處理在這裡進行
+	//
 	start = clock();
 	Dilation_3D(judge, 26);
 	end = clock();
