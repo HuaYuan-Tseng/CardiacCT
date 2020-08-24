@@ -1165,7 +1165,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	m_wait->ShowWindow(SW_NORMAL);
 	m_wait->setDisplay("Dilationing...");
 
-	// 後處理在這裡進行
+	// 後處理在這裡進行(等等先測試多一個暫存影像的矩陣的記憶體使用量)
 	//
 	start = clock();
 	Dilation_3D(judge, 26);
