@@ -980,7 +980,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		RG_totalTerm.threshold = 55.5L,
 		RG_totalTerm.coefficient = 0.5L
 	};
-		
+	
 	// °õ¦æ 3D_Region growing
 	//
 	start = clock();
