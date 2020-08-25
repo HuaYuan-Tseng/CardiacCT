@@ -311,23 +311,23 @@ void CCTDoc::BuildDataMatrix()
 {
 	// 建立某一時序下，所有slice的影像資料(HU and pixel)矩陣
 	//
-	const int Row = ROW;
-	const int Col = COL;
-	const int BitStored = Bits_Stored;
-	const int TotalSlice = Total_Slice;
-	const int RescaleSlope = Rescale_Slope;
-	const int RescaleIntercept = Rescale_Intercept;
-	const int WindowCenter_1 = Window_Center_1;
-	const int WindowWidth_1 = Window_Width_1;
-	const double Window_low = Window_Center_1 - 0.5 - (Window_Width_1 - 1) / 2;
-	const double Window_high = Window_Center_1 - 0.5 + (Window_Width_1 - 1) / 2;
+	const int row = ROW;
+	const int col = COL;
+	const int bitStored = Bits_Stored;
+	const int totalSlice = Total_Slice;
+	const int rescaleSlope = Rescale_Slope;
+	const int rescaleIntercept = Rescale_Intercept;
+	const int windowCenter_1 = Window_Center_1;
+	const int windowWidth_1 = Window_Width_1;
+	const double window_low = Window_Center_1 - 0.5 - (Window_Width_1 - 1) / 2;
+	const double window_high = Window_Center_1 - 0.5 + (Window_Width_1 - 1) / 2;
 
 	if (m_HUimg != nullptr)		delete[] m_HUimg;
 	if (m_img != nullptr)		delete[] m_img;
 	if (m_imgPro != nullptr)	delete[] m_imgPro;
-	m_HUimg = New2Dmatrix(TotalSlice, Row*Col, short);
-	m_img = New2Dmatrix(TotalSlice, Row*Col, BYTE);
-	m_imgPro = New2Dmatrix(TotalSlice, Row * Col, BYTE);
+	m_HUimg = New2Dmatrix(totalSlice, row*col, short);
+	m_img = New2Dmatrix(totalSlice, row*col, BYTE);
+	m_imgPro = New2Dmatrix(totalSlice, row*col, BYTE);
 
 	auto loadImage = [&](int start)
 	{
@@ -336,27 +336,27 @@ void CCTDoc::BuildDataMatrix()
 		register int i = 0;
 		int slice = start;
 
-		while (slice < TotalSlice)
+		while (slice < totalSlice)
 		{
 			dir_temp = m_dir->SeriesList[displaySeries]->ImageList[slice]->AbsFilePath;
 			DicomImage* image = new DicomImage(dir_temp);
 
 			if (image != NULL)
 			{
-				Uint16* data = (Uint16*)(image->getOutputData(BitStored));			// 獲得原始影像數據
+				Uint16* data = (Uint16*)(image->getOutputData(bitStored));			// 獲得原始影像數據
 				if (data != NULL)
 				{
 					i = 0;
-					while (i < Row * Col)
+					while (i < row*col)
 					{
-						value = *(data + i) * RescaleSlope + RescaleIntercept;
+						value = *(data + i) * rescaleSlope + rescaleIntercept;
 						m_HUimg[slice][i] = value;
 
-						if (value <= Window_low)
+						if (value <= window_low)
 						{
 							m_img[slice][i] = 0;
 						}
-						else if (value > Window_high)
+						else if (value > window_high)
 						{
 							if (value > 60000)
 								m_img[slice][i] = 0;
@@ -365,7 +365,7 @@ void CCTDoc::BuildDataMatrix()
 						}
 						else
 						{
-							m_img[slice][i] = (BYTE)(255 * ((value - (WindowCenter_1 - 0.5)) / (WindowWidth_1 + 1) + 0.5));
+							m_img[slice][i] = (BYTE)(255 * ((value - (windowCenter_1 - 0.5)) / (windowWidth_1 + 1) + 0.5));
 						}
 						m_imgPro[slice][i] = std::move(m_img[slice][i]);
 						i += 1;

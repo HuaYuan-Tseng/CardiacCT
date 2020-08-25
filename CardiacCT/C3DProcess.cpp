@@ -10,10 +10,13 @@
 #include "afxdialogex.h"
 #include <ctime>
 #include <cmath>
-#include <queue>
 #include <thread>
 #include <numeric>
 #include <algorithm>
+
+#include <queue>
+#include <vector>
+#include <unordered_map>
 using namespace std;
 constexpr auto M_PI = 3.1415926F;
 
@@ -1158,21 +1161,57 @@ void C3DProcess::OnBnClickedButtonDilation()
 	// Button : Dilation (形態學處理)
 	//
 	if (!get_regionGrow)	return;
-
-	clock_t start, end;
 	
-	start = clock();
-	Dilation_3D(judge, 26);
-	end = clock();
-	RG_totalVolume += Calculate_Volume(judge, 1);
+	const int row = ROW;
+	const int col = COL;
+	const int totalXY = ROW * COL;
+	const int totalSlice = Total_Slice;
+	clock_t start = clock();
 
-	TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
-	TRACE1("Dilation Time : %f (s) \n\n", (double)((end - start)) / CLOCKS_PER_SEC);
+	// 先尋找每一slice分割區域的邊界 (y_min、x_min、x_max)
+	// 
+	std::unordered_map<int, vector<int> > edge;
+	
+	auto findBorder = [&](int start)
+	{
+		int position;
+		int slice = start;
+		std::vector<int> x_pos;
+		std::vector<int> y_pos;
+		while (slice < totalSlice)
+		{
+			position = 0;
+			while (position < totalXY)
+			{
+				if (judge[slice][position] == 1)
+				{
+					x_pos.push_back(position % col);
+					y_pos.push_back(position / col);
+				}
+				position += 1;
+			}
+			std::sort(x_pos.begin(), x_pos.end());
+			std::sort(y_pos.begin(), y_pos.end());
 
-	PrepareVolume();
-	UpdateData(FALSE);
-	Draw3DImage(true);
-	Draw2DImage(DisplaySlice);
+			edge[slice].push_back(*(x_pos.begin()));	// [0]: x_min
+			edge[slice].push_back(*(x_pos.end() - 1));	// [1]: x_max
+			edge[slice].push_back(*(y_pos.begin()));	// [2]: y_min
+			edge[slice].push_back(*(y_pos.end() - 1));	// [3]: y_max
+
+			x_pos.clear();	x_pos.shrink_to_fit();
+			y_pos.clear();	y_pos.shrink_to_fit();
+			slice += 2;
+		}
+	};
+
+	thread th0(findBorder, 0);
+	thread th1(findBorder, 1);
+	th0.join();	th1.join();
+
+
+	clock_t end = clock();
+	TRACE1("Spend Time : %f (s)", (double)(end - start) / CLOCKS_PER_SEC);
+
 }
 
 //==========================//
