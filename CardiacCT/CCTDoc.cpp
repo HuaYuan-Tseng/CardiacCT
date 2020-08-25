@@ -243,7 +243,7 @@ void CCTDoc::OnToolButtonOpenDicomdir()
 		if (m_dir != nullptr)
 		{
 			CDirForm* m_dirFormDlg = new CDirForm();
-			m_dirFormDlg->m_pDoc = this;
+			m_dirFormDlg->m_pDoc = std::move(this);
 			m_dirFormDlg->m_clickItem = displaySeries;
 			m_dirFormDlg->m_checkItem = displaySeries;
 
@@ -267,7 +267,7 @@ void CCTDoc::OnToolButtonDirContents()
 	if (m_dir != nullptr)
 	{
 		CDirForm* m_dirFormDlg = new CDirForm();
-		m_dirFormDlg->m_pDoc = this;
+		m_dirFormDlg->m_pDoc = std::move(this);
 		m_dirFormDlg->m_clickItem = displaySeries;
 		m_dirFormDlg->m_checkItem = displaySeries;
 
@@ -294,7 +294,7 @@ void CCTDoc::OnToolButton3DProcess()
 		}
 
 		C3DProcess* m_3DProcessDlg = new C3DProcess();
-		m_3DProcessDlg->m_pDoc = this;
+		m_3DProcessDlg->m_pDoc = std::move(this);
 
 		if (m_3DProcessDlg->DoModal() == IDOK)
 		{
@@ -328,8 +328,6 @@ void CCTDoc::BuildDataMatrix()
 	m_HUimg = New2Dmatrix(TotalSlice, Row*Col, short);
 	m_img = New2Dmatrix(TotalSlice, Row*Col, BYTE);
 	m_imgPro = New2Dmatrix(TotalSlice, Row * Col, BYTE);
-
-	CWait* m_wait = new CWait();
 
 	auto loadImage = [&](int start)
 	{
@@ -379,6 +377,7 @@ void CCTDoc::BuildDataMatrix()
 		} 
 	};
 
+	CWait* m_wait = new CWait();
 	m_wait->Create(IDD_DIALOG_WAIT);
 	m_wait->ShowWindow(SW_NORMAL);
 	m_wait->setDisplay("Open DICOM Image...");

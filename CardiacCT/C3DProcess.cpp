@@ -1160,13 +1160,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	if (!get_regionGrow)	return;
 
 	clock_t start, end;
-	CWait* m_wait = new CWait();
-	m_wait->Create(IDD_DIALOG_WAIT);
-	m_wait->ShowWindow(SW_NORMAL);
-	m_wait->setDisplay("Dilationing...");
-
-	// 後處理在這裡進行(等等先測試多一個暫存影像的矩陣的記憶體使用量)
-	//
+	
 	start = clock();
 	Dilation_3D(judge, 26);
 	end = clock();
@@ -1179,8 +1173,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 	UpdateData(FALSE);
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
-	m_wait->DestroyWindow();
-	delete m_wait;
 }
 
 //==========================//
