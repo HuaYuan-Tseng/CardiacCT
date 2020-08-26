@@ -13,6 +13,7 @@
 #include <thread>
 #include <numeric>
 #include <algorithm>
+#include <omp.h>
 
 #include <map>
 #include <queue>
@@ -1201,7 +1202,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
 	// 
 	std::map<int, vector<int>> edge;
-	
+
 	auto findBorder = [&](int start)
 	{
 		int position;
@@ -1253,10 +1254,12 @@ void C3DProcess::OnBnClickedButtonDilation()
 			{
 				for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
 				{
-					if (img[iter->first][j * col + i] <= 100)
+					if (img[iter->first][j * col + i] <= 120)
 						img[iter->first][j * col + i] = 0;
-					//
-					//
+					else if (img[iter->first][j * col + i] > 120 && img[iter->first][j * col + i] <= 180)
+						img[iter->first][j * col + i] -= 30;
+					else if (img[iter->first][j * col + i] > 180 && img[iter->first][j * col + i] <= 200)
+						img[iter->first][j * col + i] += 20;
 				}
 			}
 			slice += 2;
@@ -1266,6 +1269,9 @@ void C3DProcess::OnBnClickedButtonDilation()
 	thread th2(edgeProcess, 0);
 	thread th3(edgeProcess, 1);
 	th2.join();	th3.join();
+
+
+
 
 	clock_t end = clock();
 	TRACE1("Spend Time : %f (s)", (double)(end - start) / CLOCKS_PER_SEC);
