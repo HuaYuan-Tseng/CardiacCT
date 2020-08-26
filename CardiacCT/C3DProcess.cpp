@@ -729,7 +729,6 @@ void C3DProcess::OnBnClickedCheckDispOrg()
 	GetDlgItem(IDC_CHECK_HU_THRESHOLD)->EnableWindow(TRUE);
 }
 
-
 void C3DProcess::OnBnClickedCheckDispPro0()
 {
 	// TODO: Add your control notification handler code here
@@ -1245,19 +1244,19 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	auto edgeProcess = [&](int start)
 	{
-		std::map<int, vector<int>>::iterator iter_map;
+		std::map<int, vector<int>>::iterator iter;
 		int slice = start;
 		while (slice < totalSlice)
 		{
-			iter_map = edge.find(slice);
-			for (int j = iter_map->second.at(2); j <= iter_map->second.at(3); j++)
+			iter = edge.find(slice);
+			for (int j = iter->second.at(2); j <= iter->second.at(3); j++)
 			{
-				for (int i = iter_map->second.at(0); i <= iter_map->second.at(1); i++)
+				for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
 				{
-					if (img[iter_map->first][j * col + i] <= 100)
-					{
-
-					}
+					if (img[iter->first][j * col + i] <= 100)
+						img[iter->first][j * col + i] = 0;
+					//
+					//
 				}
 			}
 			slice += 2;
@@ -1973,57 +1972,93 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		AfxMessageBox("No Image Data can be display!!");
 		return;
 	}
-
-	BYTE**& disp_img = m_pDoc->m_img;
-
-	if (m_disp_pro0 == TRUE)
-		BYTE** &disp_img = m_pDoc->m_imgPro;
 	
-	// 顯示原始影像
-	//
-	if (m_complete == TRUE)
-	{
-		m_2D_dib->ShowInverseDIB(&dc, disp_img[slice]);
-	}
-	// 顯示以Pixel為閾值的二值化影像
-	//
-	else if (m_thresholdPixel == TRUE)
-	{
-		PBYTE image_thres = new BYTE[Row*Col];
-
-		i = 0;
-		while (i < Row * Col)
+	// 顯示 原始影像
+	if (m_disp_org == TRUE)
+	{	
+		if (m_complete == TRUE)
 		{
-			if (disp_img[slice][i] > PixelThreshold)
-				image_thres[i] = 255;
-			else
-				image_thres[i] = 0;
-			i += 1;
+			m_2D_dib->ShowInverseDIB(&dc, m_pDoc->m_img[slice]);
 		}
-		m_2D_dib->ShowInverseDIB(&dc, image_thres);
-		delete[] image_thres;
-	}
-	// 顯示以 HU 為閾值的二值化影像
-	//
-	else if (m_thresholdHU == TRUE)
-	{
-		PBYTE image_thres = new BYTE[Row*Col];
-
-		i = 0;
-		while (i < Row * Col)
+		// 顯示 以 Pixel 為閾值的二值化影像
+		else if (m_thresholdPixel == TRUE)
 		{
-			if (m_pDoc->m_HUimg[slice][i] > HUThreshold)
-				image_thres[i] = 255;
-			else
-				image_thres[i] = 0;
-			i += 1;
+			PBYTE image_thres = new BYTE[Row * Col];
+
+			i = 0;
+			while (i < Row * Col)
+			{
+				if (m_pDoc->m_img[slice][i] > PixelThreshold)
+					image_thres[i] = 255;
+				else
+					image_thres[i] = 0;
+				i += 1;
+			}
+			m_2D_dib->ShowInverseDIB(&dc, image_thres);
+			delete[] image_thres;
 		}
-		m_2D_dib->ShowInverseDIB(&dc, image_thres);
-		delete[] image_thres;
+		// 顯示 以 HU 為閾值的二值化影像
+		else if (m_thresholdHU == TRUE)
+		{
+			PBYTE image_thres = new BYTE[Row * Col];
+
+			i = 0;
+			while (i < Row * Col)
+			{
+				if (m_pDoc->m_HUimg[slice][i] > HUThreshold)
+					image_thres[i] = 255;
+				else
+					image_thres[i] = 0;
+				i += 1;
+			}
+			m_2D_dib->ShowInverseDIB(&dc, image_thres);
+			delete[] image_thres;
+		}
+	}
+	// 顯示 處理過後的影像
+	else if (m_disp_pro0 == TRUE)
+	{
+		if (m_complete == TRUE)
+		{
+			m_2D_dib->ShowInverseDIB(&dc, m_pDoc->m_imgPro[slice]);
+		}
+		// 顯示 以 Pixel 為閾值的二值化影像
+		else if (m_thresholdPixel == TRUE)
+		{
+			PBYTE image_thres = new BYTE[Row * Col];
+
+			i = 0;
+			while (i < Row * Col)
+			{
+				if (m_pDoc->m_imgPro[slice][i] > PixelThreshold)
+					image_thres[i] = 255;
+				else
+					image_thres[i] = 0;
+				i += 1;
+			}
+			m_2D_dib->ShowInverseDIB(&dc, image_thres);
+			delete[] image_thres;
+		}
+		// 顯示 以 HU 為閾值的二值化影像
+		else if (m_thresholdHU == TRUE)
+		{
+			PBYTE image_thres = new BYTE[Row * Col];
+
+			i = 0;
+			while (i < Row * Col)
+			{
+				if (m_pDoc->m_HUimg[slice][i] > HUThreshold)
+					image_thres[i] = 255;
+				else
+					image_thres[i] = 0;
+				i += 1;
+			}
+			m_2D_dib->ShowInverseDIB(&dc, image_thres);
+			delete[] image_thres;
+		}
 	}
 
 	// 於2D影像顯示在2D點選的種子點
-	//
 	if (get_2Dseed)
 	{
 		if (slice == (unsigned short)seed_pt.z)
@@ -2042,13 +2077,11 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 	}
 
 	//  3D seed 功能
-	//
 	if (m_3Dseed)
 	{
 		CPoint pt;
 			
 		// 於2D影像顯示在3D區域成長結果
-		//
 		if (get_regionGrow)
 		{
 			for (j = 0; j < 512; j++)
@@ -2066,7 +2099,6 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			}
 		}
 		// 於2D影像顯示在3D點選的seed
-		//
 		if (get_3Dseed)
 		{
 			if (slice == seed_img.z)
@@ -2086,7 +2118,6 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 	}
 	
 	// 寫字 (slice)
-	//
 	CString str;
 	str.Format("%d", slice);
 	dc.SetTextColor(RGB(255, 255, 0));
