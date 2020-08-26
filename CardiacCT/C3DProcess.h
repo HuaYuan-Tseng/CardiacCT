@@ -186,6 +186,8 @@ public:										// CString的部分，有在Attributes另外設變數儲存
 	BOOL		m_3Dseed;
 	BOOL		m_plane;
 	BOOL		m_object;
+	BOOL		m_disp_org;
+	BOOL		m_disp_pro0;
 	BOOL		m_complete;
 	BOOL		m_thresholdHU;
 	BOOL		m_thresholdPixel;
@@ -246,4 +248,6 @@ public:
 	afx_msg void OnBnClickedButtonGrowingRemove();
 	afx_msg void OnBnClickedButtonGrowingClear();
 	afx_msg void OnBnClickedButtonDilation();
+	afx_msg void OnBnClickedCheckDispOrg();
+	afx_msg void OnBnClickedCheckDispPro0();
 };

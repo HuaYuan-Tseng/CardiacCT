@@ -49,6 +49,8 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_3Dseed(FALSE)
 	, m_object(TRUE)
 	, m_plane(FALSE)
+	, m_disp_org(TRUE)
+	, m_disp_pro0(FALSE)
 	, m_complete(TRUE)
 	, m_thresholdHU(FALSE)
 	, m_thresholdPixel(FALSE)
@@ -169,11 +171,12 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Check(pDX, IDC_CHECK_PLANE, m_plane);
 	DDX_Check(pDX, IDC_CHECK_Object, m_object);
+	DDX_Check(pDX, IDC_CHECK_3D_SEED, m_3Dseed);
+	DDX_Check(pDX, IDC_CHECK_DISP_ORG, m_disp_org);
+	DDX_Check(pDX, IDC_CHECK_DISP_PRO0, m_disp_pro0);
 	DDX_Check(pDX, IDC_CHECK_COMPLETE, m_complete);
 	DDX_Check(pDX, IDC_CHECK_HU_THRESHOLD, m_thresholdHU);
 	DDX_Check(pDX, IDC_CHECK_PIXEL_THRESHOLD, m_thresholdPixel);
-
-	DDX_Check(pDX, IDC_CHECK_3D_SEED, m_3Dseed);
 
 	DDX_Text(pDX, IDC_EDIT_SLICES, m_slices);
 	DDV_MinMaxInt(pDX, atoi(m_slices), 1, 512);
@@ -195,7 +198,6 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_POS6, m_pos_6);
 	DDX_Text(pDX, IDC_EDIT_POS7, m_pos_7);
 	DDX_Text(pDX, IDC_EDIT_POS8, m_pos_8);
-	
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -212,6 +214,8 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_3D_SEED, &C3DProcess::OnBnClickedCheck3dSeed)
 	ON_BN_CLICKED(IDC_CHECK_PLANE, &C3DProcess::OnBnClickedCheckPlane)
 	ON_BN_CLICKED(IDC_CHECK_Object, &C3DProcess::OnBnClickedCheckObject)
+	ON_BN_CLICKED(IDC_CHECK_DISP_ORG, &C3DProcess::OnBnClickedCheckDispOrg)
+	ON_BN_CLICKED(IDC_CHECK_DISP_PRO0, &C3DProcess::OnBnClickedCheckDispPro0)
 	ON_BN_CLICKED(IDC_CHECK_COMPLETE, &C3DProcess::OnBnClickedCheckComplete)
 	ON_BN_CLICKED(IDC_CHECK_HU_THRESHOLD, &C3DProcess::OnBnClickedCheckHuThreshold)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
@@ -711,6 +715,31 @@ void C3DProcess::OnBnClickedCheckPlane()
 	m_object = FALSE;
 	m_plane = TRUE;
 	UpdateData(FALSE);
+}
+
+void C3DProcess::OnBnClickedCheckDispOrg()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : 2D Image - Original (m_disp_org)
+	//
+	m_disp_org = TRUE;
+	m_disp_pro0 = FALSE;
+	UpdateData(FALSE);
+	Draw2DImage(DisplaySlice);
+	GetDlgItem(IDC_CHECK_HU_THRESHOLD)->EnableWindow(TRUE);
+}
+
+
+void C3DProcess::OnBnClickedCheckDispPro0()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : 2D Image - Processed (m_disp_pro0)
+	//
+	m_disp_org = FALSE;
+	m_disp_pro0 = TRUE;
+	UpdateData(FALSE);
+	Draw2DImage(DisplaySlice);
+	GetDlgItem(IDC_CHECK_HU_THRESHOLD)->EnableWindow(FALSE);
 }
 
 void C3DProcess::OnBnClickedCheckComplete()
@@ -1934,17 +1963,22 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 	const int Col = COL;
 	register int i, j;
 
-	if (m_pDoc->m_img == nullptr)
+	if (m_pDoc->m_img == nullptr || m_pDoc->m_imgPro == nullptr)
 	{
 		AfxMessageBox("No Image Data can be display!!");
 		return;
 	}
 
+	BYTE**& disp_img = m_pDoc->m_img;
+
+	if (m_disp_pro0 == TRUE)
+		BYTE** &disp_img = m_pDoc->m_imgPro;
+	
 	// 顯示原始影像
 	//
 	if (m_complete == TRUE)
 	{
-		m_2D_dib->ShowInverseDIB(&dc, m_pDoc->m_img[slice]);
+		m_2D_dib->ShowInverseDIB(&dc, disp_img[slice]);
 	}
 	// 顯示以Pixel為閾值的二值化影像
 	//
@@ -1955,7 +1989,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		i = 0;
 		while (i < Row * Col)
 		{
-			if (m_pDoc->m_img[slice][i] > PixelThreshold)
+			if (disp_img[slice][i] > PixelThreshold)
 				image_thres[i] = 255;
 			else
 				image_thres[i] = 0;
