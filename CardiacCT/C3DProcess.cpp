@@ -1241,6 +1241,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 	
 	// 針對 分割範圍的方形區域 做pixel的處理
 	//
+	BYTE**& img = m_pDoc->m_imgPro;
+
 	auto edgeProcess = [&](int start)
 	{
 		std::map<int, vector<int>>::iterator iter_map;
@@ -1252,7 +1254,10 @@ void C3DProcess::OnBnClickedButtonDilation()
 			{
 				for (int i = iter_map->second.at(0); i <= iter_map->second.at(1); i++)
 				{
-					judge[iter_map->first][j * col + i] = 1;
+					if (img[iter_map->first][j * col + i] <= 100)
+					{
+
+					}
 				}
 			}
 			slice += 2;
