@@ -18,6 +18,7 @@
 #include <queue>
 #include <vector>
 #include <unordered_map>
+
 using namespace std;
 constexpr auto M_PI = 3.1415926F;
 
@@ -1171,7 +1172,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
 	// 
-	std::map<int, vector<int> > edge;
+	std::map<int, vector<int>> edge;
 	
 	auto findBorder = [&](int start)
 	{
@@ -1211,14 +1212,13 @@ void C3DProcess::OnBnClickedButtonDilation()
 	
 	// 針對 分割範圍的方形區域 做pixel的處理
 	//
-	// 繼續努力修改
 	auto edgeProcess = [&](int start)
 	{
-		std::map<int, vector<int> >::iterator iter_map;
-		iter_map = edge.begin();
-		if (start == 1)	iter_map++;
-		while (iter_map->first <= edge.rbegin()->first)
+		std::map<int, vector<int>>::iterator iter_map;
+		int slice = start;
+		while (slice < totalSlice)
 		{
+			iter_map = edge.find(slice);
 			for (int j = iter_map->second.at(2); j <= iter_map->second.at(3); j++)
 			{
 				for (int i = iter_map->second.at(0); i <= iter_map->second.at(1); i++)
@@ -1226,13 +1226,10 @@ void C3DProcess::OnBnClickedButtonDilation()
 					judge[iter_map->first][j * col + i] = 1;
 				}
 			}
-			//iter_map++;
-			//iter_map++;
-			if (iter_map != edge.end())	iter_map++;
-			if (iter_map != edge.end())	iter_map++;
+			slice += 2;
 		}
 	};
-	
+
 	thread th2(edgeProcess, 0);
 	thread th3(edgeProcess, 1);
 	th2.join();	th3.join();
