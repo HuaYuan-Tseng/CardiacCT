@@ -13,7 +13,6 @@
 #include <thread>
 #include <numeric>
 #include <algorithm>
-#include <omp.h>
 
 #include <map>
 #include <queue>
@@ -1192,7 +1191,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	// Button : Dilation (形態學處理)
 	//
 	if (!get_regionGrow)	return;
-	
+
 	const int row = ROW;
 	const int col = COL;
 	const int totalXY = ROW * COL;
@@ -1238,10 +1237,10 @@ void C3DProcess::OnBnClickedButtonDilation()
 	thread th0(findBorder, 0);				// 偶數 slice
 	thread th1(findBorder, 1);				// 奇數 slice
 	th0.join();	th1.join();
-	
+
 	// 針對 分割範圍的方形區域 做pixel的處理
 	//
-	BYTE**& img = m_pDoc->m_imgPro;
+	BYTE**& pro = m_pDoc->m_imgPro;
 
 	auto edgeProcess = [&](int start)
 	{
@@ -1254,12 +1253,12 @@ void C3DProcess::OnBnClickedButtonDilation()
 			{
 				for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
 				{
-					if (img[iter->first][j * col + i] <= 120)
-						img[iter->first][j * col + i] = 0;
-					else if (img[iter->first][j * col + i] > 120 && img[iter->first][j * col + i] <= 180)
-						img[iter->first][j * col + i] -= 30;
-					else if (img[iter->first][j * col + i] > 180 && img[iter->first][j * col + i] <= 200)
-						img[iter->first][j * col + i] += 20;
+					if (pro[slice][j * col + i] <= 120)
+						pro[slice][j * col + i] = 0;
+					else if (pro[slice][j * col + i] > 120 && pro[slice][j * col + i] <= 180)
+						pro[slice][j * col + i] -= 30;
+					else if (pro[slice][j * col + i] > 180 && pro[slice][j * col + i] <= 200)
+						pro[slice][j * col + i] += 20;
 				}
 			}
 			slice += 2;
@@ -1270,8 +1269,78 @@ void C3DProcess::OnBnClickedButtonDilation()
 	thread th3(edgeProcess, 1);
 	th2.join();	th3.join();
 
+	// 低通 濾波 (mean filter)
+	//
+	std::vector<int> avg_coef{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	int cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
 
+	auto avgKernel = [&](int slice, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; j++)
+		{
+			for (int i = x - 1; i <= x + 1; i++)
+			{
+				sum += (avg_coef[n] * pro[slice][j * col + i]);
+				n += 1;
+			}
+		}
+		return sum / cnt;
+	};
 
+	auto avgFilter = [&](int start)
+	{
+		std::map<int, vector<int>>::iterator iter;
+		int slice = start;
+		while (slice < totalSlice)
+		{
+			iter = edge.find(slice);
+			for (int j = iter->second.at(2) + 1; j < iter->second.at(3); j++)
+			{
+				for (int i = iter->second.at(0) + 1; i < iter->second.at(1); i++)
+				{
+					pro[slice][j * col + i] = avgKernel(slice, i, j);
+				}
+			}
+			slice += 2;
+		}
+	};
+
+	thread th4(avgFilter, 0);
+	thread th5(avgFilter, 1);
+	th4.join();	th5.join();
+
+	// 銳化 濾波 (highboost filter)
+	//
+	float weighted = 2.0f;
+	BYTE**& org = m_pDoc->m_img;
+
+	auto sharpFilter = [&](int start)
+	{
+		std::map<int, vector<int>>::iterator iter;
+		int slice = start;
+		int pixel = 0;
+		while (slice < totalSlice)
+		{
+			iter = edge.find(slice);
+			for (int j = iter->second.at(2); j <= iter->second.at(3); j++)
+			{
+				for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
+				{
+					pixel = (int)(org[slice][j * col + i] +
+						weighted * (org[slice][j * col + i] - pro[slice][j * col + i]));
+					pixel = (pixel > 255) ? 255 : pixel;
+					pixel = (pixel < 0) ? 0 : pixel;
+					pro[slice][j * col + i] = pixel;
+				}
+			}
+			slice += 2;
+		}
+	};
+
+	thread th6(sharpFilter, 0);
+	thread th7(sharpFilter, 1);
+	th6.join();	th7.join();
 
 	clock_t end = clock();
 	TRACE1("Spend Time : %f (s)", (double)(end - start) / CLOCKS_PER_SEC);
