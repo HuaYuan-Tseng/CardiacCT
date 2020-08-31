@@ -591,7 +591,10 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		m_pos_1.Format("%d", (int)seed_pt.x);
 		m_pos_2.Format("%d", (int)seed_pt.y);
 		m_pos_3.Format("%d", (int)seed_pt.z);
-		m_pos_4.Format("%d", (int)m_pDoc->m_img[seed_pt.z][(seed_pt.y * 512) + seed_pt.x]);
+		if (m_disp_org)
+			m_pos_4.Format("%d", (int)m_pDoc->m_img[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
+		else if (m_disp_pro0)
+			m_pos_4.Format("%d", (int)m_pDoc->m_imgPro[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
 
 		if (m_3Dseed)
 			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
@@ -1255,10 +1258,13 @@ void C3DProcess::OnBnClickedButtonDilation()
 				{
 					if (pro[slice][j * col + i] <= 120)
 						pro[slice][j * col + i] = 0;
-					else if (pro[slice][j * col + i] > 120 && pro[slice][j * col + i] <= 180)
-						pro[slice][j * col + i] -= 30;
-					else if (pro[slice][j * col + i] > 180 && pro[slice][j * col + i] <= 200)
-						pro[slice][j * col + i] += 20;
+					else if (pro[slice][j * col + i] <= 180)
+						pro[slice][j * col + i] -= 20;
+
+					//else if (pro[slice][j * col + i] > 120 && pro[slice][j * col + i] <= 180)
+					//	pro[slice][j * col + i] += 40;
+					//else if (pro[slice][j * col + i] > 180 && pro[slice][j * col + i] <= 200)
+					//	pro[slice][j * col + i] += 20;
 				}
 			}
 			slice += 2;
@@ -1271,7 +1277,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// §C³q Âoªi (mean filter)
 	//
-	std::vector<int> avg_coef{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	std::vector<int> avg_coef{ 1, 2, 1, 2, 4, 2, 1, 2, 1 };
 	int cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
 
 	auto avgKernel = [&](int slice, int x, int y)
@@ -1306,13 +1312,13 @@ void C3DProcess::OnBnClickedButtonDilation()
 		}
 	};
 
-	thread th4(avgFilter, 0);
+	/*thread th4(avgFilter, 0);
 	thread th5(avgFilter, 1);
-	th4.join();	th5.join();
+	th4.join();	th5.join();*/
 
 	// ¾U¤Æ Âoªi (highboost filter)
 	//
-	float weighted = 2.0f;
+	float weighted = -2.5f;
 	BYTE**& org = m_pDoc->m_img;
 
 	auto sharpFilter = [&](int start)
