@@ -164,6 +164,10 @@ public:
 	void	RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor);
 	void	RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor);
 
+	void	RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor);
+
+
+
 	double	Calculate_Volume(BYTE** src, short target);
 
 ///------------- °Ù πÍ≈Á∞œ °Ù -------------///

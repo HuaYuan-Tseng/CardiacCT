@@ -1199,6 +1199,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 	const int col = COL;
 	const int totalXY = ROW * COL;
 	const int totalSlice = Total_Slice;
+	BYTE**& org = m_pDoc->m_img;
+	BYTE**& pro = m_pDoc->m_imgPro;
 	clock_t start = clock();
 
 	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
@@ -1243,8 +1245,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 針對 分割範圍的方形區域 做pixel的處理
 	//
-	BYTE**& pro = m_pDoc->m_imgPro;
-
 	auto edgeProcess = [&](int start)
 	{
 		std::map<int, vector<int>>::iterator iter;
@@ -1256,15 +1256,12 @@ void C3DProcess::OnBnClickedButtonDilation()
 			{
 				for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
 				{
-					if (pro[slice][j * col + i] <= 120)
+					if (pro[slice][j * col + i] <= 100)
 						pro[slice][j * col + i] = 0;
 					else if (pro[slice][j * col + i] <= 180)
-						pro[slice][j * col + i] -= 20;
-
-					//else if (pro[slice][j * col + i] > 120 && pro[slice][j * col + i] <= 180)
-					//	pro[slice][j * col + i] += 40;
-					//else if (pro[slice][j * col + i] > 180 && pro[slice][j * col + i] <= 200)
-					//	pro[slice][j * col + i] += 20;
+						pro[slice][j * col + i] -= 30;
+					else if (pro[slice][j * col + i] <= 220 && pro[slice][j * col + i] > 180)
+						pro[slice][j * col + i] += 20;
 				}
 			}
 			slice += 2;
@@ -1278,6 +1275,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	// 低通 濾波 (mean filter)
 	//
 	std::vector<int> avg_coef{ 1, 2, 1, 2, 4, 2, 1, 2, 1 };
+	//std::vector<int> avg_coef{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 	int cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
 
 	auto avgKernel = [&](int slice, int x, int y)
@@ -1312,15 +1310,13 @@ void C3DProcess::OnBnClickedButtonDilation()
 		}
 	};
 
-	/*thread th4(avgFilter, 0);
+	thread th4(avgFilter, 0);
 	thread th5(avgFilter, 1);
-	th4.join();	th5.join();*/
+	th4.join();	th5.join();
 
 	// 銳化 濾波 (highboost filter)
 	//
 	float weighted = -2.5f;
-	BYTE**& org = m_pDoc->m_img;
-
 	auto sharpFilter = [&](int start)
 	{
 		std::map<int, vector<int>>::iterator iter;
@@ -1348,8 +1344,22 @@ void C3DProcess::OnBnClickedButtonDilation()
 	thread th7(sharpFilter, 1);
 	th6.join();	th7.join();
 
+	//////////////////////////////////////////////////////////
+	//
+	//     二 次 區 域 成 長
+	//
+	/*RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
+	RG_totalVolume += Calculate_Volume(judge, 1);
+	m_result.Format("%lf", RG_totalVolume);
+
+	TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
+	PrepareVolume();
+	UpdateData(FALSE);
+	Draw3DImage(true);
+	Draw2DImage(DisplaySlice);*/
+
 	clock_t end = clock();
-	TRACE1("Spend Time : %f (s)", (double)(end - start) / CLOCKS_PER_SEC);
+	TRACE1("Spend Time : %f (s)\n", (double)(end - start) / CLOCKS_PER_SEC);
 
 }
 
@@ -2863,6 +2873,131 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 		sd_que.pop();
 	}
 	
+
+}
+
+void C3DProcess::RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
+{
+	// DO : 3D 2 次區域成長
+	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
+	//
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	register int si, sj, sk;
+	unsigned int n_cnt = 0;
+	unsigned int s_cnt = 0;
+	int n_pixel = 0;
+	int s_pixel = 0;
+
+	double	n_SD;
+	double	n_avg;
+	double	s_avg;
+	double	up_limit;
+	double	down_limit;
+	double  n_pixel_sum = 0;
+	double	threshold = factor.threshold;
+	double	coefficient = factor.coefficient;
+
+	Seed_s	n_site;
+	Seed_s	s_current;
+	Seed_s	seed = factor.seed;
+	queue<Seed_s> sd_que;
+	queue<double> avg_que;
+
+	s_avg = m_pDoc->m_imgPro[seed.z][seed.y * col + seed.x];
+	src[seed.z][seed.y * col + seed.x] = 1;
+	avg_que.push(s_avg);
+	sd_que.push(seed);
+	s_cnt += 1;
+
+	while (!sd_que.empty())
+	{
+		s_avg = avg_que.front();
+		s_current = sd_que.front();
+		n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
+
+		// 計算 總合 與 平均
+		for (sk = -s_range; sk <= s_range; sk++)
+		{
+			for (sj = -s_range; sj <= s_range; sj++)
+			{
+				for (si = -s_range; si <= s_range; si++)
+				{
+					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					{
+						n_pixel_sum +=
+							m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+						n_cnt += 1;
+					}
+				}
+			}
+		}
+		n_avg = n_pixel_sum / n_cnt;
+
+		// 計算 標準差
+		for (sk = -s_range; sk <= s_range; sk++)
+		{
+			for (sj = -s_range; sj <= s_range; sj++)
+			{
+				for (si = -s_range; si <= s_range; si++)
+				{
+					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					{
+						n_pixel =
+							m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+						n_SD += pow((n_pixel - n_avg), 2);
+					}
+				}
+			}
+		}
+		n_SD = sqrt(n_SD / n_cnt);
+
+		// 制定、修正成長標準上下限
+		up_limit = n_avg + (coefficient * n_SD);
+		down_limit = n_avg - (coefficient * n_SD);
+
+		// 判斷是否符合成長標準
+		for (sk = -s_range; sk <= s_range; sk++)
+		{
+			for (sj = -s_range; sj <= s_range; sj++)
+			{
+				for (si = -s_range; si <= s_range; si++)
+				{
+					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					{
+						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+						{
+							n_pixel =
+								m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+
+							if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= threshold)
+							{
+								n_site.x = s_current.x + si;
+								n_site.y = s_current.y + sj;
+								n_site.z = s_current.z + sk;
+								sd_que.push(n_site);
+
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
+							}
+						}
+					}
+				}
+			}
+		}
+		avg_que.pop();
+		sd_que.pop();
+	}
 
 }
 
