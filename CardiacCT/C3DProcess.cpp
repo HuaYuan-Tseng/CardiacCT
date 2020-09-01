@@ -1205,7 +1205,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
 	// 
-	std::map<int, vector<int>> edge;
+	std::map<int, std::vector<int>> edge;
+	std::map<int, std::vector<std::pair<int, int>>> vertex;
 
 	auto findBorder = [&](int start)
 	{
@@ -1228,10 +1229,36 @@ void C3DProcess::OnBnClickedButtonDilation()
 			std::sort(x_pos.begin(), x_pos.end());
 			std::sort(y_pos.begin(), y_pos.end());
 
-			edge[slice].push_back(*(x_pos.begin()));	// [0]: x_min
-			edge[slice].push_back(*(x_pos.end() - 1));	// [1]: x_max
-			edge[slice].push_back(*(y_pos.begin()));	// [2]: y_min
-			edge[slice].push_back(*(y_pos.end() - 1));	// [3]: y_max
+			edge[slice].push_back(*(x_pos.begin()));		// [0]: x_min
+			edge[slice].push_back(*(x_pos.end() - 1));		// [1]: x_max
+			edge[slice].push_back(*(y_pos.begin()));		// [2]: y_min
+			edge[slice].push_back(*(y_pos.end() - 1));		// [3]: y_max
+
+			int cur = edge[slice].at(0) * edge[slice].at(2);
+			int end = edge[slice].at(1) * edge[slice].at(3);
+			bool l = false, m = false, r = false;
+			while (cur < end)
+			{
+				if (judge[slice][cur] == 1)
+				{
+					if (!m && (cur / col) == edge[slice].at(2))	// 中上
+					{
+						vertex[slice].push_back(std::make_pair((cur % col), (cur / col)));
+						m = true;
+					}	
+					if (!l && (cur % col) == edge[slice].at(0))	// 左下
+					{
+						vertex[slice].push_back(std::make_pair((cur % col), (cur / col)));
+						l = true;
+					}
+					if (!r && (cur % col) == edge[slice].at(1))	// 右下
+					{
+						vertex[slice].push_back(std::make_pair((cur % col), (cur / col)));
+						r = true;
+					}
+				}
+				cur += 1;
+			}
 
 			x_pos.clear();	x_pos.shrink_to_fit();
 			y_pos.clear();	y_pos.shrink_to_fit();
@@ -1247,7 +1274,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	//
 	auto edgeProcess = [&](int start)
 	{
-		std::map<int, vector<int>>::iterator iter;
+		std::map<int, std::vector<int>>::iterator iter;
 		int slice = start;
 		while (slice < totalSlice)
 		{
@@ -1294,7 +1321,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	auto avgFilter = [&](int start)
 	{
-		std::map<int, vector<int>>::iterator iter;
+		std::map<int, std::vector<int>>::iterator iter;
 		int slice = start;
 		while (slice < totalSlice)
 		{
@@ -1319,7 +1346,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	float weighted = -2.5f;
 	auto sharpFilter = [&](int start)
 	{
-		std::map<int, vector<int>>::iterator iter;
+		std::map<int, std::vector<int>>::iterator iter;
 		int slice = start;
 		int pixel = 0;
 		while (slice < totalSlice)
