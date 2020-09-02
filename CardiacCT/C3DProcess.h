@@ -12,6 +12,9 @@
 #include "glew.h"
 #include "freeglut.h"
 
+#include <vector>
+#include <map>
+
 #define _IN							
 #define _OUT		
 
@@ -166,7 +169,7 @@ public:
 
 	void	RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor);
 
-
+	std::map<int, std::vector<std::pair<int, int>>> vertex;
 
 	double	Calculate_Volume(BYTE** src, short target);
 

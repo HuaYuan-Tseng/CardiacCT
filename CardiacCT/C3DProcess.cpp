@@ -1206,7 +1206,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
 	// 
 	std::map<int, std::vector<int>> edge;
-	std::map<int, std::vector<std::pair<int, int>>> vertex;
 
 	auto findBorder = [&](int start)
 	{
@@ -1234,8 +1233,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 			edge[slice].push_back(*(y_pos.begin()));		// [2]: y_min
 			edge[slice].push_back(*(y_pos.end() - 1));		// [3]: y_max
 
-			int cur = edge[slice].at(0) * edge[slice].at(2);
-			int end = edge[slice].at(1) * edge[slice].at(3);
+			int cur = edge[slice].at(0) + edge[slice].at(2) * col;
+			int end = edge[slice].at(1) + edge[slice].at(3) * col;
 			bool l = false, m = false, r = false;
 			while (cur < end)
 			{
@@ -2234,7 +2233,30 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			}
 		}
 	}
-	
+
+	// 看看每一張的頂點 ( 二次區域成長就靠它了 )
+	//
+	if (!vertex.empty())
+	{
+		std::map<int, std::vector<std::pair<int, int>>>::iterator iter;
+		iter = vertex.find(slice);
+		CPoint pt;
+
+		for (int k = 0; k < iter->second.size(); k++)
+		{
+			for (i = -5; i <= 5; i++)
+			{
+				for (j = -5; j <= 5; j++)
+				{
+					pt.x = (LONG)iter->second.at(k).first + i;
+					pt.y = (LONG)iter->second.at(k).second + j;
+
+					dc.SetPixel(pt, RGB(255, 30, 30));
+				}
+			}
+		}
+	}
+
 	// 寫字 (slice)
 	CString str;
 	str.Format("%d", slice);
@@ -2900,7 +2922,6 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 		sd_que.pop();
 	}
 	
-
 }
 
 void C3DProcess::RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
