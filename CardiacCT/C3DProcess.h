@@ -171,7 +171,7 @@ public:
 	void	RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor);
 
 	std::map<int, std::vector<std::pair<int, int>>> vertex;					// 紀錄初步處理後的三個頂點
-	std::vector<int> type;													// 紀錄判定類型
+	std::vector<int> judge_type;											// 紀錄判定類型
 																			// 0 : 還沒判斷
 																			// 1 : 判斷為 不要 的
 																			// 2 : 判斷為 要   的
