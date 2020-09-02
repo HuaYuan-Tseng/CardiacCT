@@ -2926,7 +2926,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 
 void C3DProcess::RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 {
-	// DO : 3D 2 次區域成長
+	// DO : 3D - 2 次區域成長
 	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
 	//
 	const int row = ROW;

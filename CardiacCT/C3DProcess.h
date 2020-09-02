@@ -161,6 +161,7 @@ public:
 
 	void	Erosion_3D(BYTE** src, short element);
 	void	Dilation_3D(BYTE** src, short element);
+	double	Calculate_Volume(BYTE** src, short target);
 
 	void	RG_3D_Link(BYTE** src, RG_factor& factor);
 	void	RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor);		// 3D 區域成長(全域平均與當前強度)
@@ -169,9 +170,11 @@ public:
 
 	void	RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor);
 
-	std::map<int, std::vector<std::pair<int, int>>> vertex;
-
-	double	Calculate_Volume(BYTE** src, short target);
+	std::map<int, std::vector<std::pair<int, int>>> vertex;					// 紀錄初步處理後的三個頂點
+	std::vector<int> type;													// 紀錄判定類型
+																			// 0 : 還沒判斷
+																			// 1 : 判斷為 不要 的
+																			// 2 : 判斷為 要   的
 
 ///------------- ↑ 實驗區 ↑ -------------///
 	
