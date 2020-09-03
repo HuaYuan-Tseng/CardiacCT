@@ -1216,8 +1216,10 @@ void C3DProcess::OnBnClickedButtonDilation()
 		int slice = start;
 		std::vector<int> x_pos;
 		std::vector<int> y_pos;
+
 		while (slice < totalSlice)
 		{
+			// 尋找垂直邊界
 			position = 0;
 			while (position < totalXY)
 			{
@@ -1236,6 +1238,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 			edge[slice].push_back(*(y_pos.begin()));		// [2]: y_min
 			edge[slice].push_back(*(y_pos.end() - 1));		// [3]: y_max
 
+			// 尋找三角頂點
+			vertex[slice].assign(3, std::make_pair(0, 0));
 			int cur = edge[slice].at(0) + edge[slice].at(2) * col;
 			int end = edge[slice].at(1) + edge[slice].at(3) * col;
 			bool l = false, m = false, r = false;
@@ -1245,22 +1249,40 @@ void C3DProcess::OnBnClickedButtonDilation()
 				{
 					if (!m && (cur / col) == edge[slice].at(2))	// 中上
 					{
-						vertex[slice].push_back(std::make_pair((cur % col), (cur / col)));
+						vertex[slice][0] = std::make_pair((cur % col), (cur / col));
 						m = true;
 					}	
 					if (!l && (cur % col) == edge[slice].at(0))	// 左下
 					{
-						vertex[slice].push_back(std::make_pair((cur % col), (cur / col)));
+						vertex[slice][1] = std::make_pair((cur % col), (cur / col));
 						l = true;
 					}
 					if (!r && (cur % col) == edge[slice].at(1))	// 右下
 					{
-						vertex[slice].push_back(std::make_pair((cur % col), (cur / col)));
+						vertex[slice][2] = std::make_pair((cur % col), (cur / col));
 						r = true;
 					}
 				}
 				cur += 1;
 			}
+
+			// 計算每張slice三角頂點的斜線方程式係數
+			line[slice].assign(2, std::make_pair(0.0f, 0.0f));
+			float slope1 = 0, slope2 = 0;	// 斜率
+			float inter1 = 0, inter2 = 0;	// 截距
+			slope1 = (float)(vertex[slice][0].second - vertex[slice][1].second) / 
+					(float)(vertex[slice][0].first - vertex[slice][1].first);
+			slope2 = (float)(vertex[slice][0].second - vertex[slice][2].second) / 
+					(float)(vertex[slice][0].first - vertex[slice][2].first);
+
+			inter1 = (float)(vertex[slice][0].second + vertex[slice][1].second) -
+						slope1 * (vertex[slice][0].first + vertex[slice][1].first);
+			inter1 /= 2;
+			inter2 = (float)(vertex[slice][0].second + vertex[slice][2].second) -
+						slope2 * (vertex[slice][0].first + vertex[slice][2].first);
+			inter2 /= 2;
+			line[slice].push_back(std::make_pair(slope1, inter1));
+			line[slice].push_back(std::make_pair(slope2, inter2));
 
 			x_pos.clear();	x_pos.shrink_to_fit();
 			y_pos.clear();	y_pos.shrink_to_fit();
