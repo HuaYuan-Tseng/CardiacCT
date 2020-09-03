@@ -1074,7 +1074,7 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 			{
 				for (i = 2; i < col - 2; i += 2)
 				{
-					if (judge[k - (Mat_Offset + 1)][j * col + i] != 0)
+					if (judge[k - (Mat_Offset + 1)][j * col + i] == 1)
 					{
 						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 							0, 0);
@@ -1115,7 +1115,7 @@ void C3DProcess::OnBnClickedButtonGrowingRecovery()
 				{
 					pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
 
-					if (judge[k - (Mat_Offset + 1)][j * col + i] != 0)
+					if (judge[k - (Mat_Offset + 1)][j * col + i] == 1)
 					{
 						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 							pixel / 255.0F, 1);
@@ -1287,10 +1287,10 @@ void C3DProcess::OnBnClickedButtonDilation()
 				{
 					if (pro[slice][j * col + i] <= 100)
 						pro[slice][j * col + i] = 0;
-					else if (pro[slice][j * col + i] <= 180)
+					else if (pro[slice][j * col + i] <= 170)
 						pro[slice][j * col + i] -= 30;
 					else if (pro[slice][j * col + i] <= 220 && pro[slice][j * col + i] > 180)
-						pro[slice][j * col + i] += 20;
+						pro[slice][j * col + i] += 30;
 				}
 			}
 			slice += 2;
@@ -2852,37 +2852,34 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	const int col = COL;
 	const int totalSlice = Total_Slice;
 	const int s_range = (factor.s_kernel - 1) / 2;
+	unsigned int n_cnt = 0, s_cnt = 0;
+	int n_pixel = 0, s_pixel = 0;
 	register int si, sj, sk;
-	unsigned int n_cnt = 0;
-	unsigned int s_cnt = 0;
-	int n_pixel = 0;
-	int s_pixel = 0;
-
+	
 	double	n_SD;
-	double	n_avg;
-	double	s_avg;
-	double	up_limit;
-	double	down_limit;
+	double	n_avg, s_avg;
 	double  n_pixel_sum = 0;
+	double	up_limit, down_limit;
 	double	threshold = factor.threshold;
 	double	coefficient = factor.coefficient;
 
 	Seed_s	n_site;
 	Seed_s	s_current;
 	Seed_s	seed = factor.seed;
-	queue<Seed_s> sd_que;
+	queue<Seed_s> sed_que;
 	queue<double> avg_que;
 
-	s_avg = m_pDoc->m_imgPro[seed.z][seed.y * col + seed.x];
+	BYTE**& imgPro = m_pDoc->m_imgPro;
+	s_avg = imgPro[seed.z][seed.y * col + seed.x];
 	src[seed.z][seed.y * col + seed.x] = 1;
 	avg_que.push(s_avg);
-	sd_que.push(seed);
+	sed_que.push(seed);
 	s_cnt += 1;
 
-	while (!sd_que.empty())
+	while (!sed_que.empty())
 	{
 		s_avg = avg_que.front();
-		s_current = sd_que.front();
+		s_current = sed_que.front();
 		n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
 
 		// 計算 總合 與 平均
@@ -2897,7 +2894,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
 					{
 						n_pixel_sum +=
-							m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 						n_cnt += 1;
 					}
 				}
@@ -2917,7 +2914,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
 					{
 						n_pixel =
-							m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 						n_SD += pow((n_pixel - n_avg), 2);
 					}
 				}
@@ -2943,14 +2940,14 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
 						{
 							n_pixel =
-								m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
 							if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= threshold)
 							{
 								n_site.x = s_current.x + si;
 								n_site.y = s_current.y + sj;
 								n_site.z = s_current.z + sk;
-								sd_que.push(n_site);
+								sed_que.push(n_site);
 
 								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
 								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
@@ -2963,7 +2960,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 			}
 		}
 		avg_que.pop();
-		sd_que.pop();
+		sed_que.pop();
 	}
 
 }
