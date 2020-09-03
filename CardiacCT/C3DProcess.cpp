@@ -981,7 +981,10 @@ void C3DProcess::OnBnClickedButtonSeedChange()
 		m_pos_5.Format("%d", (int)seed_pt.x);
 		m_pos_6.Format("%d", (int)seed_pt.y);
 		m_pos_7.Format("%d", (int)seed_pt.z);
-		m_pos_8.Format("%d", (int)(m_pDoc->m_img[seed_pt.z][(seed_pt.y * 512) + seed_pt.x]));
+		if (m_disp_org)
+			m_pos_8.Format("%d", (int)(m_pDoc->m_img[seed_pt.z][(seed_pt.y * 512) + seed_pt.x]));
+		else if (m_disp_pro0)
+			m_pos_8.Format("%d", (int)(m_pDoc->m_imgPro[seed_pt.z][(seed_pt.y * 512) + seed_pt.x]));
 
 		get_3Dseed = true;
 		DisplaySlice = seed_pt.z;
@@ -1599,15 +1602,15 @@ void C3DProcess::PrepareVolume()
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
 
-						if (judge[k - (Mat_Offset + 1)][j * col + i] == 0)
+						if (judge[k - (Mat_Offset + 1)][j * col + i] == 1)
 						{
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
-								pixel / 255.0F, 0);
+								pixel / 255.0F, 1);
 						}
 						else
 						{
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
-								pixel / 255.0F, 1);
+								pixel / 255.0F, 0);
 						}
 					}
 				}
@@ -2528,17 +2531,17 @@ void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 	Seed_s current;								// 當前 判斷的中心seed
 	Seed_s seed = factor.seed;					// 初始seed
 	queue<double> avg_que;						// 暫存某點成長判斷完，當下已成長區域的整體avg
-	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
+	queue<Seed_s> sed_que;						// 暫存成長判斷為種子點的像素位置
 
 	avg = m_pDoc->m_img[seed.z][(seed.y) * col + (seed.x)];
 	src[seed.z][(seed.y) * col + (seed.x)] = 1;
+	sed_que.push(seed);
 	avg_que.push(avg);
-	sd_que.push(seed);
 
-	while (!sd_que.empty())
+	while (!sed_que.empty())
 	{
 		avg = avg_que.front();
-		current = sd_que.front();
+		current = sed_que.front();
 		up_limit = avg + threshold;
 		down_limit = avg - threshold;
 
@@ -2566,7 +2569,7 @@ void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 						(current.y + j) < (row)			&& (current.y + j) >= 0 &&
 						(current.z + k) < (totalSlice)	&& (current.z + k) >= 0)
 					{
-						if (src[current.z + k][(current.y + j) * col + (current.x + i)] != 1)
+						if (src[current.z + k][(current.y + j) * col + (current.x + i)] == 0)
 						{
 							n_pixel = m_pDoc->m_img[current.z + k][(current.y + j) * col + (current.x + i)];
 
@@ -2575,7 +2578,7 @@ void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 								temp.x = current.x + i;
 								temp.y = current.y + j;
 								temp.z = current.z + k;
-								sd_que.push(temp);
+								sed_que.push(temp);
 
 								src[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
 								
@@ -2583,15 +2586,17 @@ void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 								avg_que.push(avg);
 								cnt += 1;
 							}
+							else
+								src[current.z + k][(current.y + j) * col + (current.x + i)] = -1;
 						}
 					}
 				}
 			}
 		}
 		avg_que.pop();
-		sd_que.pop();
+		sed_que.pop();
 	}
-	//TRACE1("sd : %d \n", sd_que.size());
+
 }
 
 void C3DProcess::RG_3D_LocalAvgConnected(short** src, RG_factor& factor)
@@ -2621,18 +2626,18 @@ void C3DProcess::RG_3D_LocalAvgConnected(short** src, RG_factor& factor)
 	Seed_s	s_current;
 	Seed_s	n_current;
 	Seed_s	seed = factor.seed;
-	queue<Seed_s>	sd_que;
+	queue<Seed_s>	sed_que;
 	queue<double>	avg_que;
 	
 	s_avg = m_pDoc->m_img[seed.z][seed.y * col + seed.x];
 	src[seed.z][seed.y * col + seed.x] = 1;
 	avg_que.push(s_avg);
-	sd_que.push(seed);
+	sed_que.push(seed);
 
-	while (!sd_que.empty())
+	while (!sed_que.empty())
 	{
 		s_avg = avg_que.front();
-		s_current = sd_que.front();
+		s_current = sed_que.front();
 		up_limit = s_avg + threshold;
 		down_limit = s_avg - threshold;
 
@@ -2659,7 +2664,7 @@ void C3DProcess::RG_3D_LocalAvgConnected(short** src, RG_factor& factor)
 						(s_current.y + sj) < row		&& (s_current.y + sj) >= 0 &&
 						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0	)
 					{
-						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] == 0)
 						{
 							n_current.x = s_current.x + si;
 							n_current.y = s_current.y + sj;
@@ -2689,19 +2694,21 @@ void C3DProcess::RG_3D_LocalAvgConnected(short** src, RG_factor& factor)
 							// 判斷是否符合成長標準
 							if ((n_avg <= up_limit) && (n_avg >= down_limit))
 							{
-								sd_que.push(n_current);
+								sed_que.push(n_current);
 								src[n_current.z][n_current.y * col + n_current.x] = 1;
 								n_pixel = m_pDoc->m_img[n_current.z][n_current.y * col + n_current.x];
 								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
 								avg_que.push(s_avg);
 								s_cnt += 1;
 							}
+							else
+								src[n_current.z][n_current.y * col + n_current.x] = -1;
 						}
 					}
 				}
 			}
 		}
-		sd_que.pop();
+		sed_que.pop();
 		avg_que.pop();
 	}
 
@@ -2734,111 +2741,21 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	Seed_s	n_site;
 	Seed_s	s_current;
 	Seed_s	seed = factor.seed;
-	queue<Seed_s> sd_que;
+	queue<Seed_s> sed_que;
 	queue<double> avg_que;
 	
 	s_avg = m_pDoc->m_imgPro[seed.z][seed.y * col + seed.x];
 	src[seed.z][seed.y * col + seed.x] = 1;
 	avg_que.push(s_avg);
-	sd_que.push(seed);
+	sed_que.push(seed);
 	s_cnt += 1;
-
-	// 二維
-	//
-	//while (!sd_que.empty())
-	//{
-	//	s_avg = avg_que.front();
-	//	s_current = sd_que.front();
-	//	n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
-	//	
-	//	// 計算 總合 與 平均
-	//	for (sj = -s_range; sj <= s_range; sj++)
-	//	{
-	//		for (si = -s_range; si <= s_range; si++)
-	//		{
-	//			if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-	//				(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
-	//			{
-	//				n_pixel_sum +=
-	//					m_pDoc->m_imgPro[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
-	//				n_cnt += 1;
-	//			}
-	//		}
-	//	}
-	//	n_avg = (double)n_pixel_sum / n_cnt;
-	//	
-	//	// 計算 標準差
-	//	for (sj = -s_range; sj <= s_range; sj++)
-	//	{
-	//		for (si = -s_range; si <= s_range; si++)
-	//		{
-	//			if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-	//				(s_current.y + sj) < row && (s_current.y + sj) >= 0)
-	//			{
-	//				n_pixel =
-	//					m_pDoc->m_imgPro[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
-	//				n_SD += pow((n_pixel - n_avg), 2);
-	//			}
-	//		}
-	//	}
-	//	n_SD = sqrt(n_SD / n_cnt);
-	//
-	//	// 判斷並修正成長標準
-	//	up_limit = n_avg + coefficient * n_SD;
-	//	down_limit = n_avg - coefficient * n_SD;
-	//	//s_pixel = m_pDoc->m_imgPro[s_current.z][s_current.y * col + s_current.x];
-	//	if (s_avg > n_avg)
-	//	{
-	//		up_limit += threshold;
-	//		down_limit += threshold;
-	//	}
-	//	else if (s_avg < n_avg)
-	//	{
-	//		up_limit -= threshold;
-	//		down_limit -= threshold;
-	//	}
-	//	if (1);
-	//	
-	//	// 判斷是否符合成長標準
-	//	for (sj = -s_range; sj <= s_range; sj++)
-	//	{
-	//		for (si = -s_range; si <= s_range; si++)
-	//		{
-	//			if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-	//				(s_current.y + sj) < row && (s_current.y + sj) >= 0 )
-	//			{
-	//				if (src[s_current.z][(s_current.y + sj) * col + (s_current.x + si)] != 1)
-	//				{
-	//					n_pixel =
-	//						m_pDoc->m_imgPro[s_current.z][(s_current.y + sj) * col + (s_current.x + si)];
-	//
-	//					if (n_pixel <= up_limit && n_pixel >= down_limit)
-	//					{
-	//						n_site.x = s_current.x + si;
-	//						n_site.y = s_current.y + sj;
-	//						n_site.z = s_current.z;
-	//						sd_que.push(n_site);
-	//
-	//						src[s_current.z][(s_current.y + sj) * col + (s_current.x + si)] = 1;
-	//
-	//						s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
-	//						avg_que.push(s_avg);
-	//						s_cnt += 1;
-	//					}
-	//				}
-	//			}
-	//		}
-	//	}
-	//	sd_que.pop();
-	//	avg_que.pop();
-	//}
 	
 	// 三維
 	//	
-	while (!sd_que.empty())
+	while (!sed_que.empty())
 	{
 		s_avg = avg_que.front();
-		s_current = sd_que.front();
+		s_current = sed_que.front();
 		n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
 
 		// 計算 總合 與 平均
@@ -2896,7 +2813,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
 						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
 					{
-						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] == 0)
 						{
 							n_pixel =
 								m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
@@ -2906,20 +2823,22 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 								n_site.x = s_current.x + si;
 								n_site.y = s_current.y + sj;
 								n_site.z = s_current.z + sk;
-								sd_que.push(n_site);
+								sed_que.push(n_site);
 
 								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
 								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
 								avg_que.push(s_avg);
 								s_cnt += 1;
 							}
+							else
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -1;
 						}
 					}
 				}
 			}
 		}
 		avg_que.pop();
-		sd_que.pop();
+		sed_que.pop();
 	}
 	
 }
