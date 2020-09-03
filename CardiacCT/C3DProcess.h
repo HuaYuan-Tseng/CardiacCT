@@ -114,7 +114,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	float			y_index;			// 校正 Y 軸比例的參數
 	float			z_index;			// 校正 Z 軸比例的參數
 
-	BYTE**			judge;				// 記錄區域成長結果(成長判定)
+	short**			judge;				// 記錄區域成長結果(成長判定)
 	BYTE			m_image0[256*256*256][4];
 
 ///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
@@ -159,22 +159,22 @@ public:
 
 ///------------- ↓ 實驗區 ↓ -------------///
 
-	void	Erosion_3D(BYTE** src, short element);
-	void	Dilation_3D(BYTE** src, short element);
-	double	Calculate_Volume(BYTE** src, short target);
+	void	Erosion_3D(short** src, short element);
+	void	Dilation_3D(short** src, short element);
+	double	Calculate_Volume(short** src, short target);
 
-	void	RG_3D_Link(BYTE** src, RG_factor& factor);
-	void	RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor);		// 3D 區域成長(全域平均與當前強度)
-	void	RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor);
-	void	RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor);
+	void	RG_3D_Link(short** src, RG_factor& factor);
+	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均與當前強度)
+	void	RG_3D_LocalAvgConnected(short** src, RG_factor& factor);
+	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);
 
-	void	RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor);
+	void	RG2_3D_ConfidenceConnected(short** src, RG_factor& factor);
 
-	std::map<int, std::vector<std::pair<int, int>>> vertex;					// 紀錄初步處理後的三個頂點
-	std::vector<int> judge_type;											// 紀錄判定類型
-																			// 0 : 還沒判斷
-																			// 1 : 判斷為 不要 的
-																			// 2 : 判斷為 要   的
+	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
+	std::vector<int> judge_type;										// 紀錄判定類型
+																		//  0 : 還沒判斷
+																		// -1 : 判斷為 不要 的
+																		//  1 : 判斷為 要   的
 
 ///------------- ↑ 實驗區 ↑ -------------///
 	

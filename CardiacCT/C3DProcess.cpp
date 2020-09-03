@@ -293,7 +293,7 @@ BOOL C3DProcess::OnInitDialog()
 	register int i, j;
 	int totalx = ROW * COL;
 	int totaly = Total_Slice;
-	judge = New2Dmatrix(Total_Slice, ROW * COL, BYTE);
+	judge = New2Dmatrix(Total_Slice, ROW * COL, short);
 
 	for (j = 0; j < totaly; j++)
 	{
@@ -1013,7 +1013,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		RG_totalTerm.seed = seed_img,
 		RG_totalTerm.s_kernel = 3,
 		RG_totalTerm.n_kernel = 3,
-		RG_totalTerm.threshold = 55.5L,
+		RG_totalTerm.threshold = 50L,
 		RG_totalTerm.coefficient = 0.5L
 	};
 	
@@ -1191,7 +1191,7 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 void C3DProcess::OnBnClickedButtonDilation()
 {
 	// TODO: Add your control notification handler code here
-	// Button : Dilation (形態學處理)
+	// Button : Dilation (目前為 未定型的處理)
 	//
 	if (!get_regionGrow)	return;
 
@@ -2506,7 +2506,7 @@ void* C3DProcess::new4Dmatrix(int h, int w, int l, int v, int size)
 	return p;
 }
 
-void C3DProcess::RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor)
+void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 {
 	//	DO : 3D 區域成長 
 	//	利用「當前已成長的全域平均值」來界定成長標準，並用「目前的像素強度」來判斷
@@ -2594,7 +2594,7 @@ void C3DProcess::RG_3D_GlobalAvgConnected(BYTE** src, RG_factor& factor)
 	//TRACE1("sd : %d \n", sd_que.size());
 }
 
-void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
+void C3DProcess::RG_3D_LocalAvgConnected(short** src, RG_factor& factor)
 {
 	//	DO : 3D 區域成長
 	//	利用「當前已成長的全域平均值」來界定成長標準，並用「目前像素鄰近區域的平均值」來判斷
@@ -2707,7 +2707,7 @@ void C3DProcess::RG_3D_LocalAvgConnected(BYTE** src, RG_factor& factor)
 
 }
 
-void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
+void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 {
 	// DO : 3D 區域成長
 	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
@@ -2924,7 +2924,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 	
 }
 
-void C3DProcess::RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
+void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 {
 	// DO : 3D - 2 次區域成長
 	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
@@ -3049,7 +3049,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(BYTE** src, RG_factor& factor)
 
 }
 
-void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
+void C3DProcess::RG_3D_Link(short** src, RG_factor& factor)
 {
 	//	DO : 3D 區域成長
 	//	將與種子點連接的像素點「連接」起來(確認最終分割區域與體積)
@@ -3064,7 +3064,7 @@ void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
 
 	// src : 原始以及將要被更改的矩陣
 	// temp : 暫存原始狀態的矩陣(不做更動)
-	BYTE** src_temp = New2Dmatrix(totalSlice, total_xy, BYTE);
+	short** src_temp = New2Dmatrix(totalSlice, total_xy, short);
 
 	Seed_s temp;								// 當前 判斷的周圍seed
 	Seed_s current;								// 當前 判斷的中心seed
@@ -3117,7 +3117,7 @@ void C3DProcess::RG_3D_Link(BYTE** src, RG_factor& factor)
 	delete src_temp;
 }
 
-void C3DProcess::Erosion_3D(BYTE** src, short element)
+void C3DProcess::Erosion_3D(short** src, short element)
 {
 	// DO : 3D Erosion (侵蝕 - 形態學處理)
 	//
@@ -3130,7 +3130,7 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 
 	// src : 原始以及將要被更改的矩陣
 	// temp : 暫存原始狀態的矩陣(不做更動)
-	BYTE** temp = New2Dmatrix(total_z, total_xy, BYTE);
+	short** temp = New2Dmatrix(total_z, total_xy, short);
 	
 	// Deep copy (目前先以這樣的方式處理QQ)
 	//
@@ -3288,7 +3288,7 @@ void C3DProcess::Erosion_3D(BYTE** src, short element)
 	delete temp;
 }
 
-void C3DProcess::Dilation_3D(BYTE** src, short element)
+void C3DProcess::Dilation_3D(short** src, short element)
 {
 	// DO : 3D Dilation (膨脹 - 形態學處理)
 	//
@@ -3300,7 +3300,7 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 
 	// src : 原始以及將要被更改的矩陣
 	// temp : 暫存原始狀態的矩陣(不做更動)
-	BYTE** temp = New2Dmatrix(total_z, total_xy, BYTE);
+	short** temp = New2Dmatrix(total_z, total_xy, short);
 
 	// Deep copy (目前先以這樣的方式處理QQ)
 	//
@@ -3419,7 +3419,7 @@ void C3DProcess::Dilation_3D(BYTE** src, short element)
 	delete temp;
 }
 
-double C3DProcess::Calculate_Volume(BYTE** src, short target)
+double C3DProcess::Calculate_Volume(short** src, short target)
 {
 	const int row = ROW;
 	const int col = COL;
