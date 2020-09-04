@@ -1268,8 +1268,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 			// 計算每張slice三角頂點的斜線方程式係數
 			line[slice].assign(2, std::make_pair(0.0f, 0.0f));
-			float slope1 = 0, slope2 = 0;	// 斜率
-			float inter1 = 0, inter2 = 0;	// 截距
+			float slope1 = 0, slope2 = 0;						// 斜率
+			float inter1 = 0, inter2 = 0;						// 截距
 			slope1 = (float)(vertex[slice][0].second - vertex[slice][1].second) / 
 					(float)(vertex[slice][0].first - vertex[slice][1].first);
 			slope2 = (float)(vertex[slice][0].second - vertex[slice][2].second) / 
@@ -1281,8 +1281,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 			inter2 = (float)(vertex[slice][0].second + vertex[slice][2].second) -
 						slope2 * (vertex[slice][0].first + vertex[slice][2].first);
 			inter2 /= 2;
-			line[slice].push_back(std::make_pair(slope1, inter1));
-			line[slice].push_back(std::make_pair(slope2, inter2));
+			line[slice][0] = std::make_pair(slope1, inter1);	// left line
+			line[slice][1] = std::make_pair(slope2, inter2);	// right line
 
 			x_pos.clear();	x_pos.shrink_to_fit();
 			y_pos.clear();	y_pos.shrink_to_fit();
@@ -1399,7 +1399,15 @@ void C3DProcess::OnBnClickedButtonDilation()
 	//
 	//     二 次 區 域 成 長
 	//
-	/*RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
+	/*RG_totalTerm = {
+		RG_totalTerm.seed = seed_img,
+		RG_totalTerm.s_kernel = 3,
+		RG_totalTerm.n_kernel = 3,
+		RG_totalTerm.threshold = 50L,
+		RG_totalTerm.coefficient = 1.0L
+	};
+
+	RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
 	RG_totalVolume += Calculate_Volume(judge, 1);
 	m_result.Format("%lf", RG_totalVolume);
 
@@ -2897,6 +2905,19 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	avg_que.push(s_avg);
 	sed_que.push(seed);
 	s_cnt += 1;
+
+	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
+	{
+		float value = line[pz][0].first * px + line[pz][0].second - py;
+		if (value >= 0)	return true;				// 在left line的右邊
+		else return false;
+	};
+	auto lineFunc_2 = [=](int px, int py, int pz)	// right line
+	{
+		float value = line[pz][1].first * px + line[pz][1].second - py;
+		if (value >= 0)	return true;				// 在right line的左邊
+		else return false;
+	};
 
 	while (!sed_que.empty())
 	{
