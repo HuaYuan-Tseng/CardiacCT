@@ -1206,6 +1206,11 @@ void C3DProcess::OnBnClickedButtonDilation()
 	BYTE**& pro = m_pDoc->m_imgPro;
 	clock_t start = clock();
 
+	CWait* m_wait = new CWait();
+	m_wait->Create(IDD_DIALOG_WAIT);
+	m_wait->ShowWindow(SW_NORMAL);
+	m_wait->setDisplay("2nd Region growing...");
+
 	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
 	// 
 	std::map<int, std::vector<int>> edge;
@@ -1399,27 +1404,28 @@ void C3DProcess::OnBnClickedButtonDilation()
 	//
 	//     二 次 區 域 成 長
 	//
-	/*RG_totalTerm = {
+	RG_totalTerm = {
 		RG_totalTerm.seed = seed_img,
 		RG_totalTerm.s_kernel = 3,
 		RG_totalTerm.n_kernel = 3,
 		RG_totalTerm.threshold = 50L,
-		RG_totalTerm.coefficient = 1.0L
+		RG_totalTerm.coefficient = 0.5L
 	};
 
 	RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
 	RG_totalVolume += Calculate_Volume(judge, 1);
 	m_result.Format("%lf", RG_totalVolume);
 
-	TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
+	TRACE1("Growing Volume : %f (cm3)\n", RG_totalVolume);
 	PrepareVolume();
 	UpdateData(FALSE);
 	Draw3DImage(true);
-	Draw2DImage(DisplaySlice);*/
+	Draw2DImage(DisplaySlice);
 
 	clock_t end = clock();
 	TRACE1("Spend Time : %f (s)\n", (double)(end - start) / CLOCKS_PER_SEC);
-
+	m_wait->DestroyWindow();
+	delete m_wait;
 }
 
 //==========================//
@@ -2875,11 +2881,12 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 
 void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 {
-	// DO : 3D - 2 次區域成長
+	// DO : 3D - 2222222222222222222222222222222222 次區域成長
 	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
 	//
 	const int row = ROW;
 	const int col = COL;
+	const int totalXY = ROW * COL;
 	const int totalSlice = Total_Slice;
 	const int s_range = (factor.s_kernel - 1) / 2;
 	unsigned int n_cnt = 0, s_cnt = 0;
@@ -2902,39 +2909,60 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	BYTE**& imgPro = m_pDoc->m_imgPro;
 	s_avg = imgPro[seed.z][seed.y * col + seed.x];
 	src[seed.z][seed.y * col + seed.x] = 1;
-	avg_que.push(s_avg);
+	//avg_que.push(s_avg);
 	sed_que.push(seed);
 	s_cnt += 1;
 
 	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
 	{
 		float value = line[pz][0].first * px + line[pz][0].second - py;
-		if (value >= 0)	return true;				// 在left line的右邊
+		if (value <= 0)	return true;				// 在left line的左邊(要倒著看
 		else return false;
 	};
 	auto lineFunc_2 = [=](int px, int py, int pz)	// right line
 	{
 		float value = line[pz][1].first * px + line[pz][1].second - py;
-		if (value >= 0)	return true;				// 在right line的左邊
+		if (value <= 0)	return true;				// 在right line的右邊(要倒著看
 		else return false;
 	};
+	auto OutOfRange = [=](int px, int py, int pz)	// 影像邊界
+	{
+		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
+			return false;
+		else return true;
+	};
 
+	// 先把第一次區域成長的種子點都加進來
+	for (sj = 0; sj < totalSlice; ++sj)
+	{
+		for (si = 0; si < totalXY; ++si)
+		{
+			if (src[sj][si] == 1)
+			{
+				n_site.x = si % col;
+				n_site.y = si / col;
+				n_site.z = sj;
+				sed_que.push(n_site);
+			}
+			src[sj][si] = 0;
+		}
+	}
+	//TRACE1("Seed's count : %d\n", sed_que.size());
+
+	// 做第二次區域成長
 	while (!sed_que.empty())
 	{
-		s_avg = avg_que.front();
 		s_current = sed_que.front();
 		n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
 
-		// 計算 總合 與 平均
-		for (sk = -s_range; sk <= s_range; sk++)
+		// 計算總和與平均
+		for (sk = -s_range; sk <= s_range; ++sk)
 		{
-			for (sj = -s_range; sj <= s_range; sj++)
+			for (sj = -s_range; sj <= s_range; ++sj)
 			{
-				for (si = -s_range; si <= s_range; si++)
+				for (si = -s_range; si <= s_range; ++si)
 				{
-					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
-						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					if (!OutOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
 						n_pixel_sum +=
 							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
@@ -2945,16 +2973,14 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		}
 		n_avg = n_pixel_sum / n_cnt;
 
-		// 計算 標準差
-		for (sk = -s_range; sk <= s_range; sk++)
+		// 計算標準差
+		for (sk = -s_range; sk <= s_range; ++sk)
 		{
-			for (sj = -s_range; sj <= s_range; sj++)
+			for (sj = -s_range; sj <= s_range; ++sj)
 			{
-				for (si = -s_range; si <= s_range; si++)
+				for (si = -s_range; si <= s_range; ++si)
 				{
-					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
-						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					if (!OutOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
 						n_pixel =
 							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
@@ -2970,22 +2996,22 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		down_limit = n_avg - (coefficient * n_SD);
 
 		// 判斷是否符合成長標準
-		for (sk = -s_range; sk <= s_range; sk++)
+		for (sk = -s_range; sk <= s_range; ++sk)
 		{
-			for (sj = -s_range; sj <= s_range; sj++)
+			for (sj = -s_range; sj <= s_range; ++sj)
 			{
-				for (si = -s_range; si <= s_range; si++)
+				for (si = -s_range; si <= s_range; ++si)
 				{
-					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
-						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					if (!OutOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
-						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] == 0)
 						{
 							n_pixel =
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
-							if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= threshold)
+							if (n_pixel <= up_limit && n_pixel >= down_limit &&
+								lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
+								lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk))
 							{
 								n_site.x = s_current.x + si;
 								n_site.y = s_current.y + sj;
@@ -2993,18 +3019,105 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 								sed_que.push(n_site);
 
 								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
-								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
-								avg_que.push(s_avg);
-								s_cnt += 1;
 							}
+							else
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -1;
 						}
 					}
 				}
 			}
 		}
-		avg_que.pop();
+
 		sed_que.pop();
 	}
+
+
+	//while (!sed_que.empty())
+	//{
+	//	s_avg = avg_que.front();
+	//	s_current = sed_que.front();
+	//	n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
+
+	//	// 計算 總合 與 平均
+	//	for (sk = -s_range; sk <= s_range; sk++)
+	//	{
+	//		for (sj = -s_range; sj <= s_range; sj++)
+	//		{
+	//			for (si = -s_range; si <= s_range; si++)
+	//			{
+	//				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+	//					(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+	//					(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+	//				{
+	//					n_pixel_sum +=
+	//						imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+	//					n_cnt += 1;
+	//				}
+	//			}
+	//		}
+	//	}
+	//	n_avg = n_pixel_sum / n_cnt;
+
+	//	// 計算 標準差
+	//	for (sk = -s_range; sk <= s_range; sk++)
+	//	{
+	//		for (sj = -s_range; sj <= s_range; sj++)
+	//		{
+	//			for (si = -s_range; si <= s_range; si++)
+	//			{
+	//				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+	//					(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+	//					(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+	//				{
+	//					n_pixel =
+	//						imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+	//					n_SD += pow((n_pixel - n_avg), 2);
+	//				}
+	//			}
+	//		}
+	//	}
+	//	n_SD = sqrt(n_SD / n_cnt);
+
+	//	// 制定、修正成長標準上下限
+	//	up_limit = n_avg + (coefficient * n_SD);
+	//	down_limit = n_avg - (coefficient * n_SD);
+
+	//	// 判斷是否符合成長標準
+	//	for (sk = -s_range; sk <= s_range; sk++)
+	//	{
+	//		for (sj = -s_range; sj <= s_range; sj++)
+	//		{
+	//			for (si = -s_range; si <= s_range; si++)
+	//			{
+	//				if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
+	//					(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
+	//					(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+	//				{
+	//					if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] != 1)
+	//					{
+	//						n_pixel =
+	//							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+
+	//						if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= threshold)
+	//						{
+	//							n_site.x = s_current.x + si;
+	//							n_site.y = s_current.y + sj;
+	//							n_site.z = s_current.z + sk;
+	//							sed_que.push(n_site);
+
+	//							src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
+	//							s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+	//							avg_que.push(s_avg);
+	//							s_cnt += 1;
+	//						}
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//	avg_que.pop();
+	//	sed_que.pop();
+	//}
 
 }
 
