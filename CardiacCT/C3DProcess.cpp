@@ -2894,7 +2894,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	register int si, sj, sk;
 	
 	double	n_SD;
-	double	n_avg, s_avg;
+	double	n_avg, s_avg = 0;
 	double  n_pixel_sum = 0;
 	double	up_limit, down_limit;
 	double	threshold = factor.threshold;
@@ -2905,13 +2905,6 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	Seed_s	seed = factor.seed;
 	queue<Seed_s> sed_que;
 	queue<double> avg_que;
-
-	BYTE**& imgPro = m_pDoc->m_imgPro;
-	s_avg = imgPro[seed.z][seed.y * col + seed.x];
-	src[seed.z][seed.y * col + seed.x] = 1;
-	//avg_que.push(s_avg);
-	sed_que.push(seed);
-	s_cnt += 1;
 
 	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
 	{
@@ -2932,7 +2925,13 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		else return true;
 	};
 
-	// 先把第一次區域成長的種子點都加進來
+	BYTE**& imgPro = m_pDoc->m_imgPro;
+	//s_avg = imgPro[seed.z][seed.y * col + seed.x];
+	//src[seed.z][seed.y * col + seed.x] = 1;
+	//avg_que.push(s_avg);
+	//sed_que.push(seed);
+
+	// 先把第一次區域成長的種子點都加進來(先歸零
 	for (sj = 0; sj < totalSlice; ++sj)
 	{
 		for (si = 0; si < totalXY; ++si)
@@ -2942,6 +2941,12 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 				n_site.x = si % col;
 				n_site.y = si / col;
 				n_site.z = sj;
+
+				n_pixel = imgPro[sj][si];
+				s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+				s_cnt += 1;
+
+				avg_que.push(s_avg);
 				sed_que.push(n_site);
 			}
 			src[sj][si] = 0;
@@ -2952,6 +2957,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	// 做第二次區域成長
 	while (!sed_que.empty())
 	{
+		s_avg = avg_que.front();
 		s_current = sed_que.front();
 		n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
 
@@ -3009,7 +3015,8 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 							n_pixel =
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
-							if (n_pixel <= up_limit && n_pixel >= down_limit &&
+							if (abs(n_pixel - s_avg) <= threshold &&
+								n_pixel <= up_limit && n_pixel >= down_limit &&
 								lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
 								lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk))
 							{
@@ -3017,6 +3024,10 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 								n_site.y = s_current.y + sj;
 								n_site.z = s_current.z + sk;
 								sed_que.push(n_site);
+
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
 
 								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
 							}
@@ -3027,7 +3038,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 				}
 			}
 		}
-
+		avg_que.pop();
 		sed_que.pop();
 	}
 
