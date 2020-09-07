@@ -1413,16 +1413,16 @@ void C3DProcess::OnBnClickedButtonDilation()
 	};
 
 	RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
-	RG_totalVolume = Calculate_Volume(judge);
-	m_result.Format("%lf", RG_totalVolume);
-
-	TRACE1("Growing Volume : %f (cm3)\n", RG_totalVolume);
+	clock_t end = clock();
+	
 	PrepareVolume();
 	UpdateData(FALSE);
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
-
-	clock_t end = clock();
+	RG_totalVolume = Calculate_Volume(judge);
+	
+	m_result.Format("%lf", RG_totalVolume);
+	TRACE1("Growing Volume : %f (cm3)\n", RG_totalVolume);
 	TRACE1(" 2nd process Time : %f (s)\n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	m_wait->DestroyWindow();
 	delete m_wait;
@@ -2996,7 +2996,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
 							if (n_pixel <= up_limit && n_pixel >= down_limit &&
-								lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
+								//lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
 								lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk)
 								)
 							{
