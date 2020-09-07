@@ -159,15 +159,14 @@ public:
 
 ///------------- ↓ 實驗區 ↓ -------------///
 
+	double	Calculate_Volume(short** src);
 	void	Erosion_3D(short** src, short element);
 	void	Dilation_3D(short** src, short element);
-	double	Calculate_Volume(short** src, short target);
-
+	
 	void	RG_3D_Link(short** src, RG_factor& factor);
 	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均與當前強度)
 	void	RG_3D_LocalAvgConnected(short** src, RG_factor& factor);
 	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);
-
 	void	RG2_3D_ConfidenceConnected(short** src, RG_factor& factor);
 
 	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
