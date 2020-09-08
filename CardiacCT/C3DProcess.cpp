@@ -1370,7 +1370,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	thread th5(avgFilter, 1);
 	th4.join();	th5.join();
 
-	// ¾U¤Æ Âoªi (highboost filter)
+	// ¾U¤Æ Âoªi (high-boost filter)
 	//
 	float weighted = -2.5f;
 	auto sharpFilter = [&](int start)
@@ -2996,7 +2996,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
 							if (n_pixel <= up_limit && n_pixel >= down_limit &&
-								//lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
+								lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
 								lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk)
 								)
 							{
