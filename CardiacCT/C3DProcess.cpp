@@ -596,6 +596,35 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		else if (m_disp_pro0)
 			m_pos_4.Format("%d", (int)m_pDoc->m_imgPro[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
 
+		// 觀察一下標準差
+		int pixel = 0;
+		float sum = 0, avg = 0, sd = 0, cnt = 0;
+		for (int k = -1; k <= 1; k++)
+		{
+			for (int j = -1; j <= 1; j++)
+			{
+				for (int i = -1; i <= 1; i++)
+				{
+					sum += m_pDoc->m_img[seed_pt.z + k][(seed_pt.y + j) * COL + seed_pt.x + i];
+					cnt++;
+				}
+			}
+		}
+		avg = sum / cnt;
+		for (int k = -1; k <= 1; k++)
+		{
+			for (int j = -1; j <= 1; j++)
+			{
+				for (int i = -1; i <= 1; i++)
+				{
+					pixel = m_pDoc->m_img[seed_pt.z + k][(seed_pt.y + j) * COL + seed_pt.x + i];
+					sd += pow((pixel - avg), 2);
+				}
+			}
+		}
+		sd = sqrt(sd / cnt);
+		TRACE3("Cnt = %f, Avg = %f, Sd = %f \n", cnt, avg, sd);
+
 		if (m_3Dseed)
 			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
 		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(TRUE);
@@ -1235,6 +1264,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 				}
 				position += 1;
 			}
+			if (x_pos.empty() || y_pos.empty())	continue;
+
 			std::sort(x_pos.begin(), x_pos.end());
 			std::sort(y_pos.begin(), y_pos.end());
 
@@ -1416,15 +1447,15 @@ void C3DProcess::OnBnClickedButtonDilation()
 	clock_t end = clock();
 	
 	PrepareVolume();
-	UpdateData(FALSE);
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
 	RG_totalVolume = Calculate_Volume(judge);
 	
 	m_result.Format("%lf", RG_totalVolume);
 	TRACE1("Growing Volume : %f (cm3)\n", RG_totalVolume);
-	TRACE1(" 2nd process Time : %f (s)\n\n", (double)(end - start) / CLOCKS_PER_SEC);
+	TRACE1("2nd process Time : %f (s)\n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	m_wait->DestroyWindow();
+	UpdateData(FALSE);
 	delete m_wait;
 }
 
@@ -2793,8 +2824,6 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	sed_que.push(seed);
 	s_cnt += 1;
 	
-	// 三維
-	//	
 	while (!sed_que.empty())
 	{
 		s_avg = avg_que.front();
@@ -3021,8 +3050,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		avg_que.pop();
 		sed_que.pop();
 	}
-
-
+	
 }
 
 void C3DProcess::RG_3D_Link(short** src, RG_factor& factor)
