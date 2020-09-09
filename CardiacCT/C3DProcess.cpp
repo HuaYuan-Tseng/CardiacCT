@@ -2807,18 +2807,14 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	const int col = COL;
 	const int totalSlice = Total_Slice;
 	const int s_range = (factor.s_kernel - 1) / 2;
+	unsigned int n_cnt = 0, n_pixel = 0;
+	unsigned int s_cnt = 0, s_pixel = 0;
 	register int si, sj, sk;
-	unsigned int n_cnt = 0;
-	unsigned int s_cnt = 0;
-	int n_pixel = 0;
-	int s_pixel = 0;
 
 	double	n_SD;
-	double	n_avg;
-	double	s_avg; 
-	double	up_limit;
-	double	down_limit;
+	double	n_avg, s_avg;
 	double  n_pixel_sum = 0;
+	double	up_limit, down_limit;
 	double	threshold = factor.threshold;
 	double	coefficient = factor.coefficient;
 
