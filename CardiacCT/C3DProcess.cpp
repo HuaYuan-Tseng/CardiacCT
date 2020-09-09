@@ -624,6 +624,7 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		}
 		sd = sqrt(sd / cnt);
 		TRACE3("Cnt = %f, Avg = %f, Sd = %f \n", cnt, avg, sd);
+		TRACE1("Judge = %d \n", judge[seed_pt.z][seed_pt.y * COL + seed_pt.x]);
 
 		if (m_3Dseed)
 			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
@@ -1046,7 +1047,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		RG_totalTerm.s_kernel = 3,
 		RG_totalTerm.n_kernel = 3,
 		RG_totalTerm.threshold = 50L,
-		RG_totalTerm.coefficient = 0.5L
+		RG_totalTerm.coefficient = 2.0L
 	};
 	
 	// 執行 3D_Region growing
@@ -1206,7 +1207,7 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 				for (i = 2; i < col - 2; i += 2)
 				{
 					pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
-
+					m_pDoc->m_imgPro[k - (Mat_Offset + 1)][j * col + i] = (BYTE)pixel;
 					getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 						pixel / 255.0F, 0);
 				}
@@ -1338,17 +1339,20 @@ void C3DProcess::OnBnClickedButtonDilation()
 		int slice = start;
 		while (slice < totalSlice)
 		{
-			iter = edge.find(slice);
-			for (int j = iter->second.at(2); j <= iter->second.at(3); j++)
+			//iter = edge.find(slice);
+			if ((iter = edge.find(slice)) != edge.end())
 			{
-				for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
+				for (int j = iter->second.at(2); j <= iter->second.at(3); j++)
 				{
-					if (pro[slice][j * col + i] <= 100)
-						pro[slice][j * col + i] = 0;
-					else if (pro[slice][j * col + i] <= 170)
-						pro[slice][j * col + i] -= 20;
-					else if (pro[slice][j * col + i] <= 220 && pro[slice][j * col + i] > 180)
-						pro[slice][j * col + i] += 30;
+					for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
+					{
+						if (pro[slice][j * col + i] <= 100)
+							pro[slice][j * col + i] = 0;
+						else if (pro[slice][j * col + i] <= 170)
+							pro[slice][j * col + i] -= 20;
+						else if (pro[slice][j * col + i] <= 220 && pro[slice][j * col + i] > 180)
+							pro[slice][j * col + i] += 30;
+					}
 				}
 			}
 			slice += 2;
@@ -1385,12 +1389,15 @@ void C3DProcess::OnBnClickedButtonDilation()
 		int slice = start;
 		while (slice < totalSlice)
 		{
-			iter = edge.find(slice);
-			for (int j = iter->second.at(2) + 1; j < iter->second.at(3); j++)
+			//iter = edge.find(slice);
+			if ((iter = edge.find(slice)) != edge.end())
 			{
-				for (int i = iter->second.at(0) + 1; i < iter->second.at(1); i++)
+				for (int j = iter->second.at(2) + 1; j < iter->second.at(3); j++)
 				{
-					pro[slice][j * col + i] = avgKernel(slice, i, j);
+					for (int i = iter->second.at(0) + 1; i < iter->second.at(1); i++)
+					{
+						pro[slice][j * col + i] = avgKernel(slice, i, j);
+					}
 				}
 			}
 			slice += 2;
@@ -1411,16 +1418,19 @@ void C3DProcess::OnBnClickedButtonDilation()
 		int pixel = 0;
 		while (slice < totalSlice)
 		{
-			iter = edge.find(slice);
-			for (int j = iter->second.at(2); j <= iter->second.at(3); j++)
+			//iter = edge.find(slice);
+			if ((iter = edge.find(slice)) != edge.end())
 			{
-				for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
+				for (int j = iter->second.at(2); j <= iter->second.at(3); j++)
 				{
-					pixel = (int)(org[slice][j * col + i] +
-						weighted * (org[slice][j * col + i] - pro[slice][j * col + i]));
-					pixel = (pixel > 255) ? 255 : pixel;
-					pixel = (pixel < 0) ? 0 : pixel;
-					pro[slice][j * col + i] = pixel;
+					for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
+					{
+						pixel = (int)(org[slice][j * col + i] +
+							weighted * (org[slice][j * col + i] - pro[slice][j * col + i]));
+						pixel = (pixel > 255) ? 255 : pixel;
+						pixel = (pixel < 0) ? 0 : pixel;
+						pro[slice][j * col + i] = pixel;
+					}
 				}
 			}
 			slice += 2;
@@ -2875,6 +2885,14 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		}
 		n_SD = sqrt(n_SD / n_cnt);
 
+		if (n_SD > 15 || abs(n_avg - s_avg) > threshold)
+		{
+			judge[s_current.z][s_current.y * col + s_current.x] = -1;
+			sed_que.pop();
+			avg_que.pop();
+			continue;
+		}
+
 		// 制定、修正成長標準上下限
 		up_limit = n_avg + (coefficient * n_SD);
 		down_limit = n_avg - (coefficient * n_SD);
@@ -2893,7 +2911,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 							n_pixel =
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
-							if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= threshold)
+							if (n_pixel <= up_limit && n_pixel >= down_limit)
 							{
 								n_site.x = s_current.x + si;
 								n_site.y = s_current.y + sj;
@@ -2912,8 +2930,8 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 				}
 			}
 		}
-		avg_que.pop();
 		sed_que.pop();
+		avg_que.pop();	
 	}
 	
 }
