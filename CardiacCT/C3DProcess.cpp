@@ -2817,8 +2817,17 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	Seed_s	seed = factor.seed;
 	queue<Seed_s> sed_que;
 	queue<double> avg_que;
+	BYTE**& img = m_pDoc->m_img;
+	BYTE**& imgPro = m_pDoc->m_imgPro;
+
+	auto outOfRange = [=](int px, int py, int pz)
+	{
+		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
+			return false;
+		else return true;
+	};
 	
-	s_avg = m_pDoc->m_imgPro[seed.z][seed.y * col + seed.x];
+	s_avg = imgPro[seed.z][seed.y * col + seed.x];
 	src[seed.z][seed.y * col + seed.x] = 1;
 	avg_que.push(s_avg);
 	sed_que.push(seed);
@@ -2837,12 +2846,10 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 			{
 				for (si = -s_range; si <= s_range; si++)
 				{
-					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
-						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					if (!outOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
 						n_pixel_sum +=
-							m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 						n_cnt += 1;
 					}
 				}
@@ -2857,12 +2864,10 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 			{
 				for (si = -s_range; si <= s_range; si++)
 				{
-					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
-						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					if (!outOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
 						n_pixel =
-							m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 						n_SD += pow((n_pixel - n_avg), 2);
 					}
 				}
@@ -2881,14 +2886,12 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 			{
 				for (si = -s_range; si <= s_range; si++)
 				{
-					if ((s_current.x + si) < col && (s_current.x + si) >= 0 &&
-						(s_current.y + sj) < row && (s_current.y + sj) >= 0 &&
-						(s_current.z + sk) < totalSlice && (s_current.z + sk) >= 0)
+					if (!outOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
 						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] == 0)
 						{
 							n_pixel =
-								m_pDoc->m_imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
 							if (n_pixel <= up_limit && n_pixel >= down_limit && abs(n_pixel - s_avg) <= threshold)
 							{
@@ -2954,7 +2957,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		if (value <= 0)	return true;				// 在right line的右邊(要倒著看
 		else return false;
 	};
-	auto OutOfRange = [=](int px, int py, int pz)	// 影像邊界
+	auto outOfRange = [=](int px, int py, int pz)	// 影像邊界
 	{
 		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
 			return false;
@@ -3017,7 +3020,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 			{
 				for (si = -s_range; si <= s_range; ++si)
 				{
-					if (!OutOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
+					if (!outOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
 						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] == 0)
 						{
