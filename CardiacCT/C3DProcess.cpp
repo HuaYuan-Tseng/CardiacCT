@@ -597,9 +597,9 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 			m_pos_4.Format("%d", (int)m_pDoc->m_imgPro[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
 
 		// 觀察一下標準差
-		int pixel = 0;
-		float sum = 0, avg = 0, sd = 0, cnt = 0;
-		for (int k = -1; k <= 1; k++)
+		std::vector<int> pixel;
+		double avg = 0, sd = 0, cnt = 0;
+		/*for (int k = -1; k <= 1; k++)
 		{
 			for (int j = -1; j <= 1; j++)
 			{
@@ -622,7 +622,36 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 				}
 			}
 		}
-		sd = sqrt(sd / cnt);
+		sd = sqrt(sd / cnt);*/
+		auto average = [&](Seed_s s, std::vector<int>& v)
+		{	// 計算周圍像素平均
+			register int i, j, k;
+			for (k = -1; k <= 1; ++k)
+			{
+				for (j = -1; j <= 1; ++j)
+				{
+					for (i = -1; i <= 1; ++i)
+					{
+						//sum += imgPro[s.z + k][(s.y + j) * col + (s.x + i)];
+						v.push_back(m_pDoc->m_imgPro[s.z + k][(s.y + j) * COL + (s.x + i)]);
+						cnt += 1;
+					}
+				}
+			}
+			return (std::accumulate(v.begin(), v.end(), 0.0L) / cnt);
+		};
+		auto standard_deviation = [&](std::vector<int>& v, double AVG)
+		{	// 計算周圍像素標準差
+			double SD = 0;
+			for (const auto& n : v)
+			{
+				SD += pow((n - AVG), 2);
+			}
+			return sqrt(SD / cnt);
+		};
+		avg = average(seed_pt, pixel);
+		sd = standard_deviation(pixel, avg);
+
 		TRACE3("Cnt = %f, Avg = %f, Sd = %f \n", cnt, avg, sd);
 		TRACE1("Judge = %d \n", judge[seed_pt.z][seed_pt.y * COL + seed_pt.x]);
 
@@ -1061,7 +1090,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	// 確認分割體積
 	//
 	get_regionGrow = true;
-	RG_totalVolume += Calculate_Volume(judge);
+	RG_totalVolume = Calculate_Volume(judge);
 	m_result.Format("%lf", RG_totalVolume);
 
 	TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
@@ -2807,27 +2836,25 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	const int col = COL;
 	const int totalSlice = Total_Slice;
 	const int s_range = (factor.s_kernel - 1) / 2;
-	unsigned int n_cnt = 0, n_pixel = 0;
-	unsigned int s_cnt = 0, s_pixel = 0;
+	unsigned long long  n_pixel = 0, s_pixel = 0;
+	unsigned long long	s_cnt = 0;
 	register int si, sj, sk;
 
-	double	n_SD;
-	double	n_avg, s_avg;
-	double  n_pixel_sum = 0;
+	double	s_avg;
 	double	up_limit, down_limit;
 	double	threshold = factor.threshold;
 	double	coefficient = factor.coefficient;
-
+	
 	Seed_s	n_site;
 	Seed_s	s_current;
 	Seed_s	seed = factor.seed;
-	queue<Seed_s> sed_que;
-	queue<double> avg_que;
 	BYTE**& img = m_pDoc->m_img;
 	BYTE**& imgPro = m_pDoc->m_imgPro;
+	std::queue<Seed_s> sed_que;
+	std::queue<double> avg_que;
 
 	auto outOfRange = [=](int px, int py, int pz)
-	{
+	{	// 判斷有無超出影像邊界
 		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
 			return false;
 		else return true;
@@ -2843,9 +2870,10 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	{
 		s_avg = avg_que.front();
 		s_current = sed_que.front();
-		n_pixel_sum = 0, n_cnt = 0, n_avg = 0, n_SD = 0;
 
 		// 計算 總合 與 平均
+		double sum = 0, cnt = 0;
+		double n_avg = 0, n_sd = 0;
 		for (sk = -s_range; sk <= s_range; sk++)
 		{
 			for (sj = -s_range; sj <= s_range; sj++)
@@ -2854,14 +2882,14 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 				{
 					if (!outOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
-						n_pixel_sum +=
+						sum +=
 							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
-						n_cnt += 1;
+						cnt += 1;
 					}
 				}
 			}
 		}
-		n_avg = n_pixel_sum / n_cnt;
+		n_avg = sum / cnt;
 
 		// 計算 標準差
 		for (sk = -s_range; sk <= s_range; sk++)
@@ -2874,24 +2902,26 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 					{
 						n_pixel =
 							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
-						n_SD += pow((n_pixel - n_avg), 2);
+						n_sd += pow((n_pixel - n_avg), 2);
 					}
 				}
 			}
 		}
-		n_SD = sqrt(n_SD / n_cnt);
+		n_sd = sqrt(n_sd / cnt);
 
-		if (n_SD > 15 || abs(n_avg - s_avg) > threshold)
+		// 先判斷該種子點周圍的平均與標準差是否符合標準
+		if (n_sd > 15 || abs(n_avg - s_avg) > threshold)
 		{
 			judge[s_current.z][s_current.y * col + s_current.x] = -1;
 			sed_que.pop();
 			avg_que.pop();
+			s_cnt -= 1;
 			continue;
 		}
-
-		// 制定、修正成長標準上下限
-		up_limit = n_avg + (coefficient * n_SD);
-		down_limit = n_avg - (coefficient * n_SD);
+		
+		// 制定、修正成長標準的上下限
+		up_limit = n_avg + (coefficient * n_sd);
+		down_limit = n_avg - (coefficient * n_sd);
 		
 		// 判斷是否符合成長標準
 		for (sk = -s_range; sk <= s_range; sk++)
@@ -2927,9 +2957,9 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 			}
 		}
 		sed_que.pop();
-		avg_que.pop();	
+		avg_que.pop();
 	}
-	
+
 }
 
 void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
@@ -3445,9 +3475,7 @@ double C3DProcess::Calculate_Volume(short** src)
 	const int totalXY = COL * ROW;
 	const int totalSlice = Total_Slice;
 	register int i, j;
-	unsigned int n = 0;							// 計數成長的pixel數量
-	double volume = 0L;
-
+	unsigned long long n = 0;							// 計數成長的pixel數量
 	for (j = 0; j < totalSlice; j++)
 	{
 		for (i = 0; i < totalXY; i++)
@@ -3456,7 +3484,8 @@ double C3DProcess::Calculate_Volume(short** src)
 				n += 1;
 		}
 	}
-	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;		// 單位 (cm3)
+	double volume = 0L;		// 單位 (cm3)
+	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	
 	return volume;
 }
 
