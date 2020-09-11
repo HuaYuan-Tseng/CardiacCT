@@ -599,30 +599,6 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		// 觀察一下標準差
 		std::vector<int> pixel;
 		double avg = 0, sd = 0, cnt = 0;
-		/*for (int k = -1; k <= 1; k++)
-		{
-			for (int j = -1; j <= 1; j++)
-			{
-				for (int i = -1; i <= 1; i++)
-				{
-					sum += m_pDoc->m_img[seed_pt.z + k][(seed_pt.y + j) * COL + seed_pt.x + i];
-					cnt++;
-				}
-			}
-		}
-		avg = sum / cnt;
-		for (int k = -1; k <= 1; k++)
-		{
-			for (int j = -1; j <= 1; j++)
-			{
-				for (int i = -1; i <= 1; i++)
-				{
-					pixel = m_pDoc->m_img[seed_pt.z + k][(seed_pt.y + j) * COL + seed_pt.x + i];
-					sd += pow((pixel - avg), 2);
-				}
-			}
-		}
-		sd = sqrt(sd / cnt);*/
 		auto average = [&](Seed_s s, std::vector<int>& v)
 		{	// 計算周圍像素平均
 			register int i, j, k;
@@ -632,7 +608,6 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 				{
 					for (i = -1; i <= 1; ++i)
 					{
-						//sum += imgPro[s.z + k][(s.y + j) * col + (s.x + i)];
 						v.push_back(m_pDoc->m_imgPro[s.z + k][(s.y + j) * COL + (s.x + i)]);
 						cnt += 1;
 					}
@@ -1076,14 +1051,12 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		RG_totalTerm.s_kernel = 3,
 		RG_totalTerm.n_kernel = 3,
 		RG_totalTerm.threshold = 50L,
-		RG_totalTerm.coefficient = 2.0L
+		RG_totalTerm.coefficient = 2.5L
 	};
 	
 	// 執行 3D_Region growing
 	//
 	start = clock();
-	//RG_3D_GlobalAvgConnected(judge, RG_totalTerm);
-	//RG_3D_LocalAvgConnected(judge, RG_totalTerm);
 	RG_3D_ConfidenceConnected(judge, RG_totalTerm);
 	end = clock();
 
@@ -1439,7 +1412,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 銳化 濾波 (high-boost filter)
 	//
-	float weighted = -2.5f;
+	float weighted = -5.0f;
 	auto sharpFilter = [&](int start)
 	{
 		std::map<int, std::vector<int>>::iterator iter;
@@ -2852,7 +2825,6 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	BYTE**& imgPro = m_pDoc->m_imgPro;
 	std::queue<Seed_s> sed_que;
 	std::queue<double> avg_que;
-	std::vector<int> pix;
 
 	auto outOfRange = [=](int px, int py, int pz)
 	{	// 判斷有無超出影像邊界
@@ -2875,18 +2847,17 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		// 計算 總合 與 平均
 		double sum = 0, cnt = 0;
 		double n_avg = 0, n_sd = 0;
-		for (sk = -s_range; sk <= s_range; sk++)
+		for (sk = -s_range; sk <= s_range; ++sk)
 		{
-			for (sj = -s_range; sj <= s_range; sj++)
+			for (sj = -s_range; sj <= s_range; ++sj)
 			{
-				for (si = -s_range; si <= s_range; si++)
+				for (si = -s_range; si <= s_range; ++si)
 				{
 					if (!outOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
 						sum +=
 							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 						cnt += 1;
-						pix.push_back(imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)]);
 					}
 				}
 			}
@@ -2894,11 +2865,11 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		n_avg = sum / cnt;
 
 		// 計算 標準差
-		for (sk = -s_range; sk <= s_range; sk++)
+		for (sk = -s_range; sk <= s_range; ++sk)
 		{
-			for (sj = -s_range; sj <= s_range; sj++)
+			for (sj = -s_range; sj <= s_range; ++sj)
 			{
-				for (si = -s_range; si <= s_range; si++)
+				for (si = -s_range; si <= s_range; ++si)
 				{
 					if (!outOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
@@ -2926,11 +2897,11 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		down_limit = n_avg - (coefficient * n_sd);
 		
 		// 判斷是否符合成長標準
-		for (sk = -s_range; sk <= s_range; sk++)
+		for (sk = -s_range; sk <= s_range; ++sk)
 		{
-			for (sj = -s_range; sj <= s_range; sj++)
+			for (sj = -s_range; sj <= s_range; ++sj)
 			{
-				for (si = -s_range; si <= s_range; si++)
+				for (si = -s_range; si <= s_range; ++si)
 				{
 					if (!outOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
 					{
@@ -2960,7 +2931,6 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		}
 		sed_que.pop();
 		avg_que.pop();
-		pix.clear();
 	}
 
 }
