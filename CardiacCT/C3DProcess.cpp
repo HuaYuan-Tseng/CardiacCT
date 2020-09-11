@@ -2852,6 +2852,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	BYTE**& imgPro = m_pDoc->m_imgPro;
 	std::queue<Seed_s> sed_que;
 	std::queue<double> avg_que;
+	std::vector<int> pix;
 
 	auto outOfRange = [=](int px, int py, int pz)
 	{	// 判斷有無超出影像邊界
@@ -2885,6 +2886,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 						sum +=
 							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 						cnt += 1;
+						pix.push_back(imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)]);
 					}
 				}
 			}
@@ -2958,6 +2960,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		}
 		sed_que.pop();
 		avg_que.pop();
+		pix.clear();
 	}
 
 }
