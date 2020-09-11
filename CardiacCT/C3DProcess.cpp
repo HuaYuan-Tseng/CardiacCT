@@ -627,8 +627,9 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		avg = average(seed_pt, pixel);
 		sd = standard_deviation(pixel, avg);
 
+		TRACE1("Pixel = %s \n", m_pos_4);
 		TRACE3("Cnt = %f, Avg = %f, Sd = %f \n", cnt, avg, sd);
-		TRACE1("Judge = %d \n", judge[seed_pt.z][seed_pt.y * COL + seed_pt.x]);
+		TRACE1("Judge = %d \n\n", judge[seed_pt.z][seed_pt.y * COL + seed_pt.x]);
 
 		if (m_3Dseed)
 			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
@@ -1050,7 +1051,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		RG_totalTerm.seed = seed_img,
 		RG_totalTerm.s_kernel = 3,
 		RG_totalTerm.n_kernel = 3,
-		RG_totalTerm.threshold = 50L,
+		RG_totalTerm.threshold = 80L,
 		RG_totalTerm.coefficient = 2.5L
 	};
 	
@@ -1327,6 +1328,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 			y_pos.clear();	y_pos.shrink_to_fit();
 			slice += 2;
 		}
+		if (start == 0)	TRACE("Even Slice Find Border : Success!\n");
+		else TRACE("Odd Slice Find Border : Success!\n");
 	};
 
 	thread th0(findBorder, 0);				// °¸¼Æ slice
@@ -1350,15 +1353,17 @@ void C3DProcess::OnBnClickedButtonDilation()
 					{
 						if (pro[slice][j * col + i] <= 100)
 							pro[slice][j * col + i] = 0;
-						else if (pro[slice][j * col + i] <= 170)
+						else if (pro[slice][j * col + i] <= 180)
 							pro[slice][j * col + i] -= 20;
-						else if (pro[slice][j * col + i] <= 220 && pro[slice][j * col + i] > 180)
+						else if (pro[slice][j * col + i] <= 200 && pro[slice][j * col + i] > 180)
 							pro[slice][j * col + i] += 30;
 					}
 				}
 			}
 			slice += 2;
 		}
+		if (start == 0)	TRACE("Even Slice EdgeProcess : Success!\n");
+		else TRACE("Odd Slice EdgeProcess : Success!\n");
 	};
 
 	thread th2(edgeProcess, 0);
@@ -1404,6 +1409,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 			}
 			slice += 2;
 		}
+		if (start == 0)	TRACE("Even Slice avg Filter : Success!\n");
+		else TRACE("Odd Slice avg Filter : Success!\n");
 	};
 
 	thread th4(avgFilter, 0);
@@ -1412,7 +1419,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// ¾U¤Æ Âoªi (high-boost filter)
 	//
-	float weighted = -5.0f;
+	float weighted = -2.5f;
 	auto sharpFilter = [&](int start)
 	{
 		std::map<int, std::vector<int>>::iterator iter;
@@ -1437,6 +1444,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 			}
 			slice += 2;
 		}
+		if (start == 0)	TRACE("Even Slice high Filter : Success!\n");
+		else TRACE("Odd Slice high Filter : Success!\n");
 	};
 
 	thread th6(sharpFilter, 0);
@@ -2299,7 +2308,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 						pt.x = i;
 						pt.y = j;
 
-						dc.SetPixel(pt, RGB(80, 80, 255));
+						dc.SetPixel(pt, RGB(100, 255, 100));
 					}
 				}
 			}
