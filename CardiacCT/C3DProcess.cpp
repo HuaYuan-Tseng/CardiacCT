@@ -1287,17 +1287,17 @@ void C3DProcess::OnBnClickedButtonDilation()
 			{
 				if (judge[slice][cur] == 1)
 				{
-					if (!m && (cur / col) == edge[slice].at(2))	// 中上
+					if (!m && (cur / col) == edge[slice].at(2))	// 中上(x, y)
 					{
 						vertex[slice][0] = std::make_pair((cur % col), (cur / col));
 						m = true;
 					}	
-					if (!l && (cur % col) == edge[slice].at(0))	// 左下
+					if (!l && (cur % col) == edge[slice].at(0))	// 左下(x, y)
 					{
 						vertex[slice][1] = std::make_pair((cur % col), (cur / col));
 						l = true;
 					}
-					if (!r && (cur % col) == edge[slice].at(1))	// 右下
+					if (!r && (cur % col) == edge[slice].at(1))	// 右下(x, y)
 					{
 						vertex[slice][2] = std::make_pair((cur % col), (cur / col));
 						r = true;
