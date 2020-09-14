@@ -169,10 +169,11 @@ public:
 	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);
 	void	RG2_3D_ConfidenceConnected(short** src, RG_factor& factor);
 
-	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
-																		// 以及兩兩相連的斜線斜率
 
-	std::map<int, std::vector<std::pair<float, float>>> line;			// 紀錄每張slice的直線方程式的係數
+
+	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
+
+	std::map<int, std::vector<std::pair<float, float>>> line;			// 紀錄每張slice的直線方程式的係數(斜率.截距)
 
 	std::vector<int> judge_type;										// 紀錄判定類型(先擱著不管
 																		//  0 : 還沒判斷

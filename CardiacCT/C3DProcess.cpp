@@ -1308,8 +1308,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 			// 計算每張slice三角頂點的斜線方程式係數
 			line[slice].assign(2, std::make_pair(0.0f, 0.0f));
-			float slope1 = 0, slope2 = 0;						// 斜率
-			float inter1 = 0, inter2 = 0;						// 截距
+			float slope1 = 0, slope2 = 0;						// 斜率 slope
+			float inter1 = 0, inter2 = 0;						// 截距 intercept
 			slope1 = (float)(vertex[slice][0].second - vertex[slice][1].second) / 
 					(float)(vertex[slice][0].first - vertex[slice][1].first);
 			slope2 = (float)(vertex[slice][0].second - vertex[slice][2].second) / 
@@ -1347,9 +1347,9 @@ void C3DProcess::OnBnClickedButtonDilation()
 			//iter = edge.find(slice);
 			if ((iter = edge.find(slice)) != edge.end())
 			{
-				for (int j = iter->second.at(2); j <= iter->second.at(3); j++)
+				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
 				{
-					for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
+					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
 					{
 						if (pro[slice][j * col + i] <= 100)
 							pro[slice][j * col + i] = 0;
@@ -1379,9 +1379,9 @@ void C3DProcess::OnBnClickedButtonDilation()
 	auto avgKernel = [&](int slice, int x, int y)
 	{
 		int sum = 0, n = 0;
-		for (int j = y - 1; j <= y + 1; j++)
+		for (int j = y - 1; j <= y + 1; ++j)
 		{
-			for (int i = x - 1; i <= x + 1; i++)
+			for (int i = x - 1; i <= x + 1; ++i)
 			{
 				sum += (avg_coef[n] * pro[slice][j * col + i]);
 				n += 1;
@@ -1399,9 +1399,9 @@ void C3DProcess::OnBnClickedButtonDilation()
 			//iter = edge.find(slice);
 			if ((iter = edge.find(slice)) != edge.end())
 			{
-				for (int j = iter->second.at(2) + 1; j < iter->second.at(3); j++)
+				for (int j = iter->second.at(2) + 1; j < iter->second.at(3); ++j)
 				{
-					for (int i = iter->second.at(0) + 1; i < iter->second.at(1); i++)
+					for (int i = iter->second.at(0) + 1; i < iter->second.at(1); ++i)
 					{
 						pro[slice][j * col + i] = avgKernel(slice, i, j);
 					}
@@ -1430,9 +1430,9 @@ void C3DProcess::OnBnClickedButtonDilation()
 			//iter = edge.find(slice);
 			if ((iter = edge.find(slice)) != edge.end())
 			{
-				for (int j = iter->second.at(2); j <= iter->second.at(3); j++)
+				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
 				{
-					for (int i = iter->second.at(0); i <= iter->second.at(1); i++)
+					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
 					{
 						pixel = (int)(org[slice][j * col + i] +
 							weighted * (org[slice][j * col + i] - pro[slice][j * col + i]));
