@@ -170,7 +170,7 @@ public:
 	void	RG2_3D_ConfidenceConnected(short** src, RG_factor& factor);
 
 
-
+	int x_avgPos, y_avgPos;
 	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
 
 	std::map<int, std::vector<std::pair<float, float>>> line;			// 紀錄每張slice的直線方程式的係數(斜率.截距)

@@ -1268,7 +1268,13 @@ void C3DProcess::OnBnClickedButtonDilation()
 				}
 				position += 1;
 			}
-			if (x_pos.empty() || y_pos.empty())	continue;
+			if (x_pos.empty() || y_pos.empty()) 
+			{
+				x_pos.clear();	x_pos.shrink_to_fit();
+				y_pos.clear();	y_pos.shrink_to_fit();
+				slice += 2;
+				continue;
+			}
 
 			std::sort(x_pos.begin(), x_pos.end());
 			std::sort(y_pos.begin(), y_pos.end());
@@ -1306,6 +1312,70 @@ void C3DProcess::OnBnClickedButtonDilation()
 				cur += 1;
 			}
 
+			//// 計算每張slice三角頂點的斜線方程式係數
+			//line[slice].assign(2, std::make_pair(0.0f, 0.0f));
+			//float slope1 = 0, slope2 = 0;						// 斜率 slope
+			//float inter1 = 0, inter2 = 0;						// 截距 intercept
+			//slope1 = (float)(vertex[slice][0].second - vertex[slice][1].second) / 
+			//		(float)(vertex[slice][0].first - vertex[slice][1].first);
+			//slope2 = (float)(vertex[slice][0].second - vertex[slice][2].second) / 
+			//		(float)(vertex[slice][0].first - vertex[slice][2].first);
+
+			//inter1 = (float)(vertex[slice][0].second + vertex[slice][1].second) -
+			//			slope1 * (vertex[slice][0].first + vertex[slice][1].first);
+			//inter1 /= 2;
+			//inter2 = (float)(vertex[slice][0].second + vertex[slice][2].second) -
+			//			slope2 * (vertex[slice][0].first + vertex[slice][2].first);
+			//inter2 /= 2;
+			//line[slice][0] = std::make_pair(slope1, inter1);	// left line
+			//line[slice][1] = std::make_pair(slope2, inter2);	// right line
+
+			x_pos.clear();	x_pos.shrink_to_fit();
+			y_pos.clear();	y_pos.shrink_to_fit();
+			slice += 2;
+		}
+		if (start == 0)	TRACE("Even Slice Find Border : Success!\n");
+		else TRACE("Odd Slice Find Border : Success!\n");
+	};
+
+	thread th0(findBorder, 0);				// 偶數 slice
+	thread th1(findBorder, 1);				// 奇數 slice
+	th0.join();	th1.join();
+
+	// 尋找所有slice「中上點」的平均位置，並將該平均位置
+	// 提高至「最高中上點」的在上面一點點。(這樣才能盡量涵蓋到所有區域)
+	/*int n = 0, x = 0, y = 0, count = 0, y_min = 512;
+	while (n < totalSlice)
+	{
+		if (vertex.find(n) != vertex.end())
+		{
+			if (y_min >= vertex[n][0].second)
+				y_min = vertex[n][0].second;
+			x += vertex[n][0].first;
+			y += vertex[n][0].second;
+			++count;
+		}
+		++n;
+	}
+	x_avgPos = x / count;
+	y_avgPos = y / count;
+	y_avgPos = y_min;*/
+
+	// 重新訂定每一張slice的「中上點」並
+	// 計算每一張slice的斜線方程式係數(斜率.截距)
+	auto LineFuncIndex = [=](int start)
+	{
+		int slice = start;
+		while (slice < totalSlice)
+		{
+			if (vertex.find(slice) == vertex.end())
+			{
+				slice += 2;
+				continue;
+			}
+			//vertex[slice][0].first = x_avgPos;
+			//vertex[slice][0].second = y_avgPos;
+
 			// 計算每張slice三角頂點的斜線方程式係數
 			line[slice].assign(2, std::make_pair(0.0f, 0.0f));
 			float slope1 = 0, slope2 = 0;						// 斜率 slope
@@ -1324,17 +1394,15 @@ void C3DProcess::OnBnClickedButtonDilation()
 			line[slice][0] = std::make_pair(slope1, inter1);	// left line
 			line[slice][1] = std::make_pair(slope2, inter2);	// right line
 
-			x_pos.clear();	x_pos.shrink_to_fit();
-			y_pos.clear();	y_pos.shrink_to_fit();
 			slice += 2;
 		}
-		if (start == 0)	TRACE("Even Slice Find Border : Success!\n");
-		else TRACE("Odd Slice Find Border : Success!\n");
+		if (start == 0)	TRACE("Even Slice LineFunc : Success!\n");
+		else TRACE("Odd Slice LineFunc : Success!\n");
 	};
 
-	thread th0(findBorder, 0);				// 偶數 slice
-	thread th1(findBorder, 1);				// 奇數 slice
-	th0.join();	th1.join();
+	thread th1_1(LineFuncIndex, 0);
+	thread th1_2(LineFuncIndex, 1);
+	th1_1.join();	th1_2.join();
 
 	// 針對 分割範圍的方形區域 做pixel的處理
 	//
@@ -2353,6 +2421,17 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 				}
 			}
 		}
+		for (i = -3; i <= 3; i++)
+		{
+			for (j = -3; j <= 3; j++)
+			{
+				pt.x = (LONG)x_avgPos + i;
+				pt.y = (LONG)y_avgPos + j;
+
+				dc.SetPixel(pt, RGB(70, 70, 255));
+			}
+		}
+
 	}
 
 	// 寫字 (slice)
