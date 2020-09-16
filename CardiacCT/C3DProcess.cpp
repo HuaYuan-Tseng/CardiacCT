@@ -255,7 +255,7 @@ BOOL C3DProcess::OnInitDialog()
 
 	// 更換Dialog標題
 	//
-	SetWindowText("3D Processing");
+	SetWindowText("3D Processing - " + m_pDoc->m_dir->PatientName);
 
 	// 設定繪圖座標軸、區域與物件
 	//
@@ -762,6 +762,9 @@ void C3DProcess::OnBnClickedCheckDispOrg()
 	//
 	m_disp_org = TRUE;
 	m_disp_pro0 = FALSE;
+	if (get_2Dseed)
+		m_pos_4.Format("%d", (int)m_pDoc->m_img[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
+
 	UpdateData(FALSE);
 	Draw2DImage(DisplaySlice);
 	GetDlgItem(IDC_CHECK_HU_THRESHOLD)->EnableWindow(TRUE);
@@ -774,6 +777,9 @@ void C3DProcess::OnBnClickedCheckDispPro0()
 	//
 	m_disp_org = FALSE;
 	m_disp_pro0 = TRUE;
+	if (get_2Dseed)
+		m_pos_4.Format("%d", (int)m_pDoc->m_imgPro[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
+
 	UpdateData(FALSE);
 	Draw2DImage(DisplaySlice);
 	GetDlgItem(IDC_CHECK_HU_THRESHOLD)->EnableWindow(FALSE);
@@ -1279,10 +1285,10 @@ void C3DProcess::OnBnClickedButtonDilation()
 			std::sort(x_pos.begin(), x_pos.end());
 			std::sort(y_pos.begin(), y_pos.end());
 
-			edge[slice].push_back(*(x_pos.begin()));		// [0]: x_min
-			edge[slice].push_back(*(x_pos.end() - 1));		// [1]: x_max
-			edge[slice].push_back(*(y_pos.begin()));		// [2]: y_min
-			edge[slice].push_back(*(y_pos.end() - 1));		// [3]: y_max
+			edge[slice].push_back(x_pos[0]);					// [0]: x_min
+			edge[slice].push_back(x_pos[x_pos.size()-1]);		// [1]: x_max
+			edge[slice].push_back(y_pos[0]);					// [2]: y_min
+			edge[slice].push_back(y_pos[y_pos.size()-1]);		// [3]: y_max
 
 			// 尋找三角頂點
 			vertex[slice].assign(3, std::make_pair(0, 0));
@@ -1295,17 +1301,17 @@ void C3DProcess::OnBnClickedButtonDilation()
 				{
 					if (!m && (cur / col) == edge[slice].at(2))	// 中上(x, y)
 					{
-						vertex[slice][0] = std::make_pair((cur % col), (cur / col));
+						vertex[slice][0] = std::make_pair((cur % col), (cur / col)-3);
 						m = true;
 					}	
 					if (!l && (cur % col) == edge[slice].at(0))	// 左下(x, y)
 					{
-						vertex[slice][1] = std::make_pair((cur % col), (cur / col));
+						vertex[slice][1] = std::make_pair((cur % col), (cur / col)-3);
 						l = true;
 					}
 					if (!r && (cur % col) == edge[slice].at(1))	// 右下(x, y)
 					{
-						vertex[slice][2] = std::make_pair((cur % col), (cur / col));
+						vertex[slice][2] = std::make_pair((cur % col), (cur / col)-3);
 						r = true;
 					}
 				}
@@ -1344,7 +1350,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 尋找所有slice「中上點」的平均位置，並將該平均位置
 	// 提高至「最高中上點」的在上面一點點。(這樣才能盡量涵蓋到所有區域)
-	/*int n = 0, x = 0, y = 0, count = 0, y_min = 512;
+	int n = 0, x = 0, y = 0, count = 0, y_min = 512;
 	while (n < totalSlice)
 	{
 		if (vertex.find(n) != vertex.end())
@@ -1359,7 +1365,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	}
 	x_avgPos = x / count;
 	y_avgPos = y / count;
-	y_avgPos = y_min;*/
+	//y_avgPos = y_min;
 
 	// 重新訂定每一張slice的「中上點」並
 	// 計算每一張slice的斜線方程式係數(斜率.截距)
@@ -1412,7 +1418,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 		int slice = start;
 		while (slice < totalSlice)
 		{
-			//iter = edge.find(slice);
 			if ((iter = edge.find(slice)) != edge.end())
 			{
 				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
@@ -1423,8 +1428,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 							pro[slice][j * col + i] = 0;
 						else if (pro[slice][j * col + i] <= 180)
 							pro[slice][j * col + i] -= 20;
-						else if (pro[slice][j * col + i] <= 200 && pro[slice][j * col + i] > 180)
-							pro[slice][j * col + i] += 30;
+						//else if (pro[slice][j * col + i] <= 200 && pro[slice][j * col + i] > 180)
+						//	pro[slice][j * col + i] += 30;
 					}
 				}
 			}
@@ -1464,7 +1469,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 		int slice = start;
 		while (slice < totalSlice)
 		{
-			//iter = edge.find(slice);
 			if ((iter = edge.find(slice)) != edge.end())
 			{
 				for (int j = iter->second.at(2) + 1; j < iter->second.at(3); ++j)
@@ -1495,7 +1499,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 		int pixel = 0;
 		while (slice < totalSlice)
 		{
-			//iter = edge.find(slice);
 			if ((iter = edge.find(slice)) != edge.end())
 			{
 				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
@@ -2973,7 +2976,8 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		// 先判斷該種子點周圍的平均與標準差是否符合標準
 		if (n_sd > 15 || abs(n_avg - s_avg) > threshold)
 		{
-			judge[s_current.z][s_current.y * col + s_current.x] = -1;
+			// 就算不能當種子點，也能當別的種子點的成長對象
+			//judge[s_current.z][s_current.y * col + s_current.x] = -1;
 			sed_que.pop();
 			avg_que.pop();
 			s_cnt -= 1;
@@ -3044,12 +3048,11 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	Seed_s	n_site;
 	Seed_s	s_current;
 	Seed_s	seed = factor.seed;
-	queue<Seed_s> sed_que;
-	queue<double> avg_que;
-
 	BYTE**& img = m_pDoc->m_img;
 	BYTE**& imgPro = m_pDoc->m_imgPro;
-
+	std::queue<Seed_s> sed_que;
+	std::queue<double> avg_que;
+	
 	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
 	{
 		float value = line[pz][0].first * px + line[pz][0].second - py;
