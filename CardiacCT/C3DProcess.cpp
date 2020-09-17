@@ -2422,23 +2422,46 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		std::map<int, std::vector<std::pair<int, int>>>::iterator iter;
 		iter = vertex.find(slice);
 		CPoint pt;
-
-		for (int k = 0; k < iter->second.size(); k++)
+		
+		for (i = -1; i <= 1; i++)
 		{
-			for (i = -3; i <= 3; i++)
+			for (j = -1; j <= 1; j++)
 			{
-				for (j = -3; j <= 3; j++)
-				{
-					pt.x = (LONG)iter->second.at(k).first + i;
-					pt.y = (LONG)iter->second.at(k).second + j;
+				pt.x = (LONG)iter->second.at(0).first + i;
+				pt.y = (LONG)iter->second.at(0).second + j;
 
-					dc.SetPixel(pt, RGB(255, 30, 30));
-				}
+				dc.SetPixel(pt, RGB(255, 30, 30));
 			}
 		}
-		for (i = -3; i <= 3; i++)
+		CPoint ptmp;
+		ptmp.x = (iter->second.at(0).first + iter->second.at(1).first) / 2;
+		ptmp.y = (iter->second.at(0).second + iter->second.at(1).second) / 2;
+		for (i = -1; i <= 1; i++)
 		{
-			for (j = -3; j <= 3; j++)
+			for (j = -1; j <= 1; j++)
+			{
+				pt.x = (LONG)ptmp.x + i;
+				pt.y = (LONG)ptmp.y + j;
+
+				dc.SetPixel(pt, RGB(255, 30, 30));
+			}
+		}
+		ptmp.x = (iter->second.at(0).first + iter->second.at(2).first) / 2;
+		ptmp.y = (iter->second.at(0).second + iter->second.at(2).second) / 2;
+		for (i = -1; i <= 1; i++)
+		{
+			for (j = -1; j <= 1; j++)
+			{
+				pt.x = (LONG)ptmp.x + i;
+				pt.y = (LONG)ptmp.y + j;
+
+				dc.SetPixel(pt, RGB(255, 30, 30));
+			}
+		}
+		
+		for (i = -1; i <= 1; i++)
+		{
+			for (j = -1; j <= 1; j++)
 			{
 				pt.x = (LONG)x_avgPos + i;
 				pt.y = (LONG)y_avgPos + j;
