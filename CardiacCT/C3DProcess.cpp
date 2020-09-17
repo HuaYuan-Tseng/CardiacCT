@@ -596,9 +596,17 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		else if (m_disp_pro0)
 			m_pos_4.Format("%d", (int)m_pDoc->m_imgPro[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
 
+
 		// 觀察一下標準差
 		std::vector<int> pixel;
 		double avg = 0, sd = 0, cnt = 0;
+		auto outOfRange = [=](int x, int y, int z)
+		{
+			if (x < COL && x >= 0 && y < ROW && y >= 0 && z < Total_Slice && z >= 0)
+				return false;
+			else
+				return true;
+		};
 		auto average = [&](Seed_s s, std::vector<int>& v)
 		{	// 計算周圍像素平均
 			register int i, j, k;
@@ -608,8 +616,11 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 				{
 					for (i = -1; i <= 1; ++i)
 					{
-						v.push_back(m_pDoc->m_imgPro[s.z + k][(s.y + j) * COL + (s.x + i)]);
-						cnt += 1;
+						if (!outOfRange(s.x + i, s.x + j, s.z + k))
+						{
+							v.push_back(m_pDoc->m_imgPro[s.z + k][(s.y + j) * COL + (s.x + i)]);
+							cnt += 1;
+						}
 					}
 				}
 			}
@@ -630,6 +641,7 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 		TRACE1("Pixel = %s \n", m_pos_4);
 		TRACE3("Cnt = %f, Avg = %f, Sd = %f \n", cnt, avg, sd);
 		TRACE1("Judge = %d \n\n", judge[seed_pt.z][seed_pt.y * COL + seed_pt.x]);
+
 
 		if (m_3Dseed)
 			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
