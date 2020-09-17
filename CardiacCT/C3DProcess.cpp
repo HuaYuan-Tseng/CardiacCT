@@ -1313,17 +1313,17 @@ void C3DProcess::OnBnClickedButtonDilation()
 				{
 					if (!m && (cur / col) == edge[slice].at(2))	// 中上(x, y)
 					{
-						vertex[slice][0] = std::make_pair((cur % col), (cur / col)-3);
+						vertex[slice][0] = std::make_pair((cur % col), (cur / col));
 						m = true;
 					}	
 					if (!l && (cur % col) == edge[slice].at(0))	// 左下(x, y)
 					{
-						vertex[slice][1] = std::make_pair((cur % col), (cur / col)-3);
+						vertex[slice][1] = std::make_pair((cur % col), (cur / col));
 						l = true;
 					}
 					if (!r && (cur % col) == edge[slice].at(1))	// 右下(x, y)
 					{
-						vertex[slice][2] = std::make_pair((cur % col), (cur / col)-3);
+						vertex[slice][2] = std::make_pair((cur % col), (cur / col));
 						r = true;
 					}
 				}
@@ -1457,11 +1457,11 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 低通 濾波 (mean filter)
 	//
-	std::vector<int> avg_coef{ 1, 2, 1, 2, 4, 2, 1, 2, 1 };
-	//std::vector<int> avg_coef{ 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-	int cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
+	std::vector<int> avg_coef = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
+	//std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	int avg_cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
 
-	auto avgKernel = [&](int slice, int x, int y)
+	auto avgKernel = [=](int slice, int x, int y)
 	{
 		int sum = 0, n = 0;
 		for (int j = y - 1; j <= y + 1; ++j)
@@ -1472,9 +1472,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 				n += 1;
 			}
 		}
-		return sum / cnt;
+		return sum / avg_cnt;
 	};
-
 	auto avgFilter = [&](int start)
 	{
 		std::map<int, std::vector<int>>::iterator iter;
@@ -1503,7 +1502,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 銳化 濾波 (high-boost filter)
 	//
-	float weighted = -2.5f;
+	/*float weighted = -2.5f;
 	auto sharpFilter = [&](int start)
 	{
 		std::map<int, std::vector<int>>::iterator iter;
@@ -1521,6 +1520,50 @@ void C3DProcess::OnBnClickedButtonDilation()
 							weighted * (org[slice][j * col + i] - pro[slice][j * col + i]));
 						pixel = (pixel > 255) ? 255 : pixel;
 						pixel = (pixel < 0) ? 0 : pixel;
+						pro[slice][j * col + i] = pixel;
+					}
+				}
+			}
+			slice += 2;
+		}
+		if (start == 0)	TRACE("Even Slice high Filter : Success!\n");
+		else TRACE("Odd Slice high Filter : Success!\n");
+	};*/
+
+	// laplace filter
+	//
+	std::vector<int> sharp_coef = {0, -1, 0, -1, 4, -1, 0, -1, 0};
+	int weight = (sharp_coef[4] > 0) ? 1 : -1;
+
+	auto sharpKernel = [=](int slice, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				sum += (sharp_coef[n] * pro[slice][j * col + i]);
+				n += 1;
+			}
+		}
+		return sum;
+	};
+	auto sharpFilter = [&](int start)
+	{
+		std::map<int, std::vector<int>>::iterator iter;
+		int slice = start, pixel = 0;
+		while (slice < totalSlice)
+		{
+			if ((iter = edge.find(slice)) != edge.end())
+			{
+				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
+				{
+					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
+					{
+						pixel = weight * sharpKernel(slice, i, j);
+						pixel = pro[slice][j * col + i] + pixel;
+						if (pixel > 255)	pixel = 255;
+						else if (pixel < 0) pixel = 0;
 						pro[slice][j * col + i] = pixel;
 					}
 				}
@@ -1547,7 +1590,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 		RG_totalTerm.coefficient = 0.5L
 	};
 
-	RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
+	//RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
 	clock_t end = clock();
 	
 	PrepareVolume();
@@ -3170,21 +3213,41 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 							n_pixel =
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
-							if (n_pixel <= up_limit && n_pixel >= down_limit &&
-								lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
-								lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk)
-								)
+							if (n_pixel <= up_limit && n_pixel >= down_limit)
 							{
-								n_site.x = s_current.x + si;
-								n_site.y = s_current.y + sj;
-								n_site.z = s_current.z + sk;
-								sed_que.push(n_site);
+								if ((s_current.y + sj) < (vertex[s_current.z + sk].at(1).second + vertex[s_current.z + sk].at(0).second) / 2 ||
+									(s_current.y + sj) < (vertex[s_current.z + sk].at(2).second + vertex[s_current.z + sk].at(0).second) / 2)
+								{
+									if (lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
+										lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk))
+									{
+										n_site.x = s_current.x + si;
+										n_site.y = s_current.y + sj;
+										n_site.z = s_current.z + sk;
+										sed_que.push(n_site);
 
-								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
-								avg_que.push(s_avg);
-								s_cnt += 1;
+										s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+										avg_que.push(s_avg);
+										s_cnt += 1;
 
-								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 2;
+										src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 2;
+									}
+									else
+										src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -1;
+								}
+								else
+								{
+									n_site.x = s_current.x + si;
+									n_site.y = s_current.y + sj;
+									n_site.z = s_current.z + sk;
+									sed_que.push(n_site);
+
+									s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+									avg_que.push(s_avg);
+									s_cnt += 1;
+
+									src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 2;
+								}
 							}
 							else
 								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -1;
