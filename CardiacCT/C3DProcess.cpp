@@ -1284,9 +1284,9 @@ void C3DProcess::OnBnClickedButtonDilation()
 					x_pos.push_back(position % col);
 					y_pos.push_back(position / col);
 				}
-				position += 1;
+				position += 1;	
 			}
-			if (x_pos.empty() || y_pos.empty()) 
+			if (x_pos.size() < 2 || y_pos.size() < 2) 
 			{
 				x_pos.clear();	x_pos.shrink_to_fit();
 				y_pos.clear();	y_pos.shrink_to_fit();
@@ -1461,14 +1461,14 @@ void C3DProcess::OnBnClickedButtonDilation()
 	//std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 	int avg_cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
 
-	auto avgKernel = [=](int slice, int x, int y)
+	auto avgKernel = [=](BYTE* img, int slice, int x, int y)
 	{
 		int sum = 0, n = 0;
 		for (int j = y - 1; j <= y + 1; ++j)
 		{
 			for (int i = x - 1; i <= x + 1; ++i)
 			{
-				sum += (avg_coef[n] * pro[slice][j * col + i]);
+				sum += (avg_coef[n] * img[j * col + i]);
 				n += 1;
 			}
 		}
@@ -1482,13 +1482,16 @@ void C3DProcess::OnBnClickedButtonDilation()
 		{
 			if ((iter = edge.find(slice)) != edge.end())
 			{
-				for (int j = iter->second.at(2) + 1; j < iter->second.at(3); ++j)
+				BYTE* tmp = new BYTE[row * col];
+				std::memcpy(tmp, pro[slice], sizeof(BYTE)*row*col);
+				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
 				{
-					for (int i = iter->second.at(0) + 1; i < iter->second.at(1); ++i)
+					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
 					{
-						pro[slice][j * col + i] = avgKernel(slice, i, j);
+						pro[slice][j * col + i] = avgKernel(tmp, slice, i, j);
 					}
 				}
+				delete[] tmp;
 			}
 			slice += 2;
 		}
@@ -1532,17 +1535,18 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// laplace filter
 	//
-	std::vector<int> sharp_coef = {0, -1, 0, -1, 4, -1, 0, -1, 0};
-	int weight = (sharp_coef[4] > 0) ? 1 : -1;
+	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
+	std::vector<int> sharp_coef = {0, 1, 0, 1, -4, 1, 0, 1, 0};
+	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
 
-	auto sharpKernel = [=](int slice, int x, int y)
+	auto sharpKernel = [=](BYTE* img, int slice, int x, int y)
 	{
 		int sum = 0, n = 0;
 		for (int j = y - 1; j <= y + 1; ++j)
 		{
 			for (int i = x - 1; i <= x + 1; ++i)
 			{
-				sum += (sharp_coef[n] * pro[slice][j * col + i]);
+				sum += (sharp_coef[n] * img[j * col + i]);
 				n += 1;
 			}
 		}
@@ -1556,17 +1560,20 @@ void C3DProcess::OnBnClickedButtonDilation()
 		{
 			if ((iter = edge.find(slice)) != edge.end())
 			{
+				BYTE* tmp = new BYTE[row * col];
+				std::memcpy(tmp, pro[slice], sizeof(BYTE)*row*col);
 				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
 				{
 					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
 					{
-						pixel = weight * sharpKernel(slice, i, j);
-						pixel = pro[slice][j * col + i] + pixel;
+						pixel = weight * sharpKernel(tmp, slice, i, j);
+						pixel = tmp[j * col + i] + pixel;
 						if (pixel > 255)	pixel = 255;
 						else if (pixel < 0) pixel = 0;
 						pro[slice][j * col + i] = pixel;
 					}
 				}
+				delete[] tmp;
 			}
 			slice += 2;
 		}
@@ -1590,7 +1597,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 		RG_totalTerm.coefficient = 0.5L
 	};
 
-	//RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
+	RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
 	clock_t end = clock();
 	
 	PrepareVolume();
