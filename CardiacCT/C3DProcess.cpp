@@ -1069,7 +1069,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		RG_totalTerm.seed = seed_img,
 		RG_totalTerm.s_kernel = 3,
 		RG_totalTerm.n_kernel = 3,
-		RG_totalTerm.threshold = 80L,
+		RG_totalTerm.threshold = 70L,
 		RG_totalTerm.coefficient = 2.5L
 	};
 	
@@ -1255,8 +1255,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	const int totalSlice = Total_Slice;
 	BYTE**& org = m_pDoc->m_img;
 	BYTE**& pro = m_pDoc->m_imgPro;
-	clock_t start = clock();
-
+	
 	CWait* m_wait = new CWait();
 	m_wait->Create(IDD_DIALOG_WAIT);
 	m_wait->ShowWindow(SW_NORMAL);
@@ -1264,6 +1263,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
 	// 
+	clock_t start = clock();
 	std::map<int, std::vector<int>> edge;
 
 	auto findBorder = [&](int start)
@@ -1330,24 +1330,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 				cur += 1;
 			}
 
-			//// 計算每張slice三角頂點的斜線方程式係數
-			//line[slice].assign(2, std::make_pair(0.0f, 0.0f));
-			//float slope1 = 0, slope2 = 0;						// 斜率 slope
-			//float inter1 = 0, inter2 = 0;						// 截距 intercept
-			//slope1 = (float)(vertex[slice][0].second - vertex[slice][1].second) / 
-			//		(float)(vertex[slice][0].first - vertex[slice][1].first);
-			//slope2 = (float)(vertex[slice][0].second - vertex[slice][2].second) / 
-			//		(float)(vertex[slice][0].first - vertex[slice][2].first);
-
-			//inter1 = (float)(vertex[slice][0].second + vertex[slice][1].second) -
-			//			slope1 * (vertex[slice][0].first + vertex[slice][1].first);
-			//inter1 /= 2;
-			//inter2 = (float)(vertex[slice][0].second + vertex[slice][2].second) -
-			//			slope2 * (vertex[slice][0].first + vertex[slice][2].first);
-			//inter2 /= 2;
-			//line[slice][0] = std::make_pair(slope1, inter1);	// left line
-			//line[slice][1] = std::make_pair(slope2, inter2);	// right line
-
 			x_pos.clear();	x_pos.shrink_to_fit();
 			y_pos.clear();	y_pos.shrink_to_fit();
 			slice += 2;
@@ -1362,7 +1344,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 尋找所有slice「中上點」的平均位置，並將該平均位置
 	// 提高至「最高中上點」的在上面一點點。(這樣才能盡量涵蓋到所有區域)
-	int n = 0, x = 0, y = 0, count = 0, y_min = 512;
+	/*int n = 0, x = 0, y = 0, count = 0, y_min = 512;
 	while (n < totalSlice)
 	{
 		if (vertex.find(n) != vertex.end())
@@ -1376,7 +1358,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 		++n;
 	}
 	x_avgPos = x / count;
-	y_avgPos = y / count;
+	y_avgPos = y / count;*/
 	//y_avgPos = y_min;
 
 	// 重新訂定每一張slice的「中上點」並
@@ -1391,8 +1373,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 				slice += 2;
 				continue;
 			}
-			//vertex[slice][0].first = x_avgPos;
-			//vertex[slice][0].second = y_avgPos;
 
 			// 計算每張slice三角頂點的斜線方程式係數
 			line[slice].assign(2, std::make_pair(0.0f, 0.0f));
@@ -1457,8 +1437,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 	// 低通 濾波 (mean filter)
 	//
-	std::vector<int> avg_coef = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
-	//std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	//std::vector<int> avg_coef = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
+	std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 	int avg_cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
 
 	auto avgKernel = [=](BYTE* img, int slice, int x, int y)
@@ -1503,37 +1483,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	thread th5(avgFilter, 1);
 	th4.join();	th5.join();
 
-	// 銳化 濾波 (high-boost filter)
-	//
-	/*float weighted = -2.5f;
-	auto sharpFilter = [&](int start)
-	{
-		std::map<int, std::vector<int>>::iterator iter;
-		int slice = start;
-		int pixel = 0;
-		while (slice < totalSlice)
-		{
-			if ((iter = edge.find(slice)) != edge.end())
-			{
-				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
-				{
-					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
-					{
-						pixel = (int)(org[slice][j * col + i] +
-							weighted * (org[slice][j * col + i] - pro[slice][j * col + i]));
-						pixel = (pixel > 255) ? 255 : pixel;
-						pixel = (pixel < 0) ? 0 : pixel;
-						pro[slice][j * col + i] = pixel;
-					}
-				}
-			}
-			slice += 2;
-		}
-		if (start == 0)	TRACE("Even Slice high Filter : Success!\n");
-		else TRACE("Odd Slice high Filter : Success!\n");
-	};*/
-
-	// laplace filter
+	// 高通 濾波 (laplace filter)
 	//
 	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
 	std::vector<int> sharp_coef = {0, 1, 0, 1, -4, 1, 0, 1, 0};
