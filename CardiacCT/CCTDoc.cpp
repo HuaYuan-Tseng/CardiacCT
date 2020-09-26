@@ -274,6 +274,7 @@ void CCTDoc::OnToolButtonDirContents()
 		if (m_dirFormDlg->DoModal() == IDOK)
 		{
 			BuildDataMatrix();
+			OnToolButton3DProcess();	//
 		}
 		delete m_dirFormDlg;
 	}
@@ -384,8 +385,7 @@ void CCTDoc::BuildDataMatrix()
 	
 	thread th0(loadImage, 0);
 	thread th1(loadImage, 1);
-	th0.join();
-	th1.join();
+	th0.join();	th1.join();
 
 	m_wait->DestroyWindow();
 	delete m_wait;

@@ -2420,9 +2420,9 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 	if (!vertex.empty())
 	{
 		std::map<int, std::vector<std::pair<int, int>>>::iterator iter;
-		iter = vertex.find(slice);
 		CPoint pt;
 		
+		iter = vertex.find(slice);
 		for (i = -1; i <= 1; i++)
 		{
 			for (j = -1; j <= 1; j++)
@@ -2434,6 +2434,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			}
 		}
 		CPoint ptmp;
+		// 中上點與左下點的中間點
 		ptmp.x = (iter->second.at(0).first + iter->second.at(1).first) / 2;
 		ptmp.y = (iter->second.at(0).second + iter->second.at(1).second) / 2;
 		for (i = -1; i <= 1; i++)
@@ -2446,6 +2447,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 				dc.SetPixel(pt, RGB(255, 30, 30));
 			}
 		}
+		// 中上點與左下點的中間點
 		ptmp.x = (iter->second.at(0).first + iter->second.at(2).first) / 2;
 		ptmp.y = (iter->second.at(0).second + iter->second.at(2).second) / 2;
 		for (i = -1; i <= 1; i++)
@@ -2935,20 +2937,19 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	const int col = COL;
 	const int totalSlice = Total_Slice;
 	const int s_range = (factor.s_kernel - 1) / 2;
-	unsigned long long  n_pixel = 0, s_pixel = 0;
-	unsigned long long	s_cnt = 0;
-	register int si, sj, sk;
-
-	double	s_avg;
-	double	up_limit, down_limit;
-	double	threshold = factor.threshold;
-	double	coefficient = factor.coefficient;
-	
-	Seed_s	n_site;
-	Seed_s	s_current;
+	const double coefficient = factor.coefficient;
+	const double threshold = factor.threshold;
 	Seed_s	seed = factor.seed;
 	BYTE**& img = m_pDoc->m_img;
 	BYTE**& imgPro = m_pDoc->m_imgPro;
+
+	double	s_avg;
+	unsigned long long	s_cnt = 0;
+	unsigned long long  n_pixel = 0, s_pixel = 0;
+	register int si, sj, sk;
+
+	Seed_s	n_site;
+	Seed_s	s_current;
 	std::queue<Seed_s> sed_que;
 	std::queue<double> avg_que;
 
@@ -2956,7 +2957,8 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	{	// 判斷有無超出影像邊界
 		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
 			return false;
-		else return true;
+		else 
+			return true;
 	};
 	
 	s_avg = imgPro[seed.z][seed.y * col + seed.x];
@@ -3020,8 +3022,8 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		}
 		
 		// 制定、修正成長標準的上下限
-		up_limit = n_avg + (coefficient * n_sd);
-		down_limit = n_avg - (coefficient * n_sd);
+		double up_limit = n_avg + (coefficient * n_sd);
+		double down_limit = n_avg - (coefficient * n_sd);
 		
 		// 判斷是否符合成長標準
 		for (sk = -s_range; sk <= s_range; ++sk)
