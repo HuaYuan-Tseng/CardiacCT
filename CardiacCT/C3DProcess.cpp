@@ -255,7 +255,10 @@ BOOL C3DProcess::OnInitDialog()
 
 	// 更換Dialog標題
 	//
-	SetWindowText("3D Processing - " + m_pDoc->m_dir->PatientName);
+	CString series;	
+	series.Format(_T("%d"), m_pDoc->displaySeries);
+	SetWindowText("3D Processing - " + 
+		m_pDoc->m_dir->PatientName + " - " + series);
 
 	// 設定繪圖座標軸、區域與物件
 	//
@@ -1069,10 +1072,10 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		RG_totalTerm.seed = seed_img,
 		RG_totalTerm.s_kernel = 3,
 		RG_totalTerm.n_kernel = 3,
-		RG_totalTerm.threshold = 70L,
-		RG_totalTerm.coefficient = 2.5L
+		RG_totalTerm.threshold = 10.0,
+		RG_totalTerm.coefficient = 1.0
 	};
-	
+
 	// 執行 3D_Region growing
 	//
 	start = clock();
@@ -2943,32 +2946,32 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	BYTE**& img = m_pDoc->m_img;
 	BYTE**& imgPro = m_pDoc->m_imgPro;
 
-	double	s_avg;
-	unsigned long long	s_cnt = 0;
-	unsigned long long  n_pixel = 0, s_pixel = 0;
-	register int si, sj, sk;
-
 	Seed_s	n_site;
 	Seed_s	s_current;
 	std::queue<Seed_s> sed_que;
 	std::queue<double> avg_que;
 
-	auto outOfRange = [=](int px, int py, int pz)
-	{	// 判斷有無超出影像邊界
-		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
-			return false;
-		else 
-			return true;
-	};
-	
+	double	s_avg;
+	unsigned long long	s_cnt = 0;
+	unsigned long long  n_pixel = 0, s_pixel = 0;
+
 	s_avg = imgPro[seed.z][seed.y * col + seed.x];
 	src[seed.z][seed.y * col + seed.x] = 1;
 	avg_que.push(s_avg);
 	sed_que.push(seed);
 	s_cnt += 1;
+
+	auto outOfRange = [=](int px, int py, int pz)
+	{	// 判斷有無超出影像邊界
+		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
+			return false;
+		else
+			return true;
+	};
 	
 	while (!sed_que.empty())
 	{
+		register int si, sj, sk;
 		s_avg = avg_que.front();
 		s_current = sed_que.front();
 
@@ -3011,10 +3014,10 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		n_sd = sqrt(n_sd / cnt);
 
 		// 先判斷該種子點周圍的平均與標準差是否符合標準
-		if (n_sd > 15 || abs(n_avg - s_avg) > threshold)
+		if (n_sd > 10 || abs(n_avg - s_avg) > threshold)
 		{
 			// 就算不能當種子點，也能當別的種子點的成長對象
-			//judge[s_current.z][s_current.y * col + s_current.x] = -1;
+			src[s_current.z][s_current.y * col + s_current.x] = -1;
 			sed_que.pop();
 			avg_que.pop();
 			s_cnt -= 1;
