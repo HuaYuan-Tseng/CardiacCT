@@ -1060,20 +1060,76 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	//
 	if (!get_3Dseed)	return;
 	
-	clock_t start, end;
 	CWait* m_wait = new CWait();
 	m_wait->Create(IDD_DIALOG_WAIT);
 	m_wait->ShowWindow(SW_NORMAL);
 	m_wait->setDisplay("Region growing...");
 
+	// 高通 濾波 (laplace filter)
+	//
+	BYTE**& pro = m_pDoc->m_imgPro;
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
+	std::vector<int> sharp_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
+	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
+
+	auto sharpKernel = [=](BYTE* img, int slice, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				sum += (sharp_coef[n] * img[j * col + i]);
+				n += 1;
+			}
+		}
+		return sum;
+	};
+	auto sharpFilter = [&](int start)
+	{
+		int slice = start, pixel = 0;
+		while (slice < totalSlice)
+		{
+			BYTE* tmp = new BYTE[row * col];
+			std::memcpy(tmp, pro[slice], sizeof(BYTE) * row * col);
+			for (int j = 1; j < row-1; ++j)
+			{
+				for (int i = 1; i < col-1; ++i)
+				{
+					pixel = weight * sharpKernel(tmp, slice, i, j);
+					pixel = tmp[j * col + i] + pixel;
+					if (pixel > 255)	pixel = 255;
+					else if (pixel < 0) pixel = 0;
+					pro[slice][j * col + i] = pixel;
+				}
+			}
+			delete[] tmp;
+			slice += 4;
+		}
+		if (start == 0)	TRACE("Even Slice high Filter : Success!\n");
+		else TRACE("Odd Slice high Filter : Success!\n");
+	};
+
+	clock_t start = clock();
+	thread th0(sharpFilter, 0);
+	thread th1(sharpFilter, 1);
+	thread th2(sharpFilter, 2);
+	thread th3(sharpFilter, 3);
+	th0.join();	th1.join(); th2.join();	th3.join();
+	clock_t end = clock();
+	TRACE1("Sharp Time : %f (s) \n\n", (double)((end - start)) / CLOCKS_PER_SEC);
+	
 	// 宣告 成長標準 參數
 	//
 	RG_totalTerm = {
 		RG_totalTerm.seed = seed_img,
 		RG_totalTerm.s_kernel = 3,
 		RG_totalTerm.n_kernel = 3,
-		RG_totalTerm.threshold = 10.0,
-		RG_totalTerm.coefficient = 1.0
+		RG_totalTerm.threshold = 25.0,
+		RG_totalTerm.coefficient = 1.5
 	};
 
 	// 執行 3D_Region growing
@@ -3014,10 +3070,10 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		n_sd = sqrt(n_sd / cnt);
 
 		// 先判斷該種子點周圍的平均與標準差是否符合標準
-		if (n_sd > 10 || abs(n_avg - s_avg) > threshold)
+		if (n_sd > 15 || abs(n_avg - s_avg) > threshold)
 		{
 			// 就算不能當種子點，也能當別的種子點的成長對象
-			src[s_current.z][s_current.y * col + s_current.x] = -1;
+			//src[s_current.z][s_current.y * col + s_current.x] = -1;
 			sed_que.pop();
 			avg_que.pop();
 			s_cnt -= 1;
