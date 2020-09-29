@@ -1107,7 +1107,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 				}
 			}
 			delete[] tmp;
-			slice += 4;
+			slice += 6;
 		}
 		if (start == 0)	TRACE("Even Slice high Filter : Success!\n");
 		else TRACE("Odd Slice high Filter : Success!\n");
@@ -1118,9 +1118,12 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	thread th1(sharpFilter, 1);
 	thread th2(sharpFilter, 2);
 	thread th3(sharpFilter, 3);
-	th0.join();	th1.join(); th2.join();	th3.join();
+	thread th4(sharpFilter, 4);
+	thread th5(sharpFilter, 5);
+	th0.join();	th1.join(); th2.join();	
+	th3.join(); th4.join(); th5.join();
 	clock_t end = clock();
-	TRACE1("Sharp Time : %f (s) \n\n", (double)((end - start)) / CLOCKS_PER_SEC);
+	TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	
 	// 宣告 成長標準 參數
 	//
@@ -1128,12 +1131,13 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		RG_totalTerm.seed = seed_img,
 		RG_totalTerm.s_kernel = 3,
 		RG_totalTerm.n_kernel = 3,
-		RG_totalTerm.threshold = 25.0,
+		RG_totalTerm.threshold = 50.0,
 		RG_totalTerm.coefficient = 1.5
 	};
 
 	// 執行 3D_Region growing
 	//
+	//clock_t start, end;
 	start = clock();
 	RG_3D_ConfidenceConnected(judge, RG_totalTerm);
 	end = clock();
@@ -1145,7 +1149,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	m_result.Format("%lf", RG_totalVolume);
 
 	TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
-	TRACE1("RG Time : %f (s) \n\n", (double)((end - start)) / CLOCKS_PER_SEC);
+	TRACE1("RG Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	
 	GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(TRUE);
 	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
@@ -3069,20 +3073,20 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		}
 		n_sd = sqrt(n_sd / cnt);
 
-		// 先判斷該種子點周圍的平均與標準差是否符合標準
-		if (n_sd > 15 || abs(n_avg - s_avg) > threshold)
-		{
-			// 就算不能當種子點，也能當別的種子點的成長對象
-			//src[s_current.z][s_current.y * col + s_current.x] = -1;
-			sed_que.pop();
-			avg_que.pop();
-			s_cnt -= 1;
-			continue;
-		}
+		//// 先判斷該種子點周圍的平均與標準差是否符合標準
+		//if (n_sd > 15 || abs(n_avg - s_avg) > threshold)
+		//{
+		//	// 就算不能當種子點，也能當別的種子點的成長對象
+		//	//src[s_current.z][s_current.y * col + s_current.x] = -1;
+		//	sed_que.pop();
+		//	avg_que.pop();
+		//	s_cnt -= 1;
+		//	continue;
+		//}
 		
 		// 制定、修正成長標準的上下限
-		double up_limit = n_avg + (coefficient * n_sd);
-		double down_limit = n_avg - (coefficient * n_sd);
+		//double up_limit = n_avg + (coefficient * n_sd);
+		//double down_limit = n_avg - (coefficient * n_sd);
 		
 		// 判斷是否符合成長標準
 		for (sk = -s_range; sk <= s_range; ++sk)
@@ -3098,7 +3102,8 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 							n_pixel =
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
-							if (n_pixel <= up_limit && n_pixel >= down_limit)
+							//if (n_pixel <= up_limit && n_pixel >= down_limit)
+							if (n_sd <= 20 && abs(n_pixel - s_avg) <= threshold)
 							{
 								n_site.x = s_current.x + si;
 								n_site.y = s_current.y + sj;
