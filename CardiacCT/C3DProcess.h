@@ -98,8 +98,9 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 		_IN		Seed_s	seed;			// 種子點
 		_IN		int		s_kernel;		// 種子點鄰近範圍
 		_IN		int		n_kernel;		// 種子點鄰近像素的周邊範圍
-		_IN		double	threshold;		// 成長條件 : 閾值
-		_IN		double	coefficient;	// 成長條件 : 倍率
+		_IN		double	pix_thresh;		// 成長條件 : 像素 閾值
+		_IN		double	sd_thresh;		// 成長條件 : 標準差 閾值
+		_IN		double	sd_coeffi;		// 成長條件 : 標準差 倍率
 	};
 
 	Seed_d			seed_gl;			// 在3D視窗點擊的seed openGL世界座標
@@ -165,7 +166,6 @@ public:
 	
 	void	RG_3D_Link(short** src, RG_factor& factor);
 	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均與當前強度)
-	void	RG_3D_LocalAvgConnected(short** src, RG_factor& factor);
 	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);
 	void	RG2_3D_ConfidenceConnected(short** src, RG_factor& factor);
 
