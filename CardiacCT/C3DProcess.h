@@ -126,18 +126,18 @@ unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 
 ///------------- ↓ 實驗區 ↓ -------------///
 
-	RG_factor		RG_totalTerm;		// 3D區域成長 : 條件因子
-	double			RG_totalVolume;		// 3D區域成長 : 總體積(judge = 1)
+	RG_factor		RG_term;			// 3D區域成長 : 條件因子
+	double			RG_totalVolume;		// 3D區域成長 : 總體積
 
 	int x_avgPos, y_avgPos;
 	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
 
 	std::map<int, std::vector<std::pair<float, float>>> line;			// 紀錄每張slice的直線方程式的係數(斜率.截距)
 
-	std::vector<int> judge_type;										// 紀錄判定類型(先擱著不管
+	std::vector<int> judge_type;										// 紀錄判定類型(+ : 要的 , - : 不要的)
 																		//  0 : 還沒判斷
-																		// -1 : 判斷為 不要 的
-																		//  1 : 判斷為 要   的
+																		//  1.2 : spine
+																		//  3.4 : sternum 
 
 
 ///------------- ↑ 實驗區 ↑ -------------///
@@ -224,6 +224,11 @@ public:										// CString的部分，有在Attributes另外設變數儲存
 	CString		m_pos_6;
 	CString		m_pos_7;
 	CString		m_pos_8;
+	CString		m_sKernel;
+	CString		m_nKernel;
+	CString		m_pix_th;
+	CString		m_SDth;
+	CString		m_SDco;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
@@ -267,9 +272,13 @@ public:
 	afx_msg void OnBnClickedButtonGrowingRemove();
 	afx_msg void OnBnClickedButtonGrowingClear();
 	afx_msg void OnBnClickedButtonDilation();
-	afx_msg void OnBnClickedCheckDispOrg();
 	afx_msg void OnBnClickedCheckDispPro0();
-	
-	afx_msg void OnBnClickedCheckSpine();
+	afx_msg void OnBnClickedCheckDispOrg();
 	afx_msg void OnBnClickedCheckSternum();
+	afx_msg void OnBnClickedCheckSpine();
+	afx_msg void OnEnChangeEditSKernel();
+	afx_msg void OnEnChangeEditNKernel();
+	afx_msg void OnEnChangeEditPixTh();
+	afx_msg void OnEnChangeEditSdTh();
+	afx_msg void OnEnChangeEditSdCo();
 };

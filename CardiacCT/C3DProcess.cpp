@@ -70,6 +70,11 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_pos_6(_T("0"))
 	, m_pos_7(_T("0"))
 	, m_pos_8(_T("0"))
+	, m_sKernel(_T("3"))
+	, m_nKernel(_T("3"))
+	, m_pix_th(_T("50.0"))
+	, m_SDth(_T("20.0"))
+	, m_SDco(_T("1.5"))
 {
 	mode = ControlModes::ControlObject;
 
@@ -105,6 +110,12 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	RG_totalVolume = 0.0F;
 	HUThreshold = atoi(m_HUThreshold);
 	PixelThreshold = atoi(m_pixelThreshold);
+
+	RG_term.s_kernel = 3;
+	RG_term.n_kernel = 3;
+	RG_term.pix_thresh = 50.0;
+	RG_term.sd_thresh = 20.0;
+	RG_term.sd_coeffi = 1.5;
 
 	seed_pt = { 0, 0, 0 };
 	seed_img = { 0, 0, 0 };
@@ -162,6 +173,16 @@ C3DProcess::~C3DProcess()
 		m_pos_7.Empty();
 	if (m_pos_8.IsEmpty() != true)
 		m_pos_8.Empty();
+	if (m_sKernel.IsEmpty() != true)
+		m_sKernel.Empty();
+	if (m_nKernel.IsEmpty() != true)
+		m_nKernel.Empty();
+	if (m_pix_th.IsEmpty() != true)
+		m_pix_th.Empty();
+	if (m_SDth.IsEmpty() != true)
+		m_SDth.Empty();
+	if (m_SDco.IsEmpty() != true)
+		m_SDco.Empty();
 
 	glDeleteTextures(ImageFrame, textureName);
 }
@@ -170,7 +191,7 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_SCROLLBAR_2D, m_ScrollBar);
-	
+
 	DDX_Check(pDX, IDC_CHECK_PLANE, m_plane);
 	DDX_Check(pDX, IDC_CHECK_Object, m_object);
 	DDX_Check(pDX, IDC_CHECK_3D_SEED, m_3Dseed);
@@ -202,6 +223,11 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_POS6, m_pos_6);
 	DDX_Text(pDX, IDC_EDIT_POS7, m_pos_7);
 	DDX_Text(pDX, IDC_EDIT_POS8, m_pos_8);
+	DDX_Text(pDX, IDC_EDIT_S_KERNEL, m_sKernel);
+	DDX_Text(pDX, IDC_EDIT_N_KERNEL, m_nKernel);
+	DDX_Text(pDX, IDC_EDIT_PIX_TH, m_pix_th);
+	DDX_Text(pDX, IDC_EDIT_SD_TH, m_SDth);
+	DDX_Text(pDX, IDC_EDIT_SD_CO, m_SDco);
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -240,13 +266,17 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 	ON_BN_CLICKED(IDC_BUTTON_DILATION, &C3DProcess::OnBnClickedButtonDilation)
+	ON_BN_CLICKED(IDC_CHECK_STERNUM, &C3DProcess::OnBnClickedCheckSternum)
+	ON_BN_CLICKED(IDC_CHECK_SPINE, &C3DProcess::OnBnClickedCheckSpine)
 
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
-	
-	ON_BN_CLICKED(IDC_CHECK_SPINE, &C3DProcess::OnBnClickedCheckSpine)
-	ON_BN_CLICKED(IDC_CHECK_STERNUM, &C3DProcess::OnBnClickedCheckSternum)
+	ON_EN_CHANGE(IDC_EDIT_S_KERNEL, &C3DProcess::OnEnChangeEditSKernel)
+	ON_EN_CHANGE(IDC_EDIT_N_KERNEL, &C3DProcess::OnEnChangeEditNKernel)
+	ON_EN_CHANGE(IDC_EDIT_PIX_TH, &C3DProcess::OnEnChangeEditPixTh)
+	ON_EN_CHANGE(IDC_EDIT_SD_TH, &C3DProcess::OnEnChangeEditSdTh)
+	ON_EN_CHANGE(IDC_EDIT_SD_CO, &C3DProcess::OnEnChangeEditSdCo)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -751,12 +781,57 @@ void C3DProcess::OnEnChangeEditHuThreshold()
 
 void C3DProcess::OnEnChangeEditSlices()
 {
-	// 传openGL酶籹蝴紇钩瞶糷计
-	// Edit : vertex's slices (m_slices)
+	// 传 openGL酶籹蝴紇钩瞶糷计
+	// EditBox : vertex's slices (m_slices)
 	//
 	UpdateData(TRUE);
 	glSlices = atoi(m_slices);
 	Draw3DImage(true);
+}
+
+void C3DProcess::OnEnChangeEditSKernel()
+{
+	// 传 跋办Θ夹非 贺翴kernel
+	// EditBox : s_kernel (m_sKernel)
+	//
+	UpdateData(TRUE);
+	RG_term.s_kernel = atoi(m_sKernel);
+}
+
+void C3DProcess::OnEnChangeEditNKernel()
+{
+	// 传 跋办Θ夹非 贺翴㏄瞅钩翴kernel
+	// EditBox : n_kernel (m_nKernel)
+	//
+	UpdateData(TRUE);
+	RG_term.n_kernel = atoi(m_nKernel);
+}
+
+void C3DProcess::OnEnChangeEditPixTh()
+{
+	// 传 跋办Θ夹非 钩霩
+	// EditBox : pix_th (m_pix_th)
+	//
+	UpdateData(TRUE);
+	RG_term.pix_thresh = atoi(m_pix_th);
+}
+
+void C3DProcess::OnEnChangeEditSdTh()
+{
+	// 传 跋办Θ夹非 夹非畉霩
+	// EditeBox : sd_th (m_SDth)
+	//
+	UpdateData(TRUE);
+	RG_term.sd_thresh = atoi(m_SDth);
+}
+
+void C3DProcess::OnEnChangeEditSdCo()
+{
+	// 传 跋办Θ夹非 夹非畉瞯
+	// EditBox : sd_co (m_SDco)
+	//
+	UpdateData(TRUE);
+	RG_term.sd_coeffi = atoi(m_SDco);
 }
 
 void C3DProcess::OnBnClickedCheckObject()
@@ -1108,6 +1183,11 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	// Button : 3D Region Growing
 	//
 	if (!get_3Dseed)	return;
+	if (!m_spine && !m_sternum)
+	{
+		MessageBox("Please select the bone !!");
+		return;
+	}
 	
 	clock_t start, end;
 	CWait* m_wait = new CWait();
@@ -1117,19 +1197,12 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	
 	//  Θ夹非 把计
 	//
-	RG_totalTerm = {
-		RG_totalTerm.seed = seed_img,
-		RG_totalTerm.s_kernel = 3,
-		RG_totalTerm.n_kernel = 3,
-		RG_totalTerm.pix_thresh = 50.0,
-		RG_totalTerm.sd_thresh = 20.0,
-		RG_totalTerm.sd_coeffi = 1.5
-	};
+	RG_term.seed = seed_img;
 
 	// 磅︽ 3D_Region growing
 	//
 	start = clock();
-	RG_3D_ConfidenceConnected(judge, RG_totalTerm);
+	RG_3D_ConfidenceConnected(judge, RG_term);
 	end = clock();
 
 	// 絋粄だ澄砰縩
@@ -1604,15 +1677,15 @@ void C3DProcess::OnBnClickedButtonDilation()
 	//
 	//      Ω 跋 办 Θ 
 	//
-	RG_totalTerm = {
-		RG_totalTerm.seed = seed_img,
-		RG_totalTerm.s_kernel = 3,
-		RG_totalTerm.n_kernel = 3,
-		RG_totalTerm.pix_thresh = 50.0,
-		RG_totalTerm.sd_coeffi = 0.5
+	RG_term = {
+		RG_term.seed = seed_img,
+		RG_term.s_kernel = 3,
+		RG_term.n_kernel = 3,
+		RG_term.pix_thresh = 50.0,
+		RG_term.sd_coeffi = 0.5
 	};
 
-	RG2_3D_ConfidenceConnected(judge, RG_totalTerm);
+	RG2_3D_ConfidenceConnected(judge, RG_term);
 	
 	Dilation_3D(judge, 26);
 
@@ -3650,3 +3723,4 @@ double C3DProcess::Calculate_Volume(short** src)
 		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	}
 */
+

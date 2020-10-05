@@ -81,8 +81,13 @@
 #define IDC_CHECK_DISP_PRO0             1050
 #define ID_EXIT                         1051
 #define IDC_CHECK_SPINE                 1052
-#define IDC_CHECK5                      1053
 #define IDC_CHECK_STERNUM               1053
+#define IDC_EDIT_S_KERNEL               1054
+#define IDC_EDIT_N_KERNEL               1055
+#define IDC_EDIT_PIX_TH                 1056
+#define IDC_EDIT_SD_TH                  1057
+#define IDC_EDIT7                       1058
+#define IDC_EDIT_SD_CO                  1058
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -95,7 +100,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        325
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1054
+#define _APS_NEXT_CONTROL_VALUE         1055
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif
