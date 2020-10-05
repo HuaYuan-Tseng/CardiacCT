@@ -47,6 +47,8 @@ IMPLEMENT_DYNAMIC(C3DProcess, CDialogEx)
 C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_3DPROCESS, pParent)
 	, m_3Dseed(FALSE)
+	, m_spine(FALSE)
+	, m_sternum(FALSE)
 	, m_object(TRUE)
 	, m_plane(FALSE)
 	, m_disp_org(TRUE)
@@ -168,10 +170,12 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_SCROLLBAR_2D, m_ScrollBar);
-
+	
 	DDX_Check(pDX, IDC_CHECK_PLANE, m_plane);
 	DDX_Check(pDX, IDC_CHECK_Object, m_object);
 	DDX_Check(pDX, IDC_CHECK_3D_SEED, m_3Dseed);
+	DDX_Check(pDX, IDC_CHECK_SPINE, m_spine);
+	DDX_Check(pDX, IDC_CHECK_STERNUM, m_sternum);
 	DDX_Check(pDX, IDC_CHECK_DISP_ORG, m_disp_org);
 	DDX_Check(pDX, IDC_CHECK_DISP_PRO0, m_disp_pro0);
 	DDX_Check(pDX, IDC_CHECK_COMPLETE, m_complete);
@@ -211,6 +215,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_WM_RBUTTONDOWN()
 	ON_WM_RBUTTONDBLCLK()
 
+	ON_BN_CLICKED(ID_EXIT, &C3DProcess::OnBnClickedExit)
 	ON_BN_CLICKED(IDC_CHECK_3D_SEED, &C3DProcess::OnBnClickedCheck3dSeed)
 	ON_BN_CLICKED(IDC_CHECK_PLANE, &C3DProcess::OnBnClickedCheckPlane)
 	ON_BN_CLICKED(IDC_CHECK_Object, &C3DProcess::OnBnClickedCheckObject)
@@ -239,6 +244,9 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
 	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
 	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
+	
+	ON_BN_CLICKED(IDC_CHECK_SPINE, &C3DProcess::OnBnClickedCheckSpine)
+	ON_BN_CLICKED(IDC_CHECK_STERNUM, &C3DProcess::OnBnClickedCheckSternum)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -289,6 +297,9 @@ BOOL C3DProcess::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_GROWING_RECOVERY)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
+
+	GetDlgItem(IDC_CHECK_SPINE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_CHECK_STERNUM)->EnableWindow(FALSE);
 
 	//-------------------------------------------------------------------------------------//
 	// 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值
@@ -860,6 +871,8 @@ void C3DProcess::OnBnClickedCheck3dSeed()
 			GetDlgItem(IDC_BUTTON_GROWING_REMOVE)->EnableWindow(TRUE);
 			GetDlgItem(IDC_BUTTON_GROWING_RECOVERY)->EnableWindow(TRUE);
 		}
+		GetDlgItem(IDC_CHECK_SPINE)->EnableWindow(TRUE);
+		GetDlgItem(IDC_CHECK_STERNUM)->EnableWindow(TRUE);
 	}
 	else
 	{
@@ -870,9 +883,37 @@ void C3DProcess::OnBnClickedCheck3dSeed()
 		GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
+		GetDlgItem(IDC_CHECK_STERNUM)->EnableWindow(FALSE);
+		GetDlgItem(IDC_CHECK_SPINE)->EnableWindow(FALSE);
 	}
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnBnClickedCheckSpine()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : Spine (m_spine)
+	//
+	if (m_spine)
+		m_spine = FALSE;
+	else
+		m_spine = TRUE;
+	m_sternum = FALSE;
+	UpdateData(FALSE);
+}
+
+void C3DProcess::OnBnClickedCheckSternum()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : Sternum (m_sternum)
+	//
+	if (m_sternum)
+		m_sternum = FALSE;
+	else
+		m_sternum = TRUE;
+	m_spine = FALSE;
+	UpdateData(FALSE);
 }
 
 void C3DProcess::OnBnClickedButtonIntensityPlus()
@@ -945,6 +986,14 @@ void C3DProcess::OnBnClickedButtonSlicesMinus()
 	m_slices.Format("%d", glSlices);
 	UpdateData(FALSE);
 	Draw3DImage(true);
+}
+
+void C3DProcess::OnBnClickedExit()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Exit
+	//
+	CDialogEx::OnOK();
 }
 
 void C3DProcess::OnBnClickedButtonPlaneReset()
@@ -1065,70 +1114,6 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	m_wait->Create(IDD_DIALOG_WAIT);
 	m_wait->ShowWindow(SW_NORMAL);
 	m_wait->setDisplay("Region growing...");
-
-	// 高通 濾波 (laplace filter)
-	//
-	const int row = ROW;
-	const int col = COL;
-	const int totalSlice = Total_Slice;
-	BYTE**& pro = m_pDoc->m_imgPro;
-
-	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
-	std::vector<int> sharp_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
-	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
-
-	auto sharpKernel = [=](BYTE* img, int slice, int x, int y)
-	{
-		int sum = 0, n = 0;
-		for (int j = y - 1; j <= y + 1; ++j)
-		{
-			for (int i = x - 1; i <= x + 1; ++i)
-			{
-				sum += (sharp_coef[n] * img[j * col + i]);
-				n += 1;
-			}
-		}
-		return sum;
-	};
-	auto sharpFilter = [&](int start)
-	{
-		int slice = start, pixel = 0;
-		while (slice < totalSlice)
-		{
-			BYTE* tmp = new BYTE[row * col];
-			std::memcpy(tmp, pro[slice], sizeof(BYTE) * row * col);
-			for (int j = 1; j < row-1; ++j)
-			{
-				for (int i = 1; i < col-1; ++i)
-				{
-					pixel = weight * sharpKernel(tmp, slice, i, j);
-					pixel = tmp[j * col + i] + pixel;
-					if (pixel > 255)	pixel = 255;
-					else if (pixel < 0) pixel = 0;
-					pro[slice][j * col + i] = pixel;
-				}
-			}
-			delete[] tmp;
-			slice += 6;
-		}
-		if (start == 0)	TRACE("Even Slice high Filter : Success!\n");
-		else TRACE("Odd Slice high Filter : Success!\n");
-	};
-
-	/*if (!get_regionGrow)
-	{
-		start = clock();
-		thread th0(sharpFilter, 0);
-		thread th1(sharpFilter, 1);
-		thread th2(sharpFilter, 2);
-		thread th3(sharpFilter, 3);
-		thread th4(sharpFilter, 4);
-		thread th5(sharpFilter, 5);
-		th0.join();	th1.join(); th2.join();
-		th3.join(); th4.join(); th5.join();
-		end = clock();
-		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
-	}*/
 	
 	// 宣告 成長標準 參數
 	//
@@ -3529,6 +3514,7 @@ void C3DProcess::Dilation_3D(short** src, short element)
 			{
 				for (i = 1; i < col - 1; ++i)
 				{
+					// 僅膨脹已成長的區域
 					if (temp[k][j * col + i] > 0)
 					{
 						// 該點3*3*3周圍像素點
@@ -3599,5 +3585,68 @@ double C3DProcess::Calculate_Volume(short** src)
 	return volume;
 }
 
+/*
+	// 高通 濾波 (laplace filter)
+	//
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	BYTE**& pro = m_pDoc->m_imgPro;
 
+	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
+	std::vector<int> sharp_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
+	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
 
+	auto sharpKernel = [=](BYTE* img, int slice, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				sum += (sharp_coef[n] * img[j * col + i]);
+				n += 1;
+			}
+		}
+		return sum;
+	};
+	auto sharpFilter = [&](int start)
+	{
+		int slice = start, pixel = 0;
+		while (slice < totalSlice)
+		{
+			BYTE* tmp = new BYTE[row * col];
+			std::memcpy(tmp, pro[slice], sizeof(BYTE) * row * col);
+			for (int j = 1; j < row-1; ++j)
+			{
+				for (int i = 1; i < col-1; ++i)
+				{
+					pixel = weight * sharpKernel(tmp, slice, i, j);
+					pixel = tmp[j * col + i] + pixel;
+					if (pixel > 255)	pixel = 255;
+					else if (pixel < 0) pixel = 0;
+					pro[slice][j * col + i] = pixel;
+				}
+			}
+			delete[] tmp;
+			slice += 6;
+		}
+		if (start == 0)	TRACE("Even Slice high Filter : Success!\n");
+		else TRACE("Odd Slice high Filter : Success!\n");
+	};
+
+	if (!get_regionGrow)
+	{
+		start = clock();
+		thread th0(sharpFilter, 0);
+		thread th1(sharpFilter, 1);
+		thread th2(sharpFilter, 2);
+		thread th3(sharpFilter, 3);
+		thread th4(sharpFilter, 4);
+		thread th5(sharpFilter, 5);
+		th0.join();	th1.join(); th2.join();
+		th3.join(); th4.join(); th5.join();
+		end = clock();
+		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
+	}
+*/

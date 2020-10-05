@@ -129,6 +129,17 @@ unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 	RG_factor		RG_totalTerm;		// 3D區域成長 : 條件因子
 	double			RG_totalVolume;		// 3D區域成長 : 總體積(judge = 1)
 
+	int x_avgPos, y_avgPos;
+	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
+
+	std::map<int, std::vector<std::pair<float, float>>> line;			// 紀錄每張slice的直線方程式的係數(斜率.截距)
+
+	std::vector<int> judge_type;										// 紀錄判定類型(先擱著不管
+																		//  0 : 還沒判斷
+																		// -1 : 判斷為 不要 的
+																		//  1 : 判斷為 要   的
+
+
 ///------------- ↑ 實驗區 ↑ -------------///
 
 //================//
@@ -170,16 +181,6 @@ public:
 	void	RG2_3D_ConfidenceConnected(short** src, RG_factor& factor);
 
 
-	int x_avgPos, y_avgPos;
-	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
-
-	std::map<int, std::vector<std::pair<float, float>>> line;			// 紀錄每張slice的直線方程式的係數(斜率.截距)
-
-	std::vector<int> judge_type;										// 紀錄判定類型(先擱著不管
-																		//  0 : 還沒判斷
-																		// -1 : 判斷為 不要 的
-																		//  1 : 判斷為 要   的
-
 ///------------- ↑ 實驗區 ↑ -------------///
 	
 //================//
@@ -198,6 +199,9 @@ public:
 #endif
 public:										// CString的部分，有在Attributes另外設變數儲存
 	BOOL		m_3Dseed;
+	BOOL		m_spine;
+	BOOL		m_sternum;
+	
 	BOOL		m_plane;
 	BOOL		m_object;
 	BOOL		m_disp_org;
@@ -227,6 +231,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnPaint();
+	afx_msg void OnBnClickedExit();
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
@@ -264,4 +269,7 @@ public:
 	afx_msg void OnBnClickedButtonDilation();
 	afx_msg void OnBnClickedCheckDispOrg();
 	afx_msg void OnBnClickedCheckDispPro0();
+	
+	afx_msg void OnBnClickedCheckSpine();
+	afx_msg void OnBnClickedCheckSternum();
 };
