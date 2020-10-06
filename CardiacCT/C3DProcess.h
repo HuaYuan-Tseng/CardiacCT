@@ -127,17 +127,21 @@ unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 ///------------- ↓ 實驗區 ↓ -------------///
 
 	RG_factor		RG_term;			// 3D區域成長 : 條件因子
-	double			RG_totalVolume;		// 3D區域成長 : 總體積
+	double			spine_volume;		// 3D區域成長 : 脊椎骨體積
+	double			sternum_volume;		// 3D區域成長 : 胸骨體積
+
+	bool			get_spine;
+	bool			get_sternum;
 
 	int x_avgPos, y_avgPos;
 	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
 
 	std::map<int, std::vector<std::pair<float, float>>> line;			// 紀錄每張slice的直線方程式的係數(斜率.截距)
 
-	std::vector<int> judge_type;										// 紀錄判定類型(+ : 要的 , - : 不要的)
+	std::vector<int> judge_type;										// 紀錄判定類型 (+ : 要的 , - : 不要的)
 																		//  0 : 還沒判斷
-																		//  1.2 : spine
-																		//  3.4 : sternum 
+																		//  1.2 : spine (1RG, 2RG)
+																		//  3.4 : sternum (1RG, 2RG) 
 
 
 ///------------- ↑ 實驗區 ↑ -------------///

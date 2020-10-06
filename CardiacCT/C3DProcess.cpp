@@ -88,9 +88,11 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	Act_Rotate = false;
 	get_2Dseed = false;
 	get_3Dseed = false;
-	get_regionGrow = false;
 	get_3Dimage = false;
-
+	get_regionGrow = false;
+	get_sternum = false;
+	get_spine = false;
+	
 	x_index = 0.5F;
 	y_index = 0.5F;
 	z_index = 0.7F;
@@ -107,7 +109,8 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	obj_angle = 0.0F;
 	pln_angle = 0.0F;
 	DisplaySlice = 0;
-	RG_totalVolume = 0.0F;
+	spine_volume = 0.0;
+	sternum_volume = 0.0;
 	HUThreshold = atoi(m_HUThreshold);
 	PixelThreshold = atoi(m_pixelThreshold);
 
@@ -970,10 +973,28 @@ void C3DProcess::OnBnClickedCheckSpine()
 	// TODO: Add your control notification handler code here
 	// CheckBox : Spine (m_spine)
 	//
-	if (m_spine)
+	if (m_spine)			// 關閉
+	{
 		m_spine = FALSE;
-	else
+		m_result.Format("%lf", 0.0);
+		GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
+	}	
+	else					// 打開
+	{
 		m_spine = TRUE;
+		m_result.Format("%lf", spine_volume);
+		if (get_spine)
+		{
+			GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(TRUE);
+			GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
+		}
+		else
+		{
+			GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
+			GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
+		}
+	}
 	m_sternum = FALSE;
 	UpdateData(FALSE);
 }
@@ -983,10 +1004,28 @@ void C3DProcess::OnBnClickedCheckSternum()
 	// TODO: Add your control notification handler code here
 	// CheckBox : Sternum (m_sternum)
 	//
-	if (m_sternum)
+	if (m_sternum)			// 關閉
+	{
 		m_sternum = FALSE;
-	else
+		m_result.Format("%lf", 0.0);
+		GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
+	}
+	else					// 打開
+	{
 		m_sternum = TRUE;
+		m_result.Format("%lf", sternum_volume);
+		if (get_sternum)
+		{
+			GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(TRUE);
+			GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(TRUE);
+		}
+		else
+		{
+			GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
+			GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
+		}
+	}
 	m_spine = FALSE;
 	UpdateData(FALSE);
 }
@@ -1201,17 +1240,28 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 
 	// 執行 3D_Region growing
 	//
-	start = clock();
-	RG_3D_ConfidenceConnected(judge, RG_term);
-	end = clock();
-
-	// 確認分割體積
-	//
-	get_regionGrow = true;
-	RG_totalVolume = Calculate_Volume(judge);
-	m_result.Format("%lf", RG_totalVolume);
-
-	TRACE1("Growing Volume : %f (cm3) \n", RG_totalVolume);
+	if (m_spine)
+	{
+		start = clock();
+		RG_3D_ConfidenceConnected(judge, RG_term);
+		end = clock();
+		spine_volume = Calculate_Volume(judge);
+		m_result.Format("%lf", spine_volume);
+		get_regionGrow = true;
+		get_spine = true;
+	}
+	else if (m_sternum)
+	{
+		start = clock();
+		RG_3D_ConfidenceConnected(judge, RG_term);
+		end = clock();
+		sternum_volume = Calculate_Volume(judge);
+		m_result.Format("%lf", sternum_volume);
+		get_regionGrow = true;
+		get_sternum = true;
+	}
+	
+	TRACE("Growing Volume : " + m_result + " (cm3) \n");
 	TRACE1("RG Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	
 	GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(TRUE);
@@ -1231,7 +1281,7 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 {
 	// TODO: Add your control notification handler code here
 	// Button : Growing Remove
-	// 把分割出來的部分(紅色標記)變透明
+	// 把骨骼的部分(包括肌肉)變透明
 	//
 	if (!get_regionGrow)	return;
 
@@ -1242,25 +1292,43 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 	const int sample_end = 0 + Mat_Offset + totalSlice;
 	register int i, j, k;
 
-	k = 0;
-	while (k < 512)
+	// 脊椎骨的部分
+	if (get_spine)
 	{
-		if (k > sample_start && k <= sample_end)
+		k = 0;
+		int min = min(vertex[0][1].second, vertex[0][2].second);
+		while (k < 512)
 		{
-			for (j = 2; j < row - 2; j += 2)
+			if (k > sample_start && k <= sample_end)
 			{
-				for (i = 2; i < col - 2; i += 2)
+				for (j = 2; j < row - 2; j += 2)
 				{
-					if (judge[k - (Mat_Offset + 1)][j * col + i] > 0)
+					for (i = 2; i < col - 2; i += 2)
 					{
-						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
-							0, 0);
+						if (judge[k - (Mat_Offset + 1)][j * col + i] > 0)
+						{
+							int begin = j;
+							while (begin < row - 2)
+							{
+								getRamp(&m_image0[(i / 2) * 256 * 256 + (begin / 2) * 256 + (k / 2)][0],
+									0, 0);
+								begin += 2;
+							}
+						}
+						if (j >= min)
+							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+								0, 0);
 					}
 				}
 			}
+			k += 2;
 		}
-		k += 2;
 	}
+	else if (get_sternum)
+	{
+
+	}
+	
 	LoadVolume();
 	Draw3DImage(true);
 }
@@ -1297,6 +1365,11 @@ void C3DProcess::OnBnClickedButtonGrowingRecovery()
 						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 							pixel / 255.0F, 1);
 					}
+					else
+					{
+						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+							pixel / 255.0F, 0);
+					}
 				}
 			}
 		}
@@ -1314,8 +1387,22 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	if (!get_regionGrow)	return;
 
 	m_result = _T("0.0");
-	RG_totalVolume = 0.0L;
 	get_regionGrow = false;
+
+	int obj1, obj2;
+	if (m_spine)
+	{
+		get_spine = false;
+		spine_volume = 0.0;
+		obj1 = 1; obj2 = 2;
+	}
+	else if (m_sternum)
+	{
+		get_sternum = false;
+		sternum_volume = 0.0;
+		obj1 = 3; obj2 = 4;
+	}
+
 	GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_GROWING_REMOVE)->EnableWindow(FALSE);
@@ -1323,6 +1410,7 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	//------------------------------------------------------------//
 
 	float pixel;
+	register int i, j, k;
 	const int row = ROW;
 	const int col = COL;
 	const int totalx = ROW * COL;
@@ -1331,19 +1419,7 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	const int sample_start = 0 + Mat_Offset;
 	const int sample_end = 0 + Mat_Offset + totalSlice;
 
-	// 恢復 : 成長判定矩陣
-	//
-	register int i, j, k;
-	for (j = 0; j < totaly; j++)
-	{
-		for (i = 0; i < totalx; i++)
-		{
-			judge[j][i] = 0;
-		}
-	}
-
-	// 恢復 : 影像
-	//
+	// 恢復 : 3D影像
 	k = 0;
 	while (k < 512)
 	{
@@ -1353,14 +1429,31 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 			{
 				for (i = 2; i < col - 2; i += 2)
 				{
-					pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
-					getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
-						pixel / 255.0F, 0);
+					if (judge[k - (Mat_Offset + 1)][j * col + i] == obj1 || judge[k - (Mat_Offset + 1)][j * col + i] == -obj1 ||
+						judge[k - (Mat_Offset + 1)][j * col + i] == obj2 || judge[k - (Mat_Offset + 1)][j * col + i] == -obj2)
+					{
+						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
+						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+							pixel / 255.0F, 0);
+					}
 				}
 			}
 		}
 		k += 2;
 	}
+
+	// 恢復 : 成長判定矩陣
+	for (j = 0; j < totaly; ++j)
+	{
+		for (i = 0; i < totalx; ++i)
+		{
+			if (judge[j][i] == obj1 || judge[j][i] == -obj1 || 
+				judge[j][i] == obj2 || judge[j][i] == -obj2)
+				judge[j][i] = 0;
+		}
+	}
+	
+	// 恢復 : 2D影像
 	k = 0;
 	while (k < totalSlice)
 	{
@@ -1374,6 +1467,7 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 		}
 		k += 1;
 	}
+
 	LoadVolume();
 	UpdateData(FALSE);
 	Draw3DImage(true);
@@ -1386,6 +1480,18 @@ void C3DProcess::OnBnClickedButtonDilation()
 	// Button : Dilation (目前為 未定型的處理)
 	//
 	if (!get_regionGrow)	return;
+
+	int obj1 = 1, obj2 = 1;
+	if (get_spine)
+	{
+		obj1 = 1;
+		obj2 = 2;
+	}
+	else if (get_sternum)
+	{
+		obj1 = 3;
+		obj2 = 4;
+	}
 
 	const int row = ROW;
 	const int col = COL;
@@ -1417,7 +1523,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 			position = 0;
 			while (position < totalXY)
 			{
-				if (judge[slice][position] == 1)
+				if (judge[slice][position] == obj1)
 				{
 					x_pos.push_back(position % col);
 					y_pos.push_back(position / col);
@@ -1428,6 +1534,11 @@ void C3DProcess::OnBnClickedButtonDilation()
 			{
 				x_pos.clear();	x_pos.shrink_to_fit();
 				y_pos.clear();	y_pos.shrink_to_fit();
+				
+				// 把上一張slice的頂點拿來用 
+				vertex[slice][0] = vertex[slice - 1][0];
+				vertex[slice][1] = vertex[slice - 1][1];
+				vertex[slice][2] = vertex[slice - 1][2];
 				slice += 2;
 				continue;
 			}
@@ -1447,7 +1558,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 			bool l = false, m = false, r = false;
 			while (cur < end)
 			{
-				if (judge[slice][cur] == 1)
+				if (judge[slice][cur] == obj1)
 				{
 					if (!m && (cur / col) == edge[slice].at(2))	// 中上(x, y)
 					{
@@ -1480,26 +1591,22 @@ void C3DProcess::OnBnClickedButtonDilation()
 	thread th1(findBorder, 1);				// 奇數 slice
 	th0.join();	th1.join();
 
-	// 尋找所有slice「中上點」的平均位置，並將該平均位置
-	// 提高至「最高中上點」的在上面一點點。(這樣才能盡量涵蓋到所有區域)
-	/*int n = 0, x = 0, y = 0, count = 0, y_min = 512;
+	// 修正偏移太多的「中上點」
+	int n = 1;
 	while (n < totalSlice)
 	{
 		if (vertex.find(n) != vertex.end())
 		{
-			if (y_min >= vertex[n][0].second)
-				y_min = vertex[n][0].second;
-			x += vertex[n][0].first;
-			y += vertex[n][0].second;
-			++count;
+			if (abs(vertex[n][0].first - vertex[n - 1][0].first) >= 10 ||
+				abs(vertex[n][0].second - vertex[n - 1][0].second) >= 10)
+			{
+				vertex[n][0].first = vertex[n - 1][0].first;
+				vertex[n][0].second = vertex[n - 1][0].second;
+			}
 		}
 		++n;
 	}
-	x_avgPos = x / count;
-	y_avgPos = y / count;*/
-	//y_avgPos = y_min;
 
-	// 重新訂定每一張slice的「中上點」並
 	// 計算每一張slice的斜線方程式係數(斜率.截距)
 	auto LineFuncIndex = [=](int start)
 	{
@@ -1649,7 +1756,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 			if ((iter = edge.find(slice)) != edge.end())
 			{
 				BYTE* tmp = new BYTE[row * col];
-				std::memcpy(tmp, pro[slice], sizeof(BYTE)*row*col);
+				std::memcpy(tmp, pro[slice], sizeof(BYTE) * row * col);
 				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
 				{
 					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
@@ -1677,26 +1784,19 @@ void C3DProcess::OnBnClickedButtonDilation()
 	//
 	//     二 次 區 域 成 長
 	//
-	RG_term = {
-		RG_term.seed = seed_img,
-		RG_term.s_kernel = 3,
-		RG_term.n_kernel = 3,
-		RG_term.pix_thresh = 50.0,
-		RG_term.sd_coeffi = 0.5
-	};
-
+	UpdateData(TRUE);
+	RG_term.seed = seed_img;
 	RG2_3D_ConfidenceConnected(judge, RG_term);
-	
 	Dilation_3D(judge, 26);
-
 	clock_t end = clock();
+
 	PrepareVolume();
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
-	RG_totalVolume = Calculate_Volume(judge);
-	
-	m_result.Format("%lf", RG_totalVolume);
-	TRACE1("Growing Volume : %f (cm3)\n", RG_totalVolume);
+	spine_volume = Calculate_Volume(judge);
+	m_result.Format("%lf", spine_volume);
+
+	TRACE("Growing Volume : " + m_result + " (cm3) \n");
 	TRACE1("2nd process Time : %f (s)\n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	m_wait->DestroyWindow();
 	UpdateData(FALSE);
@@ -2515,18 +2615,29 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		// 於2D影像顯示在3D區域成長結果
 		if (get_regionGrow)
 		{
+			int obj1 = INT_MAX, obj2 = INT_MAX;
+			if (get_spine)
+			{
+				obj1 = 1;
+				obj2 = 2;
+			}
+			else if (get_sternum)
+			{
+				obj1 = 3;
+				obj2 = 4;
+			}
 			for (j = 0; j < 512; j++)
 			{
 				for (i = 0; i < 512; i++)
 				{
-					if (judge[DisplaySlice][j * Col + i] == 1)
+					if (judge[DisplaySlice][j * Col + i] == obj1)
 					{
 						pt.x = i;
 						pt.y = j;
 
 						dc.SetPixel(pt, RGB(255, 120, 190));
 					}
-					else if (judge[DisplaySlice][j * Col + i] == 2)
+					else if (judge[DisplaySlice][j * Col + i] == obj2)
 					{
 						pt.x = i;
 						pt.y = j;
@@ -2575,27 +2686,27 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		}
 		CPoint ptmp;
 		// 中上點與左下點的中間點
-		ptmp.x = (iter->second.at(0).first + iter->second.at(1).first) / 2;
-		ptmp.y = (iter->second.at(0).second + iter->second.at(1).second) / 2;
+		//ptmp.x = (iter->second.at(0).first + iter->second.at(1).first) / 2;
+		//ptmp.y = (iter->second.at(0).second + iter->second.at(1).second) / 2;
 		for (i = -1; i <= 1; i++)
 		{
 			for (j = -1; j <= 1; j++)
 			{
-				pt.x = (LONG)ptmp.x + i;
-				pt.y = (LONG)ptmp.y + j;
+				pt.x = (LONG)iter->second.at(1).first + i;
+				pt.y = (LONG)iter->second.at(1).second + j;
 
 				dc.SetPixel(pt, RGB(255, 30, 30));
 			}
 		}
 		// 中上點與左下點的中間點
-		ptmp.x = (iter->second.at(0).first + iter->second.at(2).first) / 2;
-		ptmp.y = (iter->second.at(0).second + iter->second.at(2).second) / 2;
+		//ptmp.x = (iter->second.at(0).first + iter->second.at(2).first) / 2;
+		//ptmp.y = (iter->second.at(0).second + iter->second.at(2).second) / 2;
 		for (i = -1; i <= 1; i++)
 		{
 			for (j = -1; j <= 1; j++)
 			{
-				pt.x = (LONG)ptmp.x + i;
-				pt.y = (LONG)ptmp.y + j;
+				pt.x = (LONG)iter->second.at(2).first + i;
+				pt.y = (LONG)iter->second.at(2).second + j;
 
 				dc.SetPixel(pt, RGB(255, 30, 30));
 			}
@@ -2868,6 +2979,9 @@ void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 	//	DO : 3D 區域成長 
 	//	利用「當前已成長的全域平均值」來界定成長標準，並用「目前的像素強度」來判斷
 	//
+	int obj;
+	if (m_spine) obj = 1;
+	else if (m_sternum) obj = 3;
 	const int row = ROW;
 	const int col = COL;
 	const int totalSlice = Total_Slice;
@@ -2884,7 +2998,7 @@ void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 	std::queue<Seed_s> sed_que;					// 暫存成長判斷為種子點的像素位置
 
 	avg = m_pDoc->m_img[seed.z][(seed.y) * col + (seed.x)];
-	src[seed.z][(seed.y) * col + (seed.x)] = 1;
+	src[seed.z][(seed.y) * col + (seed.x)] = obj;
 	sed_que.push(seed);
 	avg_que.push(avg);
 
@@ -2932,14 +3046,14 @@ void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 								temp.z = current.z + k;
 								sed_que.push(temp);
 
-								src[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
+								src[current.z + k][(current.y + j) * col + (current.x + i)] = obj;
 								
 								avg = (avg * cnt + n_pixel) / (cnt + 1);
 								avg_que.push(avg);
 								cnt += 1;
 							}
 							else
-								src[current.z + k][(current.y + j) * col + (current.x + i)] = -1;
+								src[current.z + k][(current.y + j) * col + (current.x + i)] = -obj;
 						}
 					}
 				}
@@ -2956,6 +3070,9 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	// DO : 3D 區域成長
 	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
 	//
+	int obj;
+	if (m_spine) obj = 1;
+	else if (m_sternum) obj = 3;
 	const int row = ROW;
 	const int col = COL;
 	const int totalSlice = Total_Slice;
@@ -2977,7 +3094,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	unsigned long long  n_pixel = 0, s_pixel = 0;
 
 	s_avg = imgPro[seed.z][seed.y * col + seed.x];
-	src[seed.z][seed.y * col + seed.x] = 1;
+	src[seed.z][seed.y * col + seed.x] = obj;
 	avg_que.push(s_avg);
 	sed_que.push(seed);
 	s_cnt += 1;
@@ -3038,7 +3155,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		//if (n_sd > 15 || abs(n_avg - s_avg) > threshold)
 		//{
 		//	// 就算不能當種子點，也能當別的種子點的成長對象
-		//	//src[s_current.z][s_current.y * col + s_current.x] = -1;
+		//	//src[s_current.z][s_current.y * col + s_current.x] = -obj;
 		//	sed_que.pop();
 		//	avg_que.pop();
 		//	s_cnt -= 1;
@@ -3071,13 +3188,13 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 								n_site.z = s_current.z + sk;
 								sed_que.push(n_site);
 
-								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 1;
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = obj;
 								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
 								avg_que.push(s_avg);
 								s_cnt += 1;
 							}
 							else
-								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -1;
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj;
 						}
 					}
 				}
@@ -3094,6 +3211,17 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	// DO : 3D - 2222222222222222222222222222222222 次區域成長
 	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
 	//
+	int obj1, obj2;
+	if (m_spine)
+	{
+		obj1 = 1;
+		obj2 = 2;
+	}
+	else if (m_sternum)
+	{
+		obj1 = 3;
+		obj2 = 4;
+	}
 	const int row = ROW;
 	const int col = COL;
 	const int totalXY = ROW * COL;
@@ -3140,7 +3268,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	{
 		for (si = 0; si < totalXY; ++si)
 		{
-			if (src[sj][si] == 1)
+			if (src[sj][si] == obj1)
 			{
 				n_site.x = si % col;
 				n_site.y = si / col;
@@ -3153,7 +3281,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 				avg_que.push(s_avg);
 				sed_que.push(n_site);
 			}
-			else if (src[sj][si] == -1)
+			else if (src[sj][si] == -obj1)
 				src[sj][si] = 0;
 		}
 	}
@@ -3217,10 +3345,10 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 										avg_que.push(s_avg);
 										s_cnt += 1;
 
-										src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 2;
+										src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = obj2;
 									}
 									else
-										src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -1;
+										src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj2;
 								//}
 								/*else
 								{
@@ -3237,7 +3365,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 								}*/
 							}
 							else
-								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -1;
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj2;
 						}
 					}
 				}
@@ -3491,7 +3619,19 @@ void C3DProcess::Erosion_3D(short** src, short element)
 void C3DProcess::Dilation_3D(short** src, short element)
 {
 	// DO : 3D Dilation (膨脹 - 形態學處理)
+	// 目前 6 與 18 鄰域 待改善 !!!
 	//
+	int obj1 = INT_MIN, obj2 = INT_MIN;
+	if (m_spine)
+	{
+		obj1 = 1;
+		if (get_spine) obj2 = 2;
+	}
+	else if (m_sternum)
+	{
+		obj1 = 3;
+		if (get_sternum) obj2 = 4;
+	}
 	const int row = ROW;
 	const int col = COL;
 	const int total_xy = ROW * COL;
@@ -3506,14 +3646,10 @@ void C3DProcess::Dilation_3D(short** src, short element)
 	// Deep copy (目前先以這樣的方式處理QQ)
 	//
 	BYTE**& pro = m_pDoc->m_imgPro;
-	double avg = 0.0;
-	unsigned long long cnt = 0;
 	for (j = 0; j < total_z; j++)
 	{
 		for (i = 0; i < total_xy; i++)
 		{
-			if (src[j][i] > 0)
-				avg = (pro[j][i] + avg * cnt) / (++cnt);
 			temp[j][i] = src[j][i];
 		}
 	}
@@ -3588,7 +3724,8 @@ void C3DProcess::Dilation_3D(short** src, short element)
 				for (i = 1; i < col - 1; ++i)
 				{
 					// 僅膨脹已成長的區域
-					if (temp[k][j * col + i] > 0)
+					if (temp[k][j * col + i] == obj1 || 
+						temp[k][j * col + i] == obj2)
 					{
 						// 該點3*3*3周圍像素點
 						for (nk = -1; nk <= 1; ++nk)
@@ -3597,40 +3734,12 @@ void C3DProcess::Dilation_3D(short** src, short element)
 							{
 								for (ni = -1; ni <= 1; ++ni)
 								{
-									if (pro[k + nk][(j + nj) * col + (i + ni)] > 210)
+									if (src[k + nk][(j + nj) * col + (i + ni)] <= 0 &&
+										pro[k + nk][(j + nj) * col + (i + ni)] > 210)
 										src[k + nk][(j + nj) * col + (i + ni)] = 2;
 								}
 							}
 						}
-						//src[(k + -1)][(j + -1) * col + (i + -1)] = 1;
-						//src[(k + -1)][(j + -1) * col + (i + 0)] = 1;
-						//src[(k + -1)][(j + -1) * col + (i + 1)] = 1;
-						//src[(k + -1)][(j + 0) * col + (i + -1)] = 1;
-						//src[(k + -1)][(j + 0) * col + (i + 0)] = 1;
-						//src[(k + -1)][(j + 0) * col + (i + 1)] = 1;
-						//src[(k + -1)][(j + 1) * col + (i + -1)] = 1;
-						//src[(k + -1)][(j + 1) * col + (i + 0)] = 1;
-						//src[(k + -1)][(j + 1) * col + (i + 1)] = 1;
-						//
-						//src[(k + 0)][(j + -1) * col + (i + -1)] = 1;
-						//src[(k + 0)][(j + -1) * col + (i + 0)] = 1;
-						//src[(k + 0)][(j + -1) * col + (i + 1)] = 1;
-						//src[(k + 0)][(j + 0) * col + (i + -1)] = 1;
-						////src[(k + 0)][(j + 0) * col + (i + 0)] = 1;
-						//src[(k + 0)][(j + 0) * col + (i + 1)] = 1;
-						//src[(k + 0)][(j + 1) * col + (i + -1)] = 1;
-						//src[(k + 0)][(j + 1) * col + (i + 0)] = 1;
-						//src[(k + 0)][(j + 1) * col + (i + 1)] = 1;
-						//
-						//src[(k + 1)][(j + -1) * col + (i + -1)] = 1;
-						//src[(k + 1)][(j + -1) * col + (i + 0)] = 1;
-						//src[(k + 1)][(j + -1) * col + (i + 1)] = 1;
-						//src[(k + 1)][(j + 0) * col + (i + -1)] = 1;
-						//src[(k + 1)][(j + 0) * col + (i + 0)] = 1;
-						//src[(k + 1)][(j + 0) * col + (i + 1)] = 1;
-						//src[(k + 1)][(j + 1) * col + (i + -1)] = 1;
-						//src[(k + 1)][(j + 1) * col + (i + 0)] = 1;
-						//src[(k + 1)][(j + 1) * col + (i + 1)] = 1;
 					}
 				}
 			}
@@ -3641,19 +3750,30 @@ void C3DProcess::Dilation_3D(short** src, short element)
 
 double C3DProcess::Calculate_Volume(short** src)
 {
+	int obj1, obj2;
+	if (m_spine)
+	{
+		obj1 = 1;
+		obj2 = 2;
+	}
+	else if (m_sternum)
+	{
+		obj1 = 3;
+		obj2 = 4;
+	}
+	register int i, j;
 	const int totalXY = COL * ROW;
 	const int totalSlice = Total_Slice;
-	register int i, j;
 	unsigned long long n = 0;							// 計數成長的pixel數量
-	for (j = 0; j < totalSlice; j++)
+	for (j = 0; j < totalSlice; ++j)
 	{
-		for (i = 0; i < totalXY; i++)
+		for (i = 0; i < totalXY; ++i)
 		{
-			if (src[j][i] > 0)
+			if (src[j][i] == obj1 || src[j][i] == obj2)
 				n += 1;
 		}
 	}
-	double volume = 0L;		// 單位 (cm3)
+	double volume = 0.0;		// 單位 (cm3)
 	volume = (n * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000;	
 	return volume;
 }
