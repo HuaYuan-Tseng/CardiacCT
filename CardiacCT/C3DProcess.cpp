@@ -1281,7 +1281,7 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 {
 	// TODO: Add your control notification handler code here
 	// Button : Growing Remove
-	// 把骨骼的部分(包括肌肉)變透明
+	// 把骨骼的部分(包括在這之間的肌肉)變透明
 	//
 	if (!get_regionGrow)	return;
 
@@ -1292,34 +1292,80 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 	const int sample_end = 0 + Mat_Offset + totalSlice;
 	register int i, j, k;
 
+	int x_begin, x_end;
+	int y_begin, y_end;
+	int long_slice = 0;
+	int long_dis = vertex[0][2].first - vertex[0][1].first;
+
 	// 脊椎骨的部分
 	if (get_spine)
 	{
 		k = 0;
-		int min = min(vertex[0][1].second, vertex[0][2].second);
+
 		while (k < 512)
 		{
 			if (k > sample_start && k <= sample_end)
 			{
+				int z = k - (Mat_Offset + 1);
 				for (j = 2; j < row - 2; j += 2)
 				{
 					for (i = 2; i < col - 2; i += 2)
 					{
-						if (judge[k - (Mat_Offset + 1)][j * col + i] > 0)
+						if (judge[z][j * col + i] > 0)
 						{
-							int begin = j;
-							while (begin < row - 2)
-							{
-								getRamp(&m_image0[(i / 2) * 256 * 256 + (begin / 2) * 256 + (k / 2)][0],
-									0, 0);
-								begin += 2;
-							}
-						}
-						if (j >= min)
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 								0, 0);
+						}
 					}
 				}
+
+				int range = vertex[z][2].first - vertex[z][1].first;
+				if (abs(range - long_dis) >= 20)
+				{
+					x_begin = vertex[long_slice][1].first;
+					x_end = vertex[long_slice][2].first;
+					z = long_slice;
+				}
+				else
+				{
+					x_begin = vertex[z][1].first;
+					x_end = vertex[z][2].first;
+					long_dis = range;
+					long_slice = z;
+				}
+				y_begin = vertex[z][0].second;
+				y_end = row;
+
+				// 從左到右
+				for (int x = x_begin; x <= x_end; ++x)
+				{
+					int i = y_begin;
+					// 由上到下搜尋
+					while (i < y_end && judge[z][i * col + x] <= 0)
+						i++;
+					//y_begin = (i % 2) ? (i - 1) : i;
+					y_begin = i;
+
+					// 開始消除
+					for (int y = y_begin; y < row - 1; ++y)
+					{
+						getRamp(&m_image0[((x) / 2) * 256 * 256 + ((y) / 2) * 256 + ((z+1+Mat_Offset) / 2)][0],
+							0, 0);
+						// 周圍
+						/*for (int nk = -1; nk <= 1; ++nk)
+						{
+							for (int nj = -1; nj <= 1; ++nj)
+							{
+								for (int ni = -1; ni <= 1; ++ni)
+								{
+									getRamp(&m_image0[((x+ni) / 2) * 256 * 256 + ((y+nj) / 2) * 256 + ((k+nk) / 2)][0],
+										0, 0);
+								}
+							}
+						}*/
+					}
+				}
+					
 			}
 			k += 2;
 		}
@@ -1536,9 +1582,9 @@ void C3DProcess::OnBnClickedButtonDilation()
 				y_pos.clear();	y_pos.shrink_to_fit();
 				
 				// 把上一張slice的頂點拿來用 
-				vertex[slice][0] = vertex[slice - 1][0];
-				vertex[slice][1] = vertex[slice - 1][1];
-				vertex[slice][2] = vertex[slice - 1][2];
+				vertex[slice][0] = vertex[slice - 2][0];
+				vertex[slice][1] = vertex[slice - 2][1];
+				vertex[slice][2] = vertex[slice - 2][2];
 				slice += 2;
 				continue;
 			}
@@ -1597,12 +1643,27 @@ void C3DProcess::OnBnClickedButtonDilation()
 	{
 		if (vertex.find(n) != vertex.end())
 		{
-			if (abs(vertex[n][0].first - vertex[n - 1][0].first) >= 10 ||
-				abs(vertex[n][0].second - vertex[n - 1][0].second) >= 10)
+			if (abs(vertex[n][0].first - vertex[n - 1][0].first) > 3 ||
+				abs(vertex[n][0].second - vertex[n - 1][0].second) > 3)
 			{
 				vertex[n][0].first = vertex[n - 1][0].first;
 				vertex[n][0].second = vertex[n - 1][0].second;
 			}
+			// 修正「右下點」
+			/*int dis = vertex[n][0].first - vertex[n][1].first;
+			if (abs(vertex[n][2].first - (vertex[n][0].first + dis)) > 30)
+			{
+				int x_max = INT_MIN;
+				int y = vertex[n][1].second;
+				for (int x = vertex[n][1].first; x < col; ++x)
+				{
+					if (judge[n][y * col + x] == obj1)
+						x_max = x;
+				}
+				if (x_max == INT_MIN)	x_max = vertex[n][0].first + dis;
+				vertex[n][2].first = x_max;
+				vertex[n][2].second = y;
+			}*/
 		}
 		++n;
 	}
@@ -1615,6 +1676,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 		{
 			if (vertex.find(slice) == vertex.end())
 			{
+				line[slice] = line[slice - 2];
 				slice += 2;
 				continue;
 			}
@@ -1780,6 +1842,9 @@ void C3DProcess::OnBnClickedButtonDilation()
 	thread th7(sharpFilter, 1);
 	th6.join();	th7.join();
 
+	TRACE1("vertex's size : %d\n", vertex.size());
+	TRACE1("line's size : %d\n", line.size());
+
 	//////////////////////////////////////////////////////////
 	//
 	//     二 次 區 域 成 長
@@ -1801,6 +1866,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	m_wait->DestroyWindow();
 	UpdateData(FALSE);
 	delete m_wait;
+
 }
 
 //==========================//
@@ -3245,12 +3311,16 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	
 	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
 	{
+		if (pz >= totalSlice) pz = totalSlice - 1;
+		if (pz < 0) pz = 0;
 		float value = line[pz][0].first * px + line[pz][0].second - py;
 		if (value <= 0)	return true;				// 在left line的左邊(要倒著看
 		else return false;
 	};
 	auto lineFunc_2 = [=](int px, int py, int pz)	// right line
 	{
+		if (pz >= totalSlice) pz = totalSlice - 1;
+		if (pz < 0) pz = 0;
 		float value = line[pz][1].first * px + line[pz][1].second - py;
 		if (value <= 0)	return true;				// 在right line的右邊(要倒著看
 		else return false;
@@ -3735,7 +3805,7 @@ void C3DProcess::Dilation_3D(short** src, short element)
 								for (ni = -1; ni <= 1; ++ni)
 								{
 									if (src[k + nk][(j + nj) * col + (i + ni)] <= 0 &&
-										pro[k + nk][(j + nj) * col + (i + ni)] > 210)
+										pro[k + nk][(j + nj) * col + (i + ni)] > 150)
 										src[k + nk][(j + nj) * col + (i + ni)] = 2;
 								}
 							}
