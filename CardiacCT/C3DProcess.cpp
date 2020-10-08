@@ -1292,8 +1292,6 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 	const int sample_end = 0 + Mat_Offset + totalSlice;
 	register int i, j, k;
 
-	int x_begin, x_end;
-	int y_begin, y_end;
 	int long_slice = 0;
 	int long_dis = vertex[0][2].first - vertex[0][1].first;
 
@@ -1306,63 +1304,62 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 		{
 			if (k > sample_start && k <= sample_end)
 			{
-				int z = k - (Mat_Offset + 1);
-				for (j = 2; j < row - 2; j += 2)
-				{
-					for (i = 2; i < col - 2; i += 2)
-					{
-						if (judge[z][j * col + i] > 0)
-						{
-							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
-								0, 0);
-						}
-					}
-				}
+				int z_temp;
+				int z_cur = k - (Mat_Offset + 1);
+				int cur_dis = vertex[z_cur][2].first - vertex[z_cur][1].first;
 
-				int range = vertex[z][2].first - vertex[z][1].first;
-				if (abs(range - long_dis) >= 20)
+				if (abs(cur_dis - long_dis) > 30)
 				{
-					x_begin = vertex[long_slice][1].first;
-					x_end = vertex[long_slice][2].first;
-					z = long_slice;
+					z_temp = long_slice;
 				}
 				else
 				{
-					x_begin = vertex[z][1].first;
-					x_end = vertex[z][2].first;
-					long_dis = range;
-					long_slice = z;
+					z_temp = z_cur;
+					long_dis = cur_dis;
+					long_slice = z_cur;
 				}
-				y_begin = vertex[z][0].second;
-				y_end = row;
 
-				// 從左到右
-				for (int x = x_begin; x <= x_end; ++x)
+				// 先大概消除
+				for (i = 2; i < col - 2; i += 1)
 				{
-					int i = y_begin;
-					// 由上到下搜尋
-					while (i < y_end && judge[z][i * col + x] <= 0)
-						i++;
-					//y_begin = (i % 2) ? (i - 1) : i;
-					y_begin = i;
-
-					// 開始消除
-					for (int y = y_begin; y < row - 1; ++y)
+					int y = 0;
+					while (y < row && judge[z_cur][y * col + i] <= 0)
+						y++;
+					for (j = y; j < row - 2; j += 1)
 					{
-						getRamp(&m_image0[((x) / 2) * 256 * 256 + ((y) / 2) * 256 + ((z+1+Mat_Offset) / 2)][0],
-							0, 0);
-						// 周圍
-						/*for (int nk = -1; nk <= 1; ++nk)
+						for (int nk = -1; nk <= 1; ++nk)
 						{
 							for (int nj = -1; nj <= 1; ++nj)
 							{
 								for (int ni = -1; ni <= 1; ++ni)
 								{
-									getRamp(&m_image0[((x+ni) / 2) * 256 * 256 + ((y+nj) / 2) * 256 + ((k+nk) / 2)][0],
+									getRamp(&m_image0[((i + ni) / 2) * 256 * 256 + ((j + nj) / 2) * 256 + ((k + nk) / 2)][0],
 										0, 0);
 								}
 							}
-						}*/
+						}
+					}
+					
+					for (j = 2; j < row-2; j += 2)
+					{
+						if (judge[z_cur][j * col + i] > 0)
+							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+								0, 0);
+					}
+				}
+
+				// 剩下的肌肉層
+				int x_begin = vertex[z_temp][1].first;
+				int x_end = vertex[z_temp][2].first;
+				int y_begin = min(vertex[z_temp][1].second, vertex[z_temp][2].second);
+				int y_end = row;
+
+				for (j = y_begin; j < y_end; ++j)
+				{
+					for (i = x_begin; i < x_end; ++i)
+					{
+						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+							0, 0);
 					}
 				}
 					
@@ -1581,7 +1578,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 				x_pos.clear();	x_pos.shrink_to_fit();
 				y_pos.clear();	y_pos.shrink_to_fit();
 				
-				// 把上一張slice的頂點拿來用 
+				// 把上一張slice的頂點和edge拿來用
+				edge[slice] = edge[slice - 2];
 				vertex[slice][0] = vertex[slice - 2][0];
 				vertex[slice][1] = vertex[slice - 2][1];
 				vertex[slice][2] = vertex[slice - 2][2];
@@ -3311,16 +3309,14 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	
 	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
 	{
-		if (pz >= totalSlice) pz = totalSlice - 1;
-		if (pz < 0) pz = 0;
+		if (line[pz].size() < 2) line[pz] = line[pz - 1];
 		float value = line[pz][0].first * px + line[pz][0].second - py;
 		if (value <= 0)	return true;				// 在left line的左邊(要倒著看
 		else return false;
 	};
 	auto lineFunc_2 = [=](int px, int py, int pz)	// right line
 	{
-		if (pz >= totalSlice) pz = totalSlice - 1;
-		if (pz < 0) pz = 0;
+		if (line[pz].size() < 2) line[pz] = line[pz - 1];
 		float value = line[pz][1].first * px + line[pz][1].second - py;
 		if (value <= 0)	return true;				// 在right line的右邊(要倒著看
 		else return false;
