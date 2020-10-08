@@ -1254,6 +1254,7 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	{
 		start = clock();
 		RG_3D_ConfidenceConnected(judge, RG_term);
+		//RG_3D_GlobalAvgConnected(judge, RG_term);
 		end = clock();
 		sternum_volume = Calculate_Volume(judge);
 		m_result.Format("%lf", sternum_volume);
@@ -1468,12 +1469,13 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	{
 		if (k > sample_start && k <= sample_end)
 		{
+			int z = k - (Mat_Offset + 1);
 			for (j = 2; j < row - 2; j += 2)
 			{
 				for (i = 2; i < col - 2; i += 2)
 				{
-					if (judge[k - (Mat_Offset + 1)][j * col + i] == obj1 || judge[k - (Mat_Offset + 1)][j * col + i] == -obj1 ||
-						judge[k - (Mat_Offset + 1)][j * col + i] == obj2 || judge[k - (Mat_Offset + 1)][j * col + i] == -obj2)
+					if (judge[z][j * col + i] == obj1 || judge[z][j * col + i] == -obj1 ||
+						judge[z][j * col + i] == obj2 || judge[z][j * col + i] == -obj2)
 					{
 						pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
 						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
@@ -1484,19 +1486,8 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 		}
 		k += 2;
 	}
-
-	// 恢復 : 成長判定矩陣
-	for (j = 0; j < totaly; ++j)
-	{
-		for (i = 0; i < totalx; ++i)
-		{
-			if (judge[j][i] == obj1 || judge[j][i] == -obj1 || 
-				judge[j][i] == obj2 || judge[j][i] == -obj2)
-				judge[j][i] = 0;
-		}
-	}
 	
-	// 恢復 : 2D影像
+	// 恢復 : 成長判定矩陣 and 2D影像
 	k = 0;
 	while (k < totalSlice)
 	{
@@ -1506,6 +1497,10 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 			{
 				pixel = m_pDoc->m_img[k][j * col + i];
 				m_pDoc->m_imgPro[k][j * col + i] = (BYTE)pixel;
+
+				if (judge[k][j * col + i] == obj1 || judge[k][j * col + i] == -obj1 ||
+					judge[k][j * col + i] == obj2 || judge[k][j * col + i] == -obj2)
+					judge[k][j * col + i] = 0;
 			}
 		}
 		k += 1;
