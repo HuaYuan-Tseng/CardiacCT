@@ -77,6 +77,10 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	double*			user_Plane;
 ///-------------------------↑ openGL 設定參數 ↑----------------------------------------///
 
+	short			HUThreshold;		// 二值化閾值(HU)
+	unsigned short	PixelThreshold;		// 二值化閾值(pixel)
+	unsigned short	DisplaySlice;		// 顯示的slice(從0開始)
+
 ///-------------------------↓ 3D seed 宣告參數 ↓---------------------------------------///
 
 	struct Seed_s
@@ -120,10 +124,6 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 ///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
 
-	short			HUThreshold;		// 二值化閾值(HU)
-unsigned short		PixelThreshold;		// 二值化閾值(pixel)
-unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
-
 ///------------- ↓ 實驗區 ↓ -------------///
 
 	RG_factor		RG_term;			// 3D區域成長 : 條件因子
@@ -134,9 +134,9 @@ unsigned short		DisplaySlice;		// 顯示的slice(從0開始)
 	bool			get_sternum;
 
 	int x_avgPos, y_avgPos;
-	std::map<int, std::vector<std::pair<int, int>>> vertex;				// 紀錄初步處理後的三個頂點
+	std::map<int, std::vector<std::pair<int, int>>> spine_vertex;		// 紀錄初步處理後的三個頂點
 
-	std::map<int, std::vector<std::pair<float, float>>> line;			// 紀錄每張slice的直線方程式的係數(斜率.截距)
+	std::map<int, std::vector<std::pair<float, float>>> spine_line;		// 紀錄每張slice的直線方程式的係數(斜率.截距)
 
 	std::vector<int> judge_type;										// 紀錄判定類型 (+ : 要的 , - : 不要的)
 																		//  0 : 還沒判斷
@@ -178,6 +178,8 @@ public:
 	double	Calculate_Volume(short** src);
 	void	Erosion_3D(short** src, short element);
 	void	Dilation_3D(short** src, short element);
+
+	void	Spine_process();
 	
 	void	RG_3D_Link(short** src, RG_factor& factor);
 	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均與當前強度)

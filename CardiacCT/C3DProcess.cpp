@@ -785,7 +785,7 @@ void C3DProcess::OnEnChangeEditHuThreshold()
 void C3DProcess::OnEnChangeEditSlices()
 {
 	// 更換 openGL繪製三維影像的紋理層數
-	// EditBox : vertex's slices (m_slices)
+	// EditBox : spine_vertex's slices (m_slices)
 	//
 	UpdateData(TRUE);
 	glSlices = atoi(m_slices);
@@ -1341,9 +1341,9 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 				// 把上一張slice的頂點和edge拿來用
 				edge[slice] = edge[slice - 2];
-				vertex[slice][0] = vertex[slice - 2][0];
-				vertex[slice][1] = vertex[slice - 2][1];
-				vertex[slice][2] = vertex[slice - 2][2];
+				spine_vertex[slice][0] = spine_vertex[slice - 2][0];
+				spine_vertex[slice][1] = spine_vertex[slice - 2][1];
+				spine_vertex[slice][2] = spine_vertex[slice - 2][2];
 				slice += 2;
 				continue;
 			}
@@ -1357,7 +1357,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 			edge[slice].push_back(y_pos[y_pos.size() - 1]);		// [3]: y_max
 
 			// 尋找三角頂點
-			vertex[slice].assign(3, std::make_pair(0, 0));
+			spine_vertex[slice].assign(3, std::make_pair(0, 0));
 			int cur = edge[slice].at(0) + edge[slice].at(2) * col;
 			int end = edge[slice].at(1) + edge[slice].at(3) * col;
 			bool l = false, m = false, r = false;
@@ -1367,17 +1367,17 @@ void C3DProcess::OnBnClickedButtonDilation()
 				{
 					if (!m && (cur / col) == edge[slice].at(2))	// 中上(x, y)
 					{
-						vertex[slice][0] = std::make_pair((cur % col), (cur / col));
+						spine_vertex[slice][0] = std::make_pair((cur % col), (cur / col));
 						m = true;
 					}
 					if (!l && (cur % col) == edge[slice].at(0))	// 左下(x, y)
 					{
-						vertex[slice][1] = std::make_pair((cur % col), (cur / col));
+						spine_vertex[slice][1] = std::make_pair((cur % col), (cur / col));
 						l = true;
 					}
 					if (!r && (cur % col) == edge[slice].at(1))	// 右下(x, y)
 					{
-						vertex[slice][2] = std::make_pair((cur % col), (cur / col));
+						spine_vertex[slice][2] = std::make_pair((cur % col), (cur / col));
 						r = true;
 					}
 				}
@@ -1400,28 +1400,28 @@ void C3DProcess::OnBnClickedButtonDilation()
 	int n = 1;
 	while (n < totalSlice)
 	{
-		if (vertex.find(n) != vertex.end())
+		if (spine_vertex.find(n) != spine_vertex.end())
 		{
-			if (abs(vertex[n][0].first - vertex[n - 1][0].first) > 3 ||
-				abs(vertex[n][0].second - vertex[n - 1][0].second) > 3)
+			if (abs(spine_vertex[n][0].first - spine_vertex[n - 1][0].first) > 3 ||
+				abs(spine_vertex[n][0].second - spine_vertex[n - 1][0].second) > 3)
 			{
-				vertex[n][0].first = vertex[n - 1][0].first;
-				vertex[n][0].second = vertex[n - 1][0].second;
+				spine_vertex[n][0].first = spine_vertex[n - 1][0].first;
+				spine_vertex[n][0].second = spine_vertex[n - 1][0].second;
 			}
 			// 修正「右下點」
-			/*int dis = vertex[n][0].first - vertex[n][1].first;
-			if (abs(vertex[n][2].first - (vertex[n][0].first + dis)) > 30)
+			/*int dis = spine_vertex[n][0].first - spine_vertex[n][1].first;
+			if (abs(spine_vertex[n][2].first - (spine_vertex[n][0].first + dis)) > 30)
 			{
 				int x_max = INT_MIN;
-				int y = vertex[n][1].second;
-				for (int x = vertex[n][1].first; x < col; ++x)
+				int y = spine_vertex[n][1].second;
+				for (int x = spine_vertex[n][1].first; x < col; ++x)
 				{
 					if (judge[n][y * col + x] == obj1)
 						x_max = x;
 				}
-				if (x_max == INT_MIN)	x_max = vertex[n][0].first + dis;
-				vertex[n][2].first = x_max;
-				vertex[n][2].second = y;
+				if (x_max == INT_MIN)	x_max = spine_vertex[n][0].first + dis;
+				spine_vertex[n][2].first = x_max;
+				spine_vertex[n][2].second = y;
 			}*/
 		}
 		++n;
@@ -1433,30 +1433,30 @@ void C3DProcess::OnBnClickedButtonDilation()
 		int slice = start;
 		while (slice < totalSlice)
 		{
-			if (vertex.find(slice) == vertex.end())
+			if (spine_vertex.find(slice) == spine_vertex.end())
 			{
-				line[slice] = line[slice - 2];
+				spine_line[slice] = spine_line[slice - 2];
 				slice += 2;
 				continue;
 			}
 
 			// 計算每張slice三角頂點的斜線方程式係數
-			line[slice].assign(2, std::make_pair(0.0f, 0.0f));
+			spine_line[slice].assign(2, std::make_pair(0.0f, 0.0f));
 			float slope1 = 0, slope2 = 0;						// 斜率 slope
 			float inter1 = 0, inter2 = 0;						// 截距 intercept
-			slope1 = (float)(vertex[slice][0].second - vertex[slice][1].second) /
-				(float)(vertex[slice][0].first - vertex[slice][1].first);
-			slope2 = (float)(vertex[slice][0].second - vertex[slice][2].second) /
-				(float)(vertex[slice][0].first - vertex[slice][2].first);
+			slope1 = (float)(spine_vertex[slice][0].second - spine_vertex[slice][1].second) /
+				(float)(spine_vertex[slice][0].first - spine_vertex[slice][1].first);
+			slope2 = (float)(spine_vertex[slice][0].second - spine_vertex[slice][2].second) /
+				(float)(spine_vertex[slice][0].first - spine_vertex[slice][2].first);
 
-			inter1 = (float)(vertex[slice][0].second + vertex[slice][1].second) -
-				slope1 * (vertex[slice][0].first + vertex[slice][1].first);
+			inter1 = (float)(spine_vertex[slice][0].second + spine_vertex[slice][1].second) -
+				slope1 * (spine_vertex[slice][0].first + spine_vertex[slice][1].first);
 			inter1 /= 2;
-			inter2 = (float)(vertex[slice][0].second + vertex[slice][2].second) -
-				slope2 * (vertex[slice][0].first + vertex[slice][2].first);
+			inter2 = (float)(spine_vertex[slice][0].second + spine_vertex[slice][2].second) -
+				slope2 * (spine_vertex[slice][0].first + spine_vertex[slice][2].first);
 			inter2 /= 2;
-			line[slice][0] = std::make_pair(slope1, inter1);	// left line
-			line[slice][1] = std::make_pair(slope2, inter2);	// right line
+			spine_line[slice][0] = std::make_pair(slope1, inter1);	// left spine_line
+			spine_line[slice][1] = std::make_pair(slope2, inter2);	// right spine_line
 
 			slice += 2;
 		}
@@ -1601,8 +1601,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 	thread th7(sharpFilter, 1);
 	th6.join();	th7.join();
 
-	TRACE1("vertex's size : %d\n", vertex.size());
-	TRACE1("line's size : %d\n", line.size());
+	TRACE1("spine_vertex's size : %d\n", spine_vertex.size());
+	TRACE1("spine_line's size : %d\n", spine_line.size());
 
 	//////////////////////////////////////////////////////////
 	//
@@ -1628,6 +1628,23 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 }
 
+void C3DProcess::Spine_process()
+{
+	// DO : 脊椎分割區域的二次處理
+	//
+	const int obj = 1;
+	const int row = ROW;
+	const int col = COL;
+	const int totalXY = ROW * COL;
+	const int totalSlice = Total_Slice;
+	BYTE**& org = m_pDoc->m_img;
+	BYTE**& pro = m_pDoc->m_imgPro;
+
+	// 尋找每張slice分割區域的垂直邊界 (x.y_min、x.y_min)
+	std::map<int, std::vector<int>> edge;
+
+}
+
 void C3DProcess::OnBnClickedButtonGrowingRemove()
 {
 	// TODO: Add your control notification handler code here
@@ -1642,22 +1659,21 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 	const int sample_start = 0 + Mat_Offset;
 	const int sample_end = 0 + Mat_Offset + totalSlice;
 	register int i, j, k;
-
-	int long_slice = 0;
-	int long_dis = vertex[0][2].first - vertex[0][1].first;
-
+	
 	// 脊椎骨的部分
 	if (get_spine)
 	{
+		int long_slice = 0;
+		int long_dis = spine_vertex[0][2].first - spine_vertex[0][1].first;
+		
 		k = 0;
-
 		while (k < 512)
 		{
 			if (k > sample_start && k <= sample_end)
 			{
 				int z_temp;
 				int z_cur = k - (Mat_Offset + 1);
-				int cur_dis = vertex[z_cur][2].first - vertex[z_cur][1].first;
+				int cur_dis = spine_vertex[z_cur][2].first - spine_vertex[z_cur][1].first;
 
 				if (abs(cur_dis - long_dis) > 30)
 				{
@@ -1700,9 +1716,9 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 				}
 
 				// 剩下的肌肉層
-				int x_begin = vertex[z_temp][1].first;
-				int x_end = vertex[z_temp][2].first;
-				int y_begin = min(vertex[z_temp][1].second, vertex[z_temp][2].second);
+				int x_begin = spine_vertex[z_temp][1].first;
+				int x_end = spine_vertex[z_temp][2].first;
+				int y_begin = min(spine_vertex[z_temp][1].second, spine_vertex[z_temp][2].second);
 				int y_end = row;
 
 				for (j = y_begin; j < y_end; ++j)
@@ -2728,12 +2744,12 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 
 	// 看看每一張的頂點 ( 二次區域成長就靠它了 )
 	//
-	if (!vertex.empty())
+	if (!spine_vertex.empty())
 	{
 		std::map<int, std::vector<std::pair<int, int>>>::iterator iter;
 		CPoint pt;
 		
-		iter = vertex.find(slice);
+		iter = spine_vertex.find(slice);
 		for (i = -1; i <= 1; i++)
 		{
 			for (j = -1; j <= 1; j++)
@@ -3291,15 +3307,15 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	
 	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
 	{
-		if (line[pz].size() < 2) line[pz] = line[pz - 1];
-		float value = line[pz][0].first * px + line[pz][0].second - py;
+		if (spine_line[pz].size() < 2) spine_line[pz] = spine_line[pz - 1];
+		float value = spine_line[pz][0].first * px + spine_line[pz][0].second - py;
 		if (value <= 0)	return true;				// 在left line的左邊(要倒著看
 		else return false;
 	};
 	auto lineFunc_2 = [=](int px, int py, int pz)	// right line
 	{
-		if (line[pz].size() < 2) line[pz] = line[pz - 1];
-		float value = line[pz][1].first * px + line[pz][1].second - py;
+		if (spine_line[pz].size() < 2) spine_line[pz] = spine_line[pz - 1];
+		float value = spine_line[pz][1].first * px + spine_line[pz][1].second - py;
 		if (value <= 0)	return true;				// 在right line的右邊(要倒著看
 		else return false;
 	};
@@ -3378,8 +3394,8 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 
 							if (n_pixel <= up_limit && n_pixel >= down_limit)
 							{
-								//if ((s_current.y + sj) < (vertex[s_current.z + sk].at(1).second + vertex[s_current.z + sk].at(0).second) / 2 ||
-								//	(s_current.y + sj) < (vertex[s_current.z + sk].at(2).second + vertex[s_current.z + sk].at(0).second) / 2)
+								//if ((s_current.y + sj) < (spine_vertex[s_current.z + sk].at(1).second + spine_vertex[s_current.z + sk].at(0).second) / 2 ||
+								//	(s_current.y + sj) < (spine_vertex[s_current.z + sk].at(2).second + spine_vertex[s_current.z + sk].at(0).second) / 2)
 								//{
 									if (lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
 										lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk))
