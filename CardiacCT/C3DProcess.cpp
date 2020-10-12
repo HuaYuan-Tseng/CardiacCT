@@ -1278,6 +1278,356 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	delete m_wait;
 }
 
+void C3DProcess::OnBnClickedButtonDilation()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Dilation (目前為 未定型的處理)
+	//
+	if (!get_regionGrow)	return;
+
+	int obj1 = 1, obj2 = 1;
+	if (get_spine)
+	{
+		obj1 = 1;
+		obj2 = 2;
+	}
+	else if (get_sternum)
+	{
+		obj1 = 3;
+		obj2 = 4;
+	}
+
+	const int row = ROW;
+	const int col = COL;
+	const int totalXY = ROW * COL;
+	const int totalSlice = Total_Slice;
+	BYTE**& org = m_pDoc->m_img;
+	BYTE**& pro = m_pDoc->m_imgPro;
+
+	CWait* m_wait = new CWait();
+	m_wait->Create(IDD_DIALOG_WAIT);
+	m_wait->ShowWindow(SW_NORMAL);
+	m_wait->setDisplay("2nd Region growing...");
+
+	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
+	// 
+	clock_t start = clock();
+	std::map<int, std::vector<int>> edge;
+
+	auto findBorder = [&](int start)
+	{
+		int position;
+		int slice = start;
+		std::vector<int> x_pos;
+		std::vector<int> y_pos;
+
+		while (slice < totalSlice)
+		{
+			// 尋找垂直邊界
+			position = 0;
+			while (position < totalXY)
+			{
+				if (judge[slice][position] == obj1)
+				{
+					x_pos.push_back(position % col);
+					y_pos.push_back(position / col);
+				}
+				position += 1;
+			}
+			if (x_pos.size() < 2 || y_pos.size() < 2)
+			{
+				x_pos.clear();	x_pos.shrink_to_fit();
+				y_pos.clear();	y_pos.shrink_to_fit();
+
+				// 把上一張slice的頂點和edge拿來用
+				edge[slice] = edge[slice - 2];
+				vertex[slice][0] = vertex[slice - 2][0];
+				vertex[slice][1] = vertex[slice - 2][1];
+				vertex[slice][2] = vertex[slice - 2][2];
+				slice += 2;
+				continue;
+			}
+
+			std::sort(x_pos.begin(), x_pos.end());
+			std::sort(y_pos.begin(), y_pos.end());
+
+			edge[slice].push_back(x_pos[0]);					// [0]: x_min
+			edge[slice].push_back(x_pos[x_pos.size() - 1]);		// [1]: x_max
+			edge[slice].push_back(y_pos[0]);					// [2]: y_min
+			edge[slice].push_back(y_pos[y_pos.size() - 1]);		// [3]: y_max
+
+			// 尋找三角頂點
+			vertex[slice].assign(3, std::make_pair(0, 0));
+			int cur = edge[slice].at(0) + edge[slice].at(2) * col;
+			int end = edge[slice].at(1) + edge[slice].at(3) * col;
+			bool l = false, m = false, r = false;
+			while (cur < end)
+			{
+				if (judge[slice][cur] == obj1)
+				{
+					if (!m && (cur / col) == edge[slice].at(2))	// 中上(x, y)
+					{
+						vertex[slice][0] = std::make_pair((cur % col), (cur / col));
+						m = true;
+					}
+					if (!l && (cur % col) == edge[slice].at(0))	// 左下(x, y)
+					{
+						vertex[slice][1] = std::make_pair((cur % col), (cur / col));
+						l = true;
+					}
+					if (!r && (cur % col) == edge[slice].at(1))	// 右下(x, y)
+					{
+						vertex[slice][2] = std::make_pair((cur % col), (cur / col));
+						r = true;
+					}
+				}
+				cur += 1;
+			}
+
+			x_pos.clear();	x_pos.shrink_to_fit();
+			y_pos.clear();	y_pos.shrink_to_fit();
+			slice += 2;
+		}
+		if (start == 0)	TRACE("Even Slice Find Border : Success!\n");
+		else TRACE("Odd Slice Find Border : Success!\n");
+	};
+
+	thread th0(findBorder, 0);				// 偶數 slice
+	thread th1(findBorder, 1);				// 奇數 slice
+	th0.join();	th1.join();
+
+	// 修正偏移太多的「中上點」
+	int n = 1;
+	while (n < totalSlice)
+	{
+		if (vertex.find(n) != vertex.end())
+		{
+			if (abs(vertex[n][0].first - vertex[n - 1][0].first) > 3 ||
+				abs(vertex[n][0].second - vertex[n - 1][0].second) > 3)
+			{
+				vertex[n][0].first = vertex[n - 1][0].first;
+				vertex[n][0].second = vertex[n - 1][0].second;
+			}
+			// 修正「右下點」
+			/*int dis = vertex[n][0].first - vertex[n][1].first;
+			if (abs(vertex[n][2].first - (vertex[n][0].first + dis)) > 30)
+			{
+				int x_max = INT_MIN;
+				int y = vertex[n][1].second;
+				for (int x = vertex[n][1].first; x < col; ++x)
+				{
+					if (judge[n][y * col + x] == obj1)
+						x_max = x;
+				}
+				if (x_max == INT_MIN)	x_max = vertex[n][0].first + dis;
+				vertex[n][2].first = x_max;
+				vertex[n][2].second = y;
+			}*/
+		}
+		++n;
+	}
+
+	// 計算每一張slice的斜線方程式係數(斜率.截距)
+	auto LineFuncIndex = [=](int start)
+	{
+		int slice = start;
+		while (slice < totalSlice)
+		{
+			if (vertex.find(slice) == vertex.end())
+			{
+				line[slice] = line[slice - 2];
+				slice += 2;
+				continue;
+			}
+
+			// 計算每張slice三角頂點的斜線方程式係數
+			line[slice].assign(2, std::make_pair(0.0f, 0.0f));
+			float slope1 = 0, slope2 = 0;						// 斜率 slope
+			float inter1 = 0, inter2 = 0;						// 截距 intercept
+			slope1 = (float)(vertex[slice][0].second - vertex[slice][1].second) /
+				(float)(vertex[slice][0].first - vertex[slice][1].first);
+			slope2 = (float)(vertex[slice][0].second - vertex[slice][2].second) /
+				(float)(vertex[slice][0].first - vertex[slice][2].first);
+
+			inter1 = (float)(vertex[slice][0].second + vertex[slice][1].second) -
+				slope1 * (vertex[slice][0].first + vertex[slice][1].first);
+			inter1 /= 2;
+			inter2 = (float)(vertex[slice][0].second + vertex[slice][2].second) -
+				slope2 * (vertex[slice][0].first + vertex[slice][2].first);
+			inter2 /= 2;
+			line[slice][0] = std::make_pair(slope1, inter1);	// left line
+			line[slice][1] = std::make_pair(slope2, inter2);	// right line
+
+			slice += 2;
+		}
+		if (start == 0)	TRACE("Even Slice LineFunc : Success!\n");
+		else TRACE("Odd Slice LineFunc : Success!\n");
+	};
+
+	thread th1_1(LineFuncIndex, 0);
+	thread th1_2(LineFuncIndex, 1);
+	th1_1.join();	th1_2.join();
+
+	// 針對 分割範圍的方形區域 做pixel的處理
+	//
+	auto edgeProcess = [&](int start)
+	{
+		std::map<int, std::vector<int>>::iterator iter;
+		int slice = start;
+		while (slice < totalSlice)
+		{
+			if ((iter = edge.find(slice)) != edge.end())
+			{
+				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
+				{
+					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
+					{
+						if (pro[slice][j * col + i] <= 100)
+							pro[slice][j * col + i] = 0;
+						//else if (pro[slice][j * col + i] <= 180)
+						//	pro[slice][j * col + i] -= 20;
+						//else if (pro[slice][j * col + i] <= 200 && pro[slice][j * col + i] > 180)
+						//	pro[slice][j * col + i] += 30;
+					}
+				}
+			}
+			slice += 2;
+		}
+		if (start == 0)	TRACE("Even Slice EdgeProcess : Success!\n");
+		else TRACE("Odd Slice EdgeProcess : Success!\n");
+	};
+
+	thread th2(edgeProcess, 0);
+	thread th3(edgeProcess, 1);
+	th2.join();	th3.join();
+
+	// 低通 濾波 (mean filter)
+	//
+	//std::vector<int> avg_coef = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
+	std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	int avg_cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
+
+	auto avgKernel = [=](BYTE* img, int slice, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				sum += (avg_coef[n] * img[j * col + i]);
+				n += 1;
+			}
+		}
+		return sum / avg_cnt;
+	};
+	auto avgFilter = [&](int start)
+	{
+		std::map<int, std::vector<int>>::iterator iter;
+		int slice = start;
+		while (slice < totalSlice)
+		{
+			if ((iter = edge.find(slice)) != edge.end())
+			{
+				BYTE* tmp = new BYTE[row * col];
+				std::memcpy(tmp, pro[slice], sizeof(BYTE) * row * col);
+				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
+				{
+					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
+					{
+						pro[slice][j * col + i] = avgKernel(tmp, slice, i, j);
+					}
+				}
+				delete[] tmp;
+			}
+			slice += 2;
+		}
+		if (start == 0)	TRACE("Even Slice avg Filter : Success!\n");
+		else TRACE("Odd Slice avg Filter : Success!\n");
+	};
+
+	thread th4(avgFilter, 0);
+	thread th5(avgFilter, 1);
+	th4.join();	th5.join();
+
+	// 高通 濾波 (laplace filter)
+	//
+	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
+	std::vector<int> sharp_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
+	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
+
+	auto sharpKernel = [=](BYTE* img, int slice, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				sum += (sharp_coef[n] * img[j * col + i]);
+				n += 1;
+			}
+		}
+		return sum;
+	};
+	auto sharpFilter = [&](int start)
+	{
+		std::map<int, std::vector<int>>::iterator iter;
+		int slice = start, pixel = 0;
+		while (slice < totalSlice)
+		{
+			if ((iter = edge.find(slice)) != edge.end())
+			{
+				BYTE* tmp = new BYTE[row * col];
+				std::memcpy(tmp, pro[slice], sizeof(BYTE) * row * col);
+				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
+				{
+					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
+					{
+						pixel = weight * sharpKernel(tmp, slice, i, j);
+						pixel = tmp[j * col + i] + pixel;
+						if (pixel > 255)	pixel = 255;
+						else if (pixel < 0) pixel = 0;
+						pro[slice][j * col + i] = pixel;
+					}
+				}
+				delete[] tmp;
+			}
+			slice += 2;
+		}
+		if (start == 0)	TRACE("Even Slice high Filter : Success!\n");
+		else TRACE("Odd Slice high Filter : Success!\n");
+	};
+
+	thread th6(sharpFilter, 0);
+	thread th7(sharpFilter, 1);
+	th6.join();	th7.join();
+
+	TRACE1("vertex's size : %d\n", vertex.size());
+	TRACE1("line's size : %d\n", line.size());
+
+	//////////////////////////////////////////////////////////
+	//
+	//     二 次 區 域 成 長
+	//
+	UpdateData(TRUE);
+	RG_term.seed = seed_img;
+	RG2_3D_ConfidenceConnected(judge, RG_term);
+	Dilation_3D(judge, 26);
+	clock_t end = clock();
+
+	PrepareVolume();
+	Draw3DImage(true);
+	Draw2DImage(DisplaySlice);
+	spine_volume = Calculate_Volume(judge);
+	m_result.Format("%lf", spine_volume);
+
+	TRACE("Growing Volume : " + m_result + " (cm3) \n");
+	TRACE1("2nd process Time : %f (s)\n\n", (double)(end - start) / CLOCKS_PER_SEC);
+	m_wait->DestroyWindow();
+	UpdateData(FALSE);
+	delete m_wait;
+
+}
+
 void C3DProcess::OnBnClickedButtonGrowingRemove()
 {
 	// TODO: Add your control notification handler code here
@@ -1512,355 +1862,6 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	Draw2DImage(DisplaySlice);
 }
 
-void C3DProcess::OnBnClickedButtonDilation()
-{
-	// TODO: Add your control notification handler code here
-	// Button : Dilation (目前為 未定型的處理)
-	//
-	if (!get_regionGrow)	return;
-
-	int obj1 = 1, obj2 = 1;
-	if (get_spine)
-	{
-		obj1 = 1;
-		obj2 = 2;
-	}
-	else if (get_sternum)
-	{
-		obj1 = 3;
-		obj2 = 4;
-	}
-
-	const int row = ROW;
-	const int col = COL;
-	const int totalXY = ROW * COL;
-	const int totalSlice = Total_Slice;
-	BYTE**& org = m_pDoc->m_img;
-	BYTE**& pro = m_pDoc->m_imgPro;
-	
-	CWait* m_wait = new CWait();
-	m_wait->Create(IDD_DIALOG_WAIT);
-	m_wait->ShowWindow(SW_NORMAL);
-	m_wait->setDisplay("2nd Region growing...");
-
-	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
-	// 
-	clock_t start = clock();
-	std::map<int, std::vector<int>> edge;
-
-	auto findBorder = [&](int start)
-	{
-		int position;
-		int slice = start;
-		std::vector<int> x_pos;
-		std::vector<int> y_pos;
-
-		while (slice < totalSlice)
-		{
-			// 尋找垂直邊界
-			position = 0;
-			while (position < totalXY)
-			{
-				if (judge[slice][position] == obj1)
-				{
-					x_pos.push_back(position % col);
-					y_pos.push_back(position / col);
-				}
-				position += 1;	
-			}
-			if (x_pos.size() < 2 || y_pos.size() < 2) 
-			{
-				x_pos.clear();	x_pos.shrink_to_fit();
-				y_pos.clear();	y_pos.shrink_to_fit();
-				
-				// 把上一張slice的頂點和edge拿來用
-				edge[slice] = edge[slice - 2];
-				vertex[slice][0] = vertex[slice - 2][0];
-				vertex[slice][1] = vertex[slice - 2][1];
-				vertex[slice][2] = vertex[slice - 2][2];
-				slice += 2;
-				continue;
-			}
-
-			std::sort(x_pos.begin(), x_pos.end());
-			std::sort(y_pos.begin(), y_pos.end());
-
-			edge[slice].push_back(x_pos[0]);					// [0]: x_min
-			edge[slice].push_back(x_pos[x_pos.size()-1]);		// [1]: x_max
-			edge[slice].push_back(y_pos[0]);					// [2]: y_min
-			edge[slice].push_back(y_pos[y_pos.size()-1]);		// [3]: y_max
-
-			// 尋找三角頂點
-			vertex[slice].assign(3, std::make_pair(0, 0));
-			int cur = edge[slice].at(0) + edge[slice].at(2) * col;
-			int end = edge[slice].at(1) + edge[slice].at(3) * col;
-			bool l = false, m = false, r = false;
-			while (cur < end)
-			{
-				if (judge[slice][cur] == obj1)
-				{
-					if (!m && (cur / col) == edge[slice].at(2))	// 中上(x, y)
-					{
-						vertex[slice][0] = std::make_pair((cur % col), (cur / col));
-						m = true;
-					}	
-					if (!l && (cur % col) == edge[slice].at(0))	// 左下(x, y)
-					{
-						vertex[slice][1] = std::make_pair((cur % col), (cur / col));
-						l = true;
-					}
-					if (!r && (cur % col) == edge[slice].at(1))	// 右下(x, y)
-					{
-						vertex[slice][2] = std::make_pair((cur % col), (cur / col));
-						r = true;
-					}
-				}
-				cur += 1;
-			}
-
-			x_pos.clear();	x_pos.shrink_to_fit();
-			y_pos.clear();	y_pos.shrink_to_fit();
-			slice += 2;
-		}
-		if (start == 0)	TRACE("Even Slice Find Border : Success!\n");
-		else TRACE("Odd Slice Find Border : Success!\n");
-	};
-
-	thread th0(findBorder, 0);				// 偶數 slice
-	thread th1(findBorder, 1);				// 奇數 slice
-	th0.join();	th1.join();
-
-	// 修正偏移太多的「中上點」
-	int n = 1;
-	while (n < totalSlice)
-	{
-		if (vertex.find(n) != vertex.end())
-		{
-			if (abs(vertex[n][0].first - vertex[n - 1][0].first) > 3 ||
-				abs(vertex[n][0].second - vertex[n - 1][0].second) > 3)
-			{
-				vertex[n][0].first = vertex[n - 1][0].first;
-				vertex[n][0].second = vertex[n - 1][0].second;
-			}
-			// 修正「右下點」
-			/*int dis = vertex[n][0].first - vertex[n][1].first;
-			if (abs(vertex[n][2].first - (vertex[n][0].first + dis)) > 30)
-			{
-				int x_max = INT_MIN;
-				int y = vertex[n][1].second;
-				for (int x = vertex[n][1].first; x < col; ++x)
-				{
-					if (judge[n][y * col + x] == obj1)
-						x_max = x;
-				}
-				if (x_max == INT_MIN)	x_max = vertex[n][0].first + dis;
-				vertex[n][2].first = x_max;
-				vertex[n][2].second = y;
-			}*/
-		}
-		++n;
-	}
-
-	// 計算每一張slice的斜線方程式係數(斜率.截距)
-	auto LineFuncIndex = [=](int start)
-	{
-		int slice = start;
-		while (slice < totalSlice)
-		{
-			if (vertex.find(slice) == vertex.end())
-			{
-				line[slice] = line[slice - 2];
-				slice += 2;
-				continue;
-			}
-
-			// 計算每張slice三角頂點的斜線方程式係數
-			line[slice].assign(2, std::make_pair(0.0f, 0.0f));
-			float slope1 = 0, slope2 = 0;						// 斜率 slope
-			float inter1 = 0, inter2 = 0;						// 截距 intercept
-			slope1 = (float)(vertex[slice][0].second - vertex[slice][1].second) / 
-					(float)(vertex[slice][0].first - vertex[slice][1].first);
-			slope2 = (float)(vertex[slice][0].second - vertex[slice][2].second) / 
-					(float)(vertex[slice][0].first - vertex[slice][2].first);
-
-			inter1 = (float)(vertex[slice][0].second + vertex[slice][1].second) -
-						slope1 * (vertex[slice][0].first + vertex[slice][1].first);
-			inter1 /= 2;
-			inter2 = (float)(vertex[slice][0].second + vertex[slice][2].second) -
-						slope2 * (vertex[slice][0].first + vertex[slice][2].first);
-			inter2 /= 2;
-			line[slice][0] = std::make_pair(slope1, inter1);	// left line
-			line[slice][1] = std::make_pair(slope2, inter2);	// right line
-
-			slice += 2;
-		}
-		if (start == 0)	TRACE("Even Slice LineFunc : Success!\n");
-		else TRACE("Odd Slice LineFunc : Success!\n");
-	};
-
-	thread th1_1(LineFuncIndex, 0);
-	thread th1_2(LineFuncIndex, 1);
-	th1_1.join();	th1_2.join();
-
-	// 針對 分割範圍的方形區域 做pixel的處理
-	//
-	auto edgeProcess = [&](int start)
-	{
-		std::map<int, std::vector<int>>::iterator iter;
-		int slice = start;
-		while (slice < totalSlice)
-		{
-			if ((iter = edge.find(slice)) != edge.end())
-			{
-				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
-				{
-					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
-					{
-						if (pro[slice][j * col + i] <= 100)
-							pro[slice][j * col + i] = 0;
-						//else if (pro[slice][j * col + i] <= 180)
-						//	pro[slice][j * col + i] -= 20;
-						//else if (pro[slice][j * col + i] <= 200 && pro[slice][j * col + i] > 180)
-						//	pro[slice][j * col + i] += 30;
-					}
-				}
-			}
-			slice += 2;
-		}
-		if (start == 0)	TRACE("Even Slice EdgeProcess : Success!\n");
-		else TRACE("Odd Slice EdgeProcess : Success!\n");
-	};
-
-	thread th2(edgeProcess, 0);
-	thread th3(edgeProcess, 1);
-	th2.join();	th3.join();
-
-	// 低通 濾波 (mean filter)
-	//
-	//std::vector<int> avg_coef = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
-	std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
-	int avg_cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
-
-	auto avgKernel = [=](BYTE* img, int slice, int x, int y)
-	{
-		int sum = 0, n = 0;
-		for (int j = y - 1; j <= y + 1; ++j)
-		{
-			for (int i = x - 1; i <= x + 1; ++i)
-			{
-				sum += (avg_coef[n] * img[j * col + i]);
-				n += 1;
-			}
-		}
-		return sum / avg_cnt;
-	};
-	auto avgFilter = [&](int start)
-	{
-		std::map<int, std::vector<int>>::iterator iter;
-		int slice = start;
-		while (slice < totalSlice)
-		{
-			if ((iter = edge.find(slice)) != edge.end())
-			{
-				BYTE* tmp = new BYTE[row * col];
-				std::memcpy(tmp, pro[slice], sizeof(BYTE)*row*col);
-				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
-				{
-					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
-					{
-						pro[slice][j * col + i] = avgKernel(tmp, slice, i, j);
-					}
-				}
-				delete[] tmp;
-			}
-			slice += 2;
-		}
-		if (start == 0)	TRACE("Even Slice avg Filter : Success!\n");
-		else TRACE("Odd Slice avg Filter : Success!\n");
-	};
-
-	thread th4(avgFilter, 0);
-	thread th5(avgFilter, 1);
-	th4.join();	th5.join();
-
-	// 高通 濾波 (laplace filter)
-	//
-	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
-	std::vector<int> sharp_coef = {0, 1, 0, 1, -4, 1, 0, 1, 0};
-	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
-
-	auto sharpKernel = [=](BYTE* img, int slice, int x, int y)
-	{
-		int sum = 0, n = 0;
-		for (int j = y - 1; j <= y + 1; ++j)
-		{
-			for (int i = x - 1; i <= x + 1; ++i)
-			{
-				sum += (sharp_coef[n] * img[j * col + i]);
-				n += 1;
-			}
-		}
-		return sum;
-	};
-	auto sharpFilter = [&](int start)
-	{
-		std::map<int, std::vector<int>>::iterator iter;
-		int slice = start, pixel = 0;
-		while (slice < totalSlice)
-		{
-			if ((iter = edge.find(slice)) != edge.end())
-			{
-				BYTE* tmp = new BYTE[row * col];
-				std::memcpy(tmp, pro[slice], sizeof(BYTE) * row * col);
-				for (int j = iter->second.at(2); j <= iter->second.at(3); ++j)
-				{
-					for (int i = iter->second.at(0); i <= iter->second.at(1); ++i)
-					{
-						pixel = weight * sharpKernel(tmp, slice, i, j);
-						pixel = tmp[j * col + i] + pixel;
-						if (pixel > 255)	pixel = 255;
-						else if (pixel < 0) pixel = 0;
-						pro[slice][j * col + i] = pixel;
-					}
-				}
-				delete[] tmp;
-			}
-			slice += 2;
-		}
-		if (start == 0)	TRACE("Even Slice high Filter : Success!\n");
-		else TRACE("Odd Slice high Filter : Success!\n");
-	};
-
-	thread th6(sharpFilter, 0);
-	thread th7(sharpFilter, 1);
-	th6.join();	th7.join();
-
-	TRACE1("vertex's size : %d\n", vertex.size());
-	TRACE1("line's size : %d\n", line.size());
-
-	//////////////////////////////////////////////////////////
-	//
-	//     二 次 區 域 成 長
-	//
-	UpdateData(TRUE);
-	RG_term.seed = seed_img;
-	RG2_3D_ConfidenceConnected(judge, RG_term);
-	Dilation_3D(judge, 26);
-	clock_t end = clock();
-
-	PrepareVolume();
-	Draw3DImage(true);
-	Draw2DImage(DisplaySlice);
-	spine_volume = Calculate_Volume(judge);
-	m_result.Format("%lf", spine_volume);
-
-	TRACE("Growing Volume : " + m_result + " (cm3) \n");
-	TRACE1("2nd process Time : %f (s)\n\n", (double)(end - start) / CLOCKS_PER_SEC);
-	m_wait->DestroyWindow();
-	UpdateData(FALSE);
-	delete m_wait;
-
-}
 
 //==========================//
 //   C3DProcess Functions   //
@@ -3065,20 +3066,6 @@ void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 	{
 		avg = avg_que.front();
 		current = sed_que.front();
-		double up_limit = avg + threshold;
-		double down_limit = avg - threshold;
-
-		// 重新界定成長標準上下限
- 		if (up_limit > 255)
-		{
-			up_limit = 255;
-			down_limit = 255 - 2 * threshold;
-		}
-		if (down_limit < 0)
-		{
-			down_limit = 0;
-			up_limit = 0 + 2 * threshold;
-		}
 
 		// 判斷周圍區域是否符合成長標準
 		// 並同時計算「已成長區域」的總平均
@@ -3098,7 +3085,7 @@ void C3DProcess::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
 							short n_pixel = 
 								m_pDoc->m_img[current.z + k][(current.y + j) * col + (current.x + i)];
 
-							if ((n_pixel <= up_limit) && (n_pixel >= down_limit))
+							if (abs(n_pixel - avg) <= threshold)
 							{
 								temp.x = current.x + i;
 								temp.y = current.y + j;
