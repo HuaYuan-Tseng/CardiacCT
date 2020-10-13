@@ -135,8 +135,13 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 	int x_avgPos, y_avgPos;
 	std::map<int, std::vector<std::pair<int, int>>> spine_vertex;		// 紀錄初步處理後的三個頂點
+																		// 0 : 中間上面那點
+																		// 1 : 左下
+																		// 2 : 右下
 
 	std::map<int, std::vector<std::pair<float, float>>> spine_line;		// 紀錄每張slice的直線方程式的係數(斜率.截距)
+																		// 0 : 左
+																		// 1 : 右
 
 	std::vector<int> judge_type;										// 紀錄判定類型 (+ : 要的 , - : 不要的)
 																		//  0 : 還沒判斷
@@ -180,6 +185,7 @@ public:
 	void	Dilation_3D(short** src, short element);
 
 	void	Spine_process();
+	void	Spine_process_test();
 	
 	void	RG_3D_Link(short** src, RG_factor& factor);
 	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均與當前強度)

@@ -74,7 +74,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_nKernel(_T("3"))
 	, m_pix_th(_T("50.0"))
 	, m_SDth(_T("20.0"))
-	, m_SDco(_T("1.5"))
+	, m_SDco(_T("1.0"))
 {
 	mode = ControlModes::ControlObject;
 
@@ -444,7 +444,7 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	POINT mpt;						// 獲得鼠標當下位置
 	GetCursorPos(&mpt);
 	ScreenToClient(&mpt);
-	int TotalSlice = Total_Slice;
+	const int TotalSlice = Total_Slice;
 
 	// 在 二維 影像視窗範圍內
 	//
@@ -462,6 +462,7 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 
 		Draw2DImage(DisplaySlice);
 		m_ScrollBar.SetScrollPos(DisplaySlice);
+
 	}
 
 	// 在 三維 影像視窗範圍內
@@ -1285,18 +1286,43 @@ void C3DProcess::OnBnClickedButtonDilation()
 	//
 	if (!get_regionGrow)	return;
 
-	int obj1 = 1, obj2 = 1;
+	CWait* m_wait = new CWait();
+	m_wait->Create(IDD_DIALOG_WAIT);
+	m_wait->ShowWindow(SW_NORMAL);
+	m_wait->setDisplay("2nd Region growing...");
+	
+	clock_t start = clock();
 	if (get_spine)
 	{
-		obj1 = 1;
-		obj2 = 2;
+		if (!spine_vertex.empty())	spine_vertex.~map();
+		if (!spine_line.empty()) spine_line.~map();
+		Spine_process();
+		spine_volume = Calculate_Volume(judge);
+		m_result.Format("%lf", spine_volume);
 	}
 	else if (get_sternum)
 	{
-		obj1 = 3;
-		obj2 = 4;
-	}
 
+	}
+	clock_t end = clock();
+
+	PrepareVolume();
+	Draw3DImage(true);
+	Draw2DImage(DisplaySlice);
+	
+	TRACE("Growing Volume : " + m_result + " (cm3) \n");
+	TRACE1("2nd process Time : %f (s)\n\n", (double)(end - start) / CLOCKS_PER_SEC);
+	m_wait->DestroyWindow();
+	UpdateData(FALSE);
+	delete m_wait;
+
+}
+
+void C3DProcess::Spine_process()
+{
+	// DO : 脊椎分割區域的二次處理
+	//
+	const int obj = 1;
 	const int row = ROW;
 	const int col = COL;
 	const int totalXY = ROW * COL;
@@ -1304,46 +1330,57 @@ void C3DProcess::OnBnClickedButtonDilation()
 	BYTE**& org = m_pDoc->m_img;
 	BYTE**& pro = m_pDoc->m_imgPro;
 
-	CWait* m_wait = new CWait();
-	m_wait->Create(IDD_DIALOG_WAIT);
-	m_wait->ShowWindow(SW_NORMAL);
-	m_wait->setDisplay("2nd Region growing...");
-
-	// 尋找每張slice分割區域的垂直邊界 (y_min、x_min、x_max)
-	// 
-	clock_t start = clock();
+	// 尋找每張slice的三角頂點以及垂直邊界
 	std::map<int, std::vector<int>> edge;
 
-	auto findBorder = [&](int start)
+	auto findBorder = [&](int start_slice)
 	{
-		int position;
-		int slice = start;
+		int pos, x, y;
+		int slice = start_slice;
 		std::vector<int> x_pos;
 		std::vector<int> y_pos;
+		x_pos.reserve(10000);
+		y_pos.reserve(10000);
 
 		while (slice < totalSlice)
 		{
-			// 尋找垂直邊界
-			position = 0;
-			while (position < totalXY)
+			pos = 0;
+			int ver_mid = 0;
+			int y_min = 512;
+
+			// 紀錄每個種子點的x.y座標值
+			for (x = 0; x < col; ++x)
 			{
-				if (judge[slice][position] == obj1)
+				for (y = 0; y < row; ++y)
 				{
-					x_pos.push_back(position % col);
-					y_pos.push_back(position / col);
+					pos = y * col + x;
+					if (judge[slice][pos] == obj)
+					{
+						x_pos.push_back(x);
+						y_pos.push_back(y);
+
+						// 尋找脊柱中心點(中間最高)
+						if (x < 350 && y < y_min)
+						{
+							y_min = y;
+							ver_mid = pos;
+						}
+					}
 				}
-				position += 1;
 			}
+
+			// 如果成長範圍少到無法判別，就拿上一張的頂點和邊界來用
 			if (x_pos.size() < 2 || y_pos.size() < 2)
 			{
-				x_pos.clear();	x_pos.shrink_to_fit();
-				y_pos.clear();	y_pos.shrink_to_fit();
+				x_pos.clear(); //x_pos.shrink_to_fit();
+				y_pos.clear(); //y_pos.shrink_to_fit();
 
 				// 把上一張slice的頂點和edge拿來用
 				edge[slice] = edge[slice - 2];
 				spine_vertex[slice][0] = spine_vertex[slice - 2][0];
 				spine_vertex[slice][1] = spine_vertex[slice - 2][1];
 				spine_vertex[slice][2] = spine_vertex[slice - 2][2];
+				TRACE("Really???????!!!!!!! \n");
 				slice += 2;
 				continue;
 			}
@@ -1358,18 +1395,15 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 			// 尋找三角頂點
 			spine_vertex[slice].assign(3, std::make_pair(0, 0));
+			spine_vertex[slice][0] = std::make_pair((ver_mid % col), (ver_mid / col));
+			
 			int cur = edge[slice].at(0) + edge[slice].at(2) * col;
 			int end = edge[slice].at(1) + edge[slice].at(3) * col;
-			bool l = false, m = false, r = false;
+			bool l = false, r = false;
 			while (cur < end)
 			{
-				if (judge[slice][cur] == obj1)
+				if (judge[slice][cur] == obj)
 				{
-					if (!m && (cur / col) == edge[slice].at(2))	// 中上(x, y)
-					{
-						spine_vertex[slice][0] = std::make_pair((cur % col), (cur / col));
-						m = true;
-					}
 					if (!l && (cur % col) == edge[slice].at(0))	// 左下(x, y)
 					{
 						spine_vertex[slice][1] = std::make_pair((cur % col), (cur / col));
@@ -1384,11 +1418,11 @@ void C3DProcess::OnBnClickedButtonDilation()
 				cur += 1;
 			}
 
-			x_pos.clear();	x_pos.shrink_to_fit();
-			y_pos.clear();	y_pos.shrink_to_fit();
+			x_pos.clear();	//x_pos.shrink_to_fit();
+			y_pos.clear();	//y_pos.shrink_to_fit();
 			slice += 2;
 		}
-		if (start == 0)	TRACE("Even Slice Find Border : Success!\n");
+		if (start_slice == 0)	TRACE("Even Slice Find Border : Success!\n");
 		else TRACE("Odd Slice Find Border : Success!\n");
 	};
 
@@ -1408,21 +1442,6 @@ void C3DProcess::OnBnClickedButtonDilation()
 				spine_vertex[n][0].first = spine_vertex[n - 1][0].first;
 				spine_vertex[n][0].second = spine_vertex[n - 1][0].second;
 			}
-			// 修正「右下點」
-			/*int dis = spine_vertex[n][0].first - spine_vertex[n][1].first;
-			if (abs(spine_vertex[n][2].first - (spine_vertex[n][0].first + dis)) > 30)
-			{
-				int x_max = INT_MIN;
-				int y = spine_vertex[n][1].second;
-				for (int x = spine_vertex[n][1].first; x < col; ++x)
-				{
-					if (judge[n][y * col + x] == obj1)
-						x_max = x;
-				}
-				if (x_max == INT_MIN)	x_max = spine_vertex[n][0].first + dis;
-				spine_vertex[n][2].first = x_max;
-				spine_vertex[n][2].second = y;
-			}*/
 		}
 		++n;
 	}
@@ -1604,34 +1623,17 @@ void C3DProcess::OnBnClickedButtonDilation()
 	TRACE1("spine_vertex's size : %d\n", spine_vertex.size());
 	TRACE1("spine_line's size : %d\n", spine_line.size());
 
-	//////////////////////////////////////////////////////////
-	//
-	//     二 次 區 域 成 長
+	// 二 次 區 域 成 長
 	//
 	UpdateData(TRUE);
 	RG_term.seed = seed_img;
 	RG2_3D_ConfidenceConnected(judge, RG_term);
 	Dilation_3D(judge, 26);
-	clock_t end = clock();
-
-	PrepareVolume();
-	Draw3DImage(true);
-	Draw2DImage(DisplaySlice);
-	spine_volume = Calculate_Volume(judge);
-	m_result.Format("%lf", spine_volume);
-
-	TRACE("Growing Volume : " + m_result + " (cm3) \n");
-	TRACE1("2nd process Time : %f (s)\n\n", (double)(end - start) / CLOCKS_PER_SEC);
-	m_wait->DestroyWindow();
-	UpdateData(FALSE);
-	delete m_wait;
 
 }
 
-void C3DProcess::Spine_process()
+void C3DProcess::Spine_process_test()
 {
-	// DO : 脊椎分割區域的二次處理
-	//
 	const int obj = 1;
 	const int row = ROW;
 	const int col = COL;
@@ -1640,8 +1642,55 @@ void C3DProcess::Spine_process()
 	BYTE**& org = m_pDoc->m_img;
 	BYTE**& pro = m_pDoc->m_imgPro;
 
-	// 尋找每張slice分割區域的垂直邊界 (x.y_min、x.y_min)
+	// 尋找每張slice的三角頂點以及垂直邊界
 	std::map<int, std::vector<int>> edge;
+
+	auto findVertex = [&](int start_slice)
+	{
+		int pos, x, y;
+		int slice = start_slice;
+		std::vector<int> x_pos;
+		std::vector<int> y_pos;
+		x_pos.reserve(10000);
+		y_pos.reserve(10000);
+
+		while (slice < totalSlice)
+		{
+			// 紀錄每個種子點的x.y座標值
+			pos = 0;
+			int ver_mid = 0;
+			int y_min = 512;
+			for (x = 0; x < col; ++x)
+			{
+				for (y = 0; y < row; ++y)
+				{
+					pos = y * col + x;
+					if (judge[slice][pos] == obj)
+					{
+						x_pos.push_back(x);
+						y_pos.push_back(y);
+
+						// 尋找脊柱中心點(中間最高)
+						if (x < 350 && y < y_min)
+						{
+							y_min = y;
+							ver_mid = pos;
+						}
+					}
+				}
+			}
+			
+
+
+			std::sort(x_pos.begin(), x_pos.end());
+			std::sort(y_pos.begin(), y_pos.end());
+
+
+			x_pos.clear();
+			y_pos.clear();
+			slice += 2;
+		}
+	};
 
 }
 
@@ -3212,21 +3261,10 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 			}
 		}
 		n_sd = sqrt(n_sd / cnt);
-
-		//// 先判斷該種子點周圍的平均與標準差是否符合標準
-		//if (n_sd > 15 || abs(n_avg - s_avg) > threshold)
-		//{
-		//	// 就算不能當種子點，也能當別的種子點的成長對象
-		//	//src[s_current.z][s_current.y * col + s_current.x] = -obj;
-		//	sed_que.pop();
-		//	avg_que.pop();
-		//	s_cnt -= 1;
-		//	continue;
-		//}
 		
 		// 制定、修正成長標準的上下限
-		//double up_limit = n_avg + (coefficient * n_sd);
-		//double down_limit = n_avg - (coefficient * n_sd);
+		double up_limit = n_avg + (sd_coeffi * n_sd);
+		double down_limit = n_avg - (sd_coeffi * n_sd);
 		
 		// 判斷是否符合成長標準
 		for (sk = -s_range; sk <= s_range; ++sk)
@@ -3242,8 +3280,9 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 							n_pixel =
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
-							//if (n_pixel <= up_limit && n_pixel >= down_limit)
-							if (n_sd <= sd_thresh && abs(n_pixel - s_avg) <= pix_thresh)
+							if ( //n_pixel >= 250 ||
+								(n_sd <= sd_thresh && abs(n_pixel - s_avg) <= pix_thresh)
+								)
 							{
 								n_site.x = s_current.x + si;
 								n_site.y = s_current.y + sj;
@@ -3394,27 +3433,8 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 
 							if (n_pixel <= up_limit && n_pixel >= down_limit)
 							{
-								//if ((s_current.y + sj) < (spine_vertex[s_current.z + sk].at(1).second + spine_vertex[s_current.z + sk].at(0).second) / 2 ||
-								//	(s_current.y + sj) < (spine_vertex[s_current.z + sk].at(2).second + spine_vertex[s_current.z + sk].at(0).second) / 2)
-								//{
-									if (lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
-										lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk))
-									{
-										n_site.x = s_current.x + si;
-										n_site.y = s_current.y + sj;
-										n_site.z = s_current.z + sk;
-										sed_que.push(n_site);
-
-										s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
-										avg_que.push(s_avg);
-										s_cnt += 1;
-
-										src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = obj2;
-									}
-									else
-										src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj2;
-								//}
-								/*else
+								if (lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
+									lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk))
 								{
 									n_site.x = s_current.x + si;
 									n_site.y = s_current.y + sj;
@@ -3425,8 +3445,10 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 									avg_que.push(s_avg);
 									s_cnt += 1;
 
-									src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = 2;
-								}*/
+									src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = obj2;
+								}
+								else
+									src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj2;
 							}
 							else
 								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj2;
