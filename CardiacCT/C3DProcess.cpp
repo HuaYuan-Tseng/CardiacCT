@@ -463,6 +463,12 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		Draw2DImage(DisplaySlice);
 		m_ScrollBar.SetScrollPos(DisplaySlice);
 
+		if (!spine_vertex.empty())
+		{
+			TRACE3("%3d slice vertex : x = %3d, y = %3d\n", DisplaySlice, 
+				spine_vertex[DisplaySlice][0].first, spine_vertex[DisplaySlice][0].second);
+		}
+
 	}
 
 	// 在 三維 影像視窗範圍內
@@ -1294,9 +1300,16 @@ void C3DProcess::OnBnClickedButtonDilation()
 	clock_t start = clock();
 	if (get_spine)
 	{
-		if (!spine_vertex.empty())	spine_vertex.~map();
-		if (!spine_line.empty()) spine_line.~map();
+		if (!spine_vertex.empty())	spine_vertex.clear();
+		if (!spine_line.empty()) spine_line.clear();
 		Spine_process();
+
+		// 二 次 區 域 成 長
+		UpdateData(TRUE);
+		RG_term.seed = seed_img;
+		//RG2_3D_ConfidenceConnected(judge, RG_term);
+
+		//Dilation_3D(judge, 26);
 		spine_volume = Calculate_Volume(judge);
 		m_result.Format("%lf", spine_volume);
 	}
@@ -1333,7 +1346,7 @@ void C3DProcess::Spine_process()
 	// 尋找每張slice的三角頂點以及垂直邊界
 	std::map<int, std::vector<int>> edge;
 
-	auto findBorder = [&](int start_slice)
+	auto findVertex = [&](int start_slice)
 	{
 		int pos, x, y;
 		int slice = start_slice;
@@ -1346,6 +1359,8 @@ void C3DProcess::Spine_process()
 		{
 			pos = 0;
 			int ver_mid = 0;
+			int ver_lft = 0;
+			int ver_rht = 0;
 			int y_min = 512;
 
 			// 紀錄每個種子點的x.y座標值
@@ -1359,75 +1374,98 @@ void C3DProcess::Spine_process()
 						x_pos.push_back(x);
 						y_pos.push_back(y);
 
-						// 尋找脊柱中心點(中間最高)
+						// 尋找-中上點(中間最高)
 						if (x < 350 && y < y_min)
 						{
 							y_min = y;
 							ver_mid = pos;
 						}
+
+						// 尋找-左下點(第一個接觸到的點)
+						if (ver_lft == 0)
+						{
+							ver_lft = pos;
+						}
 					}
 				}
 			}
+			size_t x_len = x_pos.size();
+			size_t y_len = y_pos.size();
 
-			// 如果成長範圍少到無法判別，就拿上一張的頂點和邊界來用
-			if (x_pos.size() < 2 || y_pos.size() < 2)
+			// 尋找-右下點(最後接觸到的點)
+			ver_rht = y_pos[y_len - 1] * col + x_pos[x_len - 1];
+
+			// 如果成長範圍太少導致判別會錯誤，就拿上一張的頂點和邊界來用
+			if (x_len < 2 || y_len < 2)
 			{
-				x_pos.clear(); //x_pos.shrink_to_fit();
-				y_pos.clear(); //y_pos.shrink_to_fit();
+				x_pos.clear();
+				y_pos.clear();
 
-				// 把上一張slice的頂點和edge拿來用
 				edge[slice] = edge[slice - 2];
 				spine_vertex[slice][0] = spine_vertex[slice - 2][0];
 				spine_vertex[slice][1] = spine_vertex[slice - 2][1];
 				spine_vertex[slice][2] = spine_vertex[slice - 2][2];
-				TRACE("Really???????!!!!!!! \n");
+				TRACE("Are you kidding ???????!!!!!!! \n");
 				slice += 2;
 				continue;
 			}
+			
+			//std::sort(x_pos.begin(), x_pos.end());
+			//std::sort(y_pos.begin(), y_pos.end());
 
-			std::sort(x_pos.begin(), x_pos.end());
-			std::sort(y_pos.begin(), y_pos.end());
+			edge[slice].push_back(x_pos[0]);				// [0]: x_min
+			edge[slice].push_back(x_pos[x_len - 1]);		// [1]: x_max
+			edge[slice].push_back(y_pos[0]);				// [2]: y_min
+			edge[slice].push_back(y_pos[y_len - 1]);		// [3]: y_max
 
-			edge[slice].push_back(x_pos[0]);					// [0]: x_min
-			edge[slice].push_back(x_pos[x_pos.size() - 1]);		// [1]: x_max
-			edge[slice].push_back(y_pos[0]);					// [2]: y_min
-			edge[slice].push_back(y_pos[y_pos.size() - 1]);		// [3]: y_max
-
-			// 尋找三角頂點
+			// 訂定三角頂點
 			spine_vertex[slice].assign(3, std::make_pair(0, 0));
 			spine_vertex[slice][0] = std::make_pair((ver_mid % col), (ver_mid / col));
-			
-			int cur = edge[slice].at(0) + edge[slice].at(2) * col;
-			int end = edge[slice].at(1) + edge[slice].at(3) * col;
-			bool l = false, r = false;
-			while (cur < end)
+			spine_vertex[slice][1] = std::make_pair((ver_lft % col), (ver_lft / col));
+			if ((ver_rht / col) <= (ver_mid / col) || (ver_rht % col) - (ver_mid % col) >= 200)
 			{
-				if (judge[slice][cur] == obj)
-				{
-					if (!l && (cur % col) == edge[slice].at(0))	// 左下(x, y)
-					{
-						spine_vertex[slice][1] = std::make_pair((cur % col), (cur / col));
-						l = true;
-					}
-					if (!r && (cur % col) == edge[slice].at(1))	// 右下(x, y)
-					{
-						spine_vertex[slice][2] = std::make_pair((cur % col), (cur / col));
-						r = true;
-					}
-				}
-				cur += 1;
+				x = (ver_lft % col) + ((ver_mid % col) - (ver_lft % col));
+				y = ver_lft / col;
+				spine_vertex[slice][2] = std::make_pair(x, y);
 			}
+			else
+				spine_vertex[slice][2] = std::make_pair((ver_rht % col), (ver_rht / col));
+			
+			
+			//int cur = edge[slice].at(0) + edge[slice].at(2) * col;
+			//int end = edge[slice].at(1) + edge[slice].at(3) * col;
+			//bool l = false, r = false;
+			//while (cur < end)
+			//{
+			//	if (judge[slice][cur] == obj)
+			//	{
+			//		if (!l && (cur % col) == edge[slice].at(0))	// 左下(x, y)
+			//		{
+			//			spine_vertex[slice][1] = std::make_pair((cur % col), (cur / col));
+			//			l = true;
+			//		}
+			//		if (!r && (cur % col) == edge[slice].at(1))	// 右下(x, y)
+			//		{
+			//			spine_vertex[slice][2] = std::make_pair((cur % col), (cur / col));
+			//			r = true;
+			//		}
+			//	}
+			//	cur += 1;
+			//}
 
-			x_pos.clear();	//x_pos.shrink_to_fit();
-			y_pos.clear();	//y_pos.shrink_to_fit();
+			x_pos.clear();	
+			y_pos.clear();	
 			slice += 2;
-		}
+		}	// end while
+
+		x_pos.shrink_to_fit();
+		y_pos.shrink_to_fit();
 		if (start_slice == 0)	TRACE("Even Slice Find Border : Success!\n");
 		else TRACE("Odd Slice Find Border : Success!\n");
 	};
 
-	thread th0(findBorder, 0);				// 偶數 slice
-	thread th1(findBorder, 1);				// 奇數 slice
+	thread th0(findVertex, 0);				// 偶數 slice
+	thread th1(findVertex, 1);				// 奇數 slice
 	th0.join();	th1.join();
 
 	// 修正偏移太多的「中上點」
@@ -1622,14 +1660,7 @@ void C3DProcess::Spine_process()
 
 	TRACE1("spine_vertex's size : %d\n", spine_vertex.size());
 	TRACE1("spine_line's size : %d\n", spine_line.size());
-
-	// 二 次 區 域 成 長
-	//
-	UpdateData(TRUE);
-	RG_term.seed = seed_img;
-	RG2_3D_ConfidenceConnected(judge, RG_term);
-	Dilation_3D(judge, 26);
-
+	
 }
 
 void C3DProcess::Spine_process_test()
@@ -1643,8 +1674,6 @@ void C3DProcess::Spine_process_test()
 	BYTE**& pro = m_pDoc->m_imgPro;
 
 	// 尋找每張slice的三角頂點以及垂直邊界
-	std::map<int, std::vector<int>> edge;
-
 	auto findVertex = [&](int start_slice)
 	{
 		int pos, x, y;
@@ -1656,10 +1685,11 @@ void C3DProcess::Spine_process_test()
 
 		while (slice < totalSlice)
 		{
-			// 紀錄每個種子點的x.y座標值
 			pos = 0;
-			int ver_mid = 0;
-			int y_min = 512;
+			int ver_mid = 0, y_min = 512;
+			int ver_lft = 0, ver_rht = 0;
+
+			// 紀錄每個種子點的x.y座標值
 			for (x = 0; x < col; ++x)
 			{
 				for (y = 0; y < row; ++y)
@@ -1670,28 +1700,324 @@ void C3DProcess::Spine_process_test()
 						x_pos.push_back(x);
 						y_pos.push_back(y);
 
-						// 尋找脊柱中心點(中間最高)
+						// 尋找-中上點(中間最高)
 						if (x < 350 && y < y_min)
 						{
 							y_min = y;
 							ver_mid = pos;
 						}
+						// 尋找-左下點(第一個接觸到的點)
+						if (ver_lft == 0)
+							ver_lft = pos;
 					}
 				}
 			}
 			
+			// 如果成長範圍太少導致判別會錯誤，就先跳過
+			if (x_pos.size() < 50 || y_pos.size() < 50)
+			{
+				TRACE("Are you kidding ???????!!!!!!! \n");
+				x_pos.clear();
+				y_pos.clear();
+				slice += 2;
+				continue;
+			}
+			size_t x_len = x_pos.size();
+			size_t y_len = y_pos.size();
 
+			// 尋找-右下點(最後接觸到的點)
+			ver_rht = y_pos[y_len - 1] * col + x_pos[x_len - 1];
 
-			std::sort(x_pos.begin(), x_pos.end());
-			std::sort(y_pos.begin(), y_pos.end());
+			spine_vertex[slice].assign(3, std::make_pair(0, 0));
 
+			// 存三角頂點 - 中上點
+			spine_vertex[slice][0] = std::make_pair((ver_mid % col), (ver_mid / col));
+			// 存三角頂點 - 左下點
+			spine_vertex[slice][1] = std::make_pair((ver_lft % col), (ver_lft / col));
+			// 計算三角頂點 - 右下點 (避免成長到影像一半以上的肋骨)
+			if ((ver_rht / col) <= (ver_mid / col) || (ver_rht % col) - (ver_mid % col) >= 200)
+			{
+				x = (ver_lft % col) + ((ver_mid % col) - (ver_lft % col));
+				y = ver_lft / col;
+				spine_vertex[slice][2] = std::make_pair(x, y);
+			}
+			else
+				spine_vertex[slice][2] = std::make_pair((ver_rht % col), (ver_rht / col));
 
 			x_pos.clear();
 			y_pos.clear();
 			slice += 2;
+		}	// end while
+
+		x_pos.shrink_to_fit();
+		y_pos.shrink_to_fit();
+		if (start_slice == 0)	TRACE("Find Vertex : Even Slice Success ! \n");
+		else TRACE("Find Vertex : Odd Slice Success ! \n");
+	};	// end findVertex()
+	
+	thread th_0(findVertex, 0);
+	thread th_1(findVertex, 1);
+	th_0.join(); th_1.join();
+
+	// 修正沒有判斷到頂點的slice
+	int n = 0;
+	if (spine_vertex.find(n) == spine_vertex.end() || spine_vertex[n].size() < 3)
+	{
+		int s = n + 1;
+		// 直到找到有頂點的slice為止
+		while (spine_vertex.find(s) == spine_vertex.end() || spine_vertex[s].size() < 3)
+			++s;
+		for (; n < s; ++n)
+		{
+			spine_vertex[n].assign(3, std::make_pair(0, 0));
+			spine_vertex[n] = spine_vertex[s];
 		}
+	}
+	else 
+		TRACE("0 slice have vertex ! \n");
+
+	while (n < totalSlice)
+	{
+		if (spine_vertex.find(n) == spine_vertex.end() || spine_vertex[n].size() < 3)
+		{
+			spine_vertex[n].assign(3, std::make_pair(0, 0));
+			spine_vertex[n] = spine_vertex[n-1];
+		}
+		++n;
+	}
+	TRACE("Vertex Fix : Success ! \n");
+
+	// 修正偏移太多的「中上點」
+	n = 1;
+	while (n < totalSlice)
+	{
+		if (spine_vertex.find(n) != spine_vertex.end())
+		{
+			if (abs(spine_vertex[n][0].first - spine_vertex[n - 1][0].first) > 3 ||
+				abs(spine_vertex[n][0].second - spine_vertex[n - 1][0].second) > 3)
+			{
+				spine_vertex[n][0].first = spine_vertex[n - 1][0].first;
+				spine_vertex[n][0].second = spine_vertex[n - 1][0].second;
+			}
+		}
+		++n;
+	}
+	TRACE("Vertex Mid Fix : Success !! \n");
+
+	TRACE1("Spine_vertex's size : %d \n", spine_vertex.size());
+
+	// 尋找每張slice頂點(vertex)的垂直邊界
+	std::map<int, std::vector<int>> edge;
+	auto findBorder = [&](int start_slice)
+	{
+		int s = start_slice;
+		while (s < totalSlice)
+		{
+			if (spine_vertex.find(s) == spine_vertex.end() || spine_vertex[s].size() < 3)
+			{
+				TRACE1("%3d slice without vertex !! \n", s);
+				s += 2;
+				continue;
+			}
+
+			edge[s].assign(4, 0);
+			edge[s].push_back(spine_vertex[s][1].first);	// [0]: x_min
+			edge[s].push_back(spine_vertex[s][2].first);	// [1]: x_max
+			edge[s].push_back(spine_vertex[s][0].second);	// [2]: y_min
+			edge[s].push_back(max(spine_vertex[s][1].second,
+				spine_vertex[s][2].second));		// [3]: y_max
+			s += 2;
+		}
+		if (start_slice == 0) TRACE("Find Border : Even Slice Success ! \n");
+		else TRACE("Find Border : Odd Slice Success ! \n");
 	};
 
+	thread th_2(findBorder, 0);
+	thread th_3(findBorder, 1);
+	th_2.join(); th_3.join();
+
+	// 計算每一張slice的斜線方程式係數(斜率.截距)
+	auto lineIndex = [&](int start_slice)
+	{
+		int s = start_slice;
+		while (s < totalSlice)
+		{
+			if (spine_vertex.find(s) == spine_vertex.end() || spine_vertex[s].size() < 3)
+			{
+				TRACE1("%3d slice without vertex !! \n", s);
+				s += 2;
+				continue;
+			}
+
+			// 計算每張slice三角頂點的斜線方程式係數
+			spine_line[s].assign(2, std::make_pair(0.0f, 0.0f));
+			float slope1 = 0, slope2 = 0;						// 斜率 slope
+			float inter1 = 0, inter2 = 0;						// 截距 intercept
+			slope1 = (float)(spine_vertex[s][0].second - spine_vertex[s][1].second) /
+				(float)(spine_vertex[s][0].first - spine_vertex[s][1].first);
+			slope2 = (float)(spine_vertex[s][0].second - spine_vertex[s][2].second) /
+				(float)(spine_vertex[s][0].first - spine_vertex[s][2].first);
+
+			inter1 = (float)(spine_vertex[s][0].second + spine_vertex[s][1].second) -
+				slope1 * (spine_vertex[s][0].first + spine_vertex[s][1].first);
+			inter1 /= 2;
+			inter2 = (float)(spine_vertex[s][0].second + spine_vertex[s][2].second) -
+				slope2 * (spine_vertex[s][0].first + spine_vertex[s][2].first);
+			inter2 /= 2;
+			spine_line[s][0] = std::make_pair(slope1, inter1);	// 左線
+			spine_line[s][1] = std::make_pair(slope2, inter2);	// 右線
+			
+			s += 2;
+		}
+		if (start_slice == 0) TRACE("Line Index : Even Slice Success ! \n");
+		else TRACE("Line Index : Odd Slice Success ! \n");
+	};
+
+	thread th_4(lineIndex, 0);
+	thread th_5(lineIndex, 1);
+	th_4.join(); th_5.join();
+
+	// 對每一張slice的垂直邊界範圍做pixel處理
+	auto pixProcess = [&](int start_slice)
+	{
+		int s = start_slice;
+		std::map<int, std::vector<int>>::iterator it;
+		while (s < totalSlice)
+		{
+			if (edge.find(s) == edge.end() || edge[s].size() < 4)
+			{
+				TRACE1("%3d slice edge not found! \n", s);
+				s += 2;
+				continue;
+			}
+
+			it = edge.find(s);
+			for (int j = it->second.at(2); j <= it->second.at(3); ++j)
+			{
+				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
+				{
+					if (pro[s][j * col + i] <= 100)
+						pro[s][j * col + i] = 0;
+					//else if (pro[s][j * col + i] <= 180)
+					//	pro[s][j * col + i] -= 20;
+					//else if (pro[s][j * col + i] <= 200 && pro[s][j * col + i] > 180)
+					//	pro[s][j * col + i] += 30;
+				}
+			}
+			s += 2;
+		}
+		if (start_slice == 0) TRACE("Pixel Process : Even Slice Success ! \n");
+		else TRACE("Pixel Process : Odd Slice Success ! \n");
+	};
+
+	thread th_6(pixProcess, 0);
+	thread th_7(pixProcess, 1);
+	th_6.join(); th_7.join();
+
+	// 低通 濾波 (mean filter)
+	//std::vector<int> avg_coef = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
+	std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	int avg_cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
+
+	auto avgKernel = [=](BYTE* img, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				sum += (avg_coef[n] * img[j * col + i]);
+				n += 1;
+			}
+		}
+		return sum / avg_cnt;
+	};
+	auto avgFilter = [&](int start_slice)
+	{
+		std::map<int, std::vector<int>>::iterator it;
+		int s = start_slice;
+		while (s < totalSlice)
+		{
+			if ((it = edge.find(s)) == edge.end() || edge[s].size() < 4)
+			{
+				TRACE1("%3d slice edge not found ! \n", s);
+				s += 2;
+				continue;
+			}
+			BYTE* tmp = new BYTE[row * col];
+			std::memcpy(tmp, pro[s], sizeof(BYTE) * row * col);
+			for (int j = it->second.at(2); j <= it->second.at(3); ++j)
+			{
+				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
+				{
+					pro[s][j * col + i] = avgKernel(tmp, i, j);
+				}
+			}
+			delete[] tmp;
+			s += 2;
+		}
+		if (start_slice == 0)	TRACE("Avg Filter : Even Slice Success ! \n");
+		else TRACE("Avg Filter : Odd Slice Success ! \n");
+	};
+
+	thread th_8(avgFilter, 0);
+	thread th_9(avgFilter, 1);
+	th_8.join(); th_9.join();
+
+	// 高通 濾波 (laplace filter)
+	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
+	std::vector<int> sharp_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
+	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
+
+	auto sharpKernel = [=](BYTE* img, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				sum += (sharp_coef[n] * img[j * col + i]);
+				n += 1;
+			}
+		}
+		return sum;
+	};
+	auto sharpFilter = [&](int start_slice)
+	{
+		std::map<int, std::vector<int>>::iterator it;
+		int s = start_slice, pixel = 0;
+		while (s < totalSlice)
+		{
+			if ((it = edge.find(s)) == edge.end() || edge[s].size() < 4)
+			{
+				TRACE1("%3d slice edge not found ! \n", s);
+				s += 2;
+				continue;
+			}
+			BYTE* tmp = new BYTE[row * col];
+			std::memcpy(tmp, pro[s], sizeof(BYTE) * row * col);
+			for (int j = it->second.at(2); j <= it->second.at(3); ++j)
+			{
+				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
+				{
+					pixel = weight * sharpKernel(tmp, i, j);
+					pixel = tmp[j * col + i] + pixel;
+					if (pixel > 255)	pixel = 255;
+					else if (pixel < 0) pixel = 0;
+					pro[s][j * col + i] = pixel;
+				}
+			}
+			delete[] tmp;
+			s += 2;
+		}
+		if (start_slice == 0)	TRACE("High Filter : Even Slice Success ! \n");
+		else TRACE("High Filter : Odd Slice Success!\n");
+	};
+
+	thread th_10(sharpFilter, 0);
+	thread th_11(sharpFilter, 1);
+	th_10.join(); th_11.join();
+	
 }
 
 void C3DProcess::OnBnClickedButtonGrowingRemove()
