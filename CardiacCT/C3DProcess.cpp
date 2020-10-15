@@ -463,11 +463,19 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		Draw2DImage(DisplaySlice);
 		m_ScrollBar.SetScrollPos(DisplaySlice);
 
-		if (!spine_vertex.empty())
+		/*if (!spine_vertex.empty())
 		{
 			TRACE3("%3d slice vertex : x = %3d, y = %3d\n", DisplaySlice, 
 				spine_vertex[DisplaySlice][0].first, spine_vertex[DisplaySlice][0].second);
-		}
+		}*/
+
+		/*if (!spine_edge.empty())
+		{
+			TRACE3("%3d slice edge : x_min = %3d ; x_max = %3d \n", DisplaySlice, 
+				spine_edge[DisplaySlice][0], spine_edge[DisplaySlice][1]);
+			TRACE2("y_min = %3d ; y_max = %3d \n",
+				spine_edge[DisplaySlice][2], spine_edge[DisplaySlice][3]);
+		}*/
 
 	}
 
@@ -1302,14 +1310,14 @@ void C3DProcess::OnBnClickedButtonDilation()
 	{
 		if (!spine_vertex.empty())	spine_vertex.clear();
 		if (!spine_line.empty()) spine_line.clear();
-		Spine_process();
+		Spine_process_test();
 
 		// 二 次 區 域 成 長
 		UpdateData(TRUE);
 		RG_term.seed = seed_img;
-		//RG2_3D_ConfidenceConnected(judge, RG_term);
+		RG2_3D_ConfidenceConnected(judge, RG_term);
 
-		//Dilation_3D(judge, 26);
+		Dilation_3D(judge, 26);
 		spine_volume = Calculate_Volume(judge);
 		m_result.Format("%lf", spine_volume);
 	}
@@ -1726,24 +1734,24 @@ void C3DProcess::Spine_process_test()
 			size_t y_len = y_pos.size();
 
 			// 尋找-右下點(最後接觸到的點)
-			ver_rht = y_pos[y_len - 1] * col + x_pos[x_len - 1];
+			ver_rht = y_pos.at(y_len - 1) * col + x_pos.at(x_len - 1);
 
 			spine_vertex[slice].assign(3, std::make_pair(0, 0));
 
 			// 存三角頂點 - 中上點
-			spine_vertex[slice][0] = std::make_pair((ver_mid % col), (ver_mid / col));
+			spine_vertex[slice].at(0) = std::make_pair((ver_mid % col), (ver_mid / col));
 			// 存三角頂點 - 左下點
-			spine_vertex[slice][1] = std::make_pair((ver_lft % col), (ver_lft / col));
+			spine_vertex[slice].at(1) = std::make_pair((ver_lft % col), (ver_lft / col));
 			// 計算三角頂點 - 右下點 (避免成長到影像一半以上的肋骨)
 			if ((ver_rht / col) <= (ver_mid / col) || (ver_rht % col) - (ver_mid % col) >= 200)
 			{
 				x = (ver_lft % col) + ((ver_mid % col) - (ver_lft % col));
 				y = ver_lft / col;
-				spine_vertex[slice][2] = std::make_pair(x, y);
+				spine_vertex[slice].at(2) = std::make_pair(x, y);
 			}
 			else
-				spine_vertex[slice][2] = std::make_pair((ver_rht % col), (ver_rht / col));
-
+				spine_vertex[slice].at(2) = std::make_pair((ver_rht % col), (ver_rht / col));
+			
 			x_pos.clear();
 			y_pos.clear();
 			slice += 2;
@@ -1772,6 +1780,7 @@ void C3DProcess::Spine_process_test()
 			spine_vertex[n].assign(3, std::make_pair(0, 0));
 			spine_vertex[n] = spine_vertex[s];
 		}
+		TRACE("0 slice's vertex have been fixed ! \n");
 	}
 	else 
 		TRACE("0 slice have vertex ! \n");
@@ -1804,10 +1813,8 @@ void C3DProcess::Spine_process_test()
 	}
 	TRACE("Vertex Mid Fix : Success !! \n");
 
-	TRACE1("Spine_vertex's size : %d \n", spine_vertex.size());
-
 	// 尋找每張slice頂點(vertex)的垂直邊界
-	std::map<int, std::vector<int>> edge;
+	//std::map<int, std::vector<int>> edge;
 	auto findBorder = [&](int start_slice)
 	{
 		int s = start_slice;
@@ -1819,13 +1826,13 @@ void C3DProcess::Spine_process_test()
 				s += 2;
 				continue;
 			}
-
-			edge[s].assign(4, 0);
-			edge[s].push_back(spine_vertex[s][1].first);	// [0]: x_min
-			edge[s].push_back(spine_vertex[s][2].first);	// [1]: x_max
-			edge[s].push_back(spine_vertex[s][0].second);	// [2]: y_min
-			edge[s].push_back(max(spine_vertex[s][1].second,
-				spine_vertex[s][2].second));		// [3]: y_max
+			
+			spine_edge[s].assign(4, 0);
+			spine_edge[s].at(0) = spine_vertex[s][1].first;						// [0]: x_min
+			spine_edge[s].at(1) = spine_vertex[s][2].first;						// [1]: x_max
+			spine_edge[s].at(2) = spine_vertex[s][0].second;					// [2]: y_min
+			spine_edge[s].at(3) = 
+				max(spine_vertex[s][1].second, spine_vertex[s][2].second);		// [3]: y_max
 			s += 2;
 		}
 		if (start_slice == 0) TRACE("Find Border : Even Slice Success ! \n");
@@ -1842,12 +1849,12 @@ void C3DProcess::Spine_process_test()
 		int s = start_slice;
 		while (s < totalSlice)
 		{
-			if (spine_vertex.find(s) == spine_vertex.end() || spine_vertex[s].size() < 3)
+			/*if (spine_vertex.find(s) == spine_vertex.end() || spine_vertex[s].size() < 3)
 			{
 				TRACE1("%3d slice without vertex !! \n", s);
 				s += 2;
 				continue;
-			}
+			}*/
 
 			// 計算每張slice三角頂點的斜線方程式係數
 			spine_line[s].assign(2, std::make_pair(0.0f, 0.0f));
@@ -1864,8 +1871,8 @@ void C3DProcess::Spine_process_test()
 			inter2 = (float)(spine_vertex[s][0].second + spine_vertex[s][2].second) -
 				slope2 * (spine_vertex[s][0].first + spine_vertex[s][2].first);
 			inter2 /= 2;
-			spine_line[s][0] = std::make_pair(slope1, inter1);	// 左線
-			spine_line[s][1] = std::make_pair(slope2, inter2);	// 右線
+			spine_line[s].at(0) = std::make_pair(slope1, inter1);	// 左線
+			spine_line[s].at(1) = std::make_pair(slope2, inter2);	// 右線
 			
 			s += 2;
 		}
@@ -1877,6 +1884,35 @@ void C3DProcess::Spine_process_test()
 	thread th_5(lineIndex, 1);
 	th_4.join(); th_5.join();
 
+	for (auto& elem : spine_line)
+	{
+		if (elem.second.size() != 2)
+		{
+			int s = elem.first;
+			spine_line[s].clear();
+			spine_line[s].assign(2, std::make_pair(0.0f, 0.0f));
+			float slope1 = 0, slope2 = 0;						// 斜率 slope
+			float inter1 = 0, inter2 = 0;						// 截距 intercept
+			slope1 = (float)(spine_vertex[s][0].second - spine_vertex[s][1].second) /
+				(float)(spine_vertex[s][0].first - spine_vertex[s][1].first);
+			slope2 = (float)(spine_vertex[s][0].second - spine_vertex[s][2].second) /
+				(float)(spine_vertex[s][0].first - spine_vertex[s][2].first);
+
+			inter1 = (float)(spine_vertex[s][0].second + spine_vertex[s][1].second) -
+				slope1 * (spine_vertex[s][0].first + spine_vertex[s][1].first);
+			inter1 /= 2;
+			inter2 = (float)(spine_vertex[s][0].second + spine_vertex[s][2].second) -
+				slope2 * (spine_vertex[s][0].first + spine_vertex[s][2].first);
+			inter2 /= 2;
+			spine_line[s].at(0) = std::make_pair(slope1, inter1);	// 左線
+			spine_line[s].at(1) = std::make_pair(slope2, inter2);	// 右線
+		}
+	}
+
+	TRACE1("Spine Vertex's size : %3d.\n", spine_vertex.size());
+	TRACE1("Spine Line's size : %3d.\n", spine_line.size());
+	TRACE1("Spine Edge's size : %3d.\n", spine_edge.size());
+
 	// 對每一張slice的垂直邊界範圍做pixel處理
 	auto pixProcess = [&](int start_slice)
 	{
@@ -1884,22 +1920,22 @@ void C3DProcess::Spine_process_test()
 		std::map<int, std::vector<int>>::iterator it;
 		while (s < totalSlice)
 		{
-			if (edge.find(s) == edge.end() || edge[s].size() < 4)
+			if (spine_edge.find(s) == spine_edge.end() || spine_edge[s].size() < 4)
 			{
 				TRACE1("%3d slice edge not found! \n", s);
 				s += 2;
 				continue;
 			}
 
-			it = edge.find(s);
+			it = spine_edge.find(s);
 			for (int j = it->second.at(2); j <= it->second.at(3); ++j)
 			{
 				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
 				{
 					if (pro[s][j * col + i] <= 100)
 						pro[s][j * col + i] = 0;
-					//else if (pro[s][j * col + i] <= 180)
-					//	pro[s][j * col + i] -= 20;
+					else if (pro[s][j * col + i] <= 140)
+						pro[s][j * col + i] -= 30;
 					//else if (pro[s][j * col + i] <= 200 && pro[s][j * col + i] > 180)
 					//	pro[s][j * col + i] += 30;
 				}
@@ -1938,12 +1974,13 @@ void C3DProcess::Spine_process_test()
 		int s = start_slice;
 		while (s < totalSlice)
 		{
-			if ((it = edge.find(s)) == edge.end() || edge[s].size() < 4)
+			if (spine_edge.find(s) == spine_edge.end() || spine_edge[s].size() < 4)
 			{
 				TRACE1("%3d slice edge not found ! \n", s);
 				s += 2;
 				continue;
 			}
+			it = spine_edge.find(s);
 			BYTE* tmp = new BYTE[row * col];
 			std::memcpy(tmp, pro[s], sizeof(BYTE) * row * col);
 			for (int j = it->second.at(2); j <= it->second.at(3); ++j)
@@ -1988,12 +2025,13 @@ void C3DProcess::Spine_process_test()
 		int s = start_slice, pixel = 0;
 		while (s < totalSlice)
 		{
-			if ((it = edge.find(s)) == edge.end() || edge[s].size() < 4)
+			if (spine_edge.find(s) == spine_edge.end() || spine_edge[s].size() < 4)
 			{
 				TRACE1("%3d slice edge not found ! \n", s);
 				s += 2;
 				continue;
 			}
+			it = spine_edge.find(s);
 			BYTE* tmp = new BYTE[row * col];
 			std::memcpy(tmp, pro[s], sizeof(BYTE) * row * col);
 			for (int j = it->second.at(2); j <= it->second.at(3); ++j)
@@ -3067,6 +3105,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		if (get_regionGrow)
 		{
 			int obj1 = INT_MAX, obj2 = INT_MAX;
+			int obj3 = INT_MAX, obj4 = INT_MAX;
 			if (get_spine)
 			{
 				obj1 = 1;
@@ -3074,8 +3113,8 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			}
 			else if (get_sternum)
 			{
-				obj1 = 3;
-				obj2 = 4;
+				obj3 = 3;
+				obj4 = 4;
 			}
 			for (j = 0; j < 512; j++)
 			{
@@ -3085,14 +3124,24 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 					{
 						pt.x = i;
 						pt.y = j;
-
 						dc.SetPixel(pt, RGB(255, 120, 190));
 					}
-					else if (judge[DisplaySlice][j * Col + i] == obj2)
+					if (judge[DisplaySlice][j * Col + i] == obj2)
 					{
 						pt.x = i;
 						pt.y = j;
-
+						dc.SetPixel(pt, RGB(100, 255, 100));
+					}
+					if (judge[DisplaySlice][j * Col + i] == obj3)
+					{
+						pt.x = i;
+						pt.y = j;
+						dc.SetPixel(pt, RGB(255, 120, 190));
+					}
+					if (judge[DisplaySlice][j * Col + i] == obj4)
+					{
+						pt.x = i;
+						pt.y = j;
 						dc.SetPixel(pt, RGB(100, 255, 100));
 					}
 				}
@@ -3606,9 +3655,7 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 							n_pixel =
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
-							if ( //n_pixel >= 250 ||
-								(n_sd <= sd_thresh && abs(n_pixel - s_avg) <= pix_thresh)
-								)
+							if ( (n_sd <= sd_thresh && abs(n_pixel - s_avg) <= pix_thresh) )
 							{
 								n_site.x = s_current.x + si;
 								n_site.y = s_current.y + sj;
@@ -3654,34 +3701,31 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	const int totalXY = ROW * COL;
 	const int totalSlice = Total_Slice;
 	const int s_range = (factor.s_kernel - 1) / 2;
-	unsigned int s_cnt = 0, n_pixel = 0;
-	register int si, sj, sk;
-	
-	double	s_avg = 0;
-	double	up_limit, down_limit;
-	double	threshold = factor.pix_thresh;
-	double	coefficient = factor.sd_coeffi;
-
-	Seed_s	n_site;
-	Seed_s	s_current;
+	double	th = factor.pix_thresh;
+	double	co = factor.sd_coeffi;
 	Seed_s	seed = factor.seed;
 	BYTE**& img = m_pDoc->m_img;
 	BYTE**& imgPro = m_pDoc->m_imgPro;
+
+	double	s_avg = 0;
+	double	up_limit, down_limit;
+	unsigned int s_cnt = 0, n_pixel = 0;
+	Seed_s	s_pt, n_pt;
 	std::queue<Seed_s> sed_que;
 	std::queue<double> avg_que;
 	
 	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
 	{
-		if (spine_line[pz].size() < 2) spine_line[pz] = spine_line[pz - 1];
-		float value = spine_line[pz][0].first * px + spine_line[pz][0].second - py;
-		if (value <= 0)	return true;				// 在left line的左邊(要倒著看
+		//if (spine_line[pz].size() < 2) spine_line[pz] = spine_line[pz - 1];
+		float value = spine_line[pz].at(0).first * px + spine_line[pz].at(0).second - py;
+		if (value <= 0)	return true;				// 在left line(要倒著看)的左邊
 		else return false;
 	};
 	auto lineFunc_2 = [=](int px, int py, int pz)	// right line
 	{
-		if (spine_line[pz].size() < 2) spine_line[pz] = spine_line[pz - 1];
-		float value = spine_line[pz][1].first * px + spine_line[pz][1].second - py;
-		if (value <= 0)	return true;				// 在right line的右邊(要倒著看
+		//if (spine_line[pz].size() < 2) spine_line[pz] = spine_line[pz - 1];
+		float value = spine_line[pz].at(1).first * px + spine_line[pz].at(1).second - py;
+		if (value <= 0)	return true;				// 在right line(要倒著看)的右邊
 		else return false;
 	};
 	auto outOfRange = [=](int px, int py, int pz)	// 影像邊界
@@ -3693,22 +3737,23 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	
 	// 先把第一次區域成長的種子點都加進來
 	// 原本判定不要的先歸零
+	register int si, sj, sk;
 	for (sj = 0; sj < totalSlice; ++sj)
 	{
 		for (si = 0; si < totalXY; ++si)
 		{
 			if (src[sj][si] == obj1)
 			{
-				n_site.x = si % col;
-				n_site.y = si / col;
-				n_site.z = sj;
+				n_pt.x = si % col;
+				n_pt.y = si / col;
+				n_pt.z = sj;
 
 				n_pixel = img[sj][si];
 				s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
 				s_cnt += 1;
 
 				avg_que.push(s_avg);
-				sed_que.push(n_site);
+				sed_que.push(n_pt);
 			}
 			else if (src[sj][si] == -obj1)
 				src[sj][si] = 0;
@@ -3722,26 +3767,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	while (!sed_que.empty())
 	{
 		s_avg = avg_que.front();
-		s_current = sed_que.front();
-
-		// 制定、修正成長標準上下限
-		up_limit = s_avg + threshold;
-		down_limit = s_avg - threshold;
-
-		// 重新界定成長標準上下限
-		if (up_limit > 255 || down_limit < 0)
-		{
-			if (down_limit > 0)
-			{
-				up_limit = 255;
-				down_limit = 255 - 2 * threshold;
-			}
-			else
-			{
-				down_limit = 0;
-				up_limit = 0 + 2 * threshold;
-			}
-		}
+		s_pt = sed_que.front();
 
 		// 判斷是否符合成長標準
 		for (sk = -s_range; sk <= s_range; ++sk)
@@ -3750,34 +3776,34 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 			{
 				for (si = -s_range; si <= s_range; ++si)
 				{
-					if (!outOfRange(s_current.x + si, s_current.y + sj, s_current.z + sk))
+					if (!outOfRange(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
 					{
-						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] == 0)
+						if (src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] == 0)
 						{
 							n_pixel =
-								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+								imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
 
-							if (n_pixel <= up_limit && n_pixel >= down_limit)
+							if (abs(n_pixel - s_avg) <= th)
 							{
-								if (lineFunc_1(s_current.x + si, s_current.y + sj, s_current.z + sk) &&
-									lineFunc_2(s_current.x + si, s_current.y + sj, s_current.z + sk))
+								if (lineFunc_1(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
+									lineFunc_2(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
 								{
-									n_site.x = s_current.x + si;
-									n_site.y = s_current.y + sj;
-									n_site.z = s_current.z + sk;
-									sed_que.push(n_site);
+									n_pt.x = s_pt.x + si;
+									n_pt.y = s_pt.y + sj;
+									n_pt.z = s_pt.z + sk;
+									sed_que.push(n_pt);
 
 									s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
 									avg_que.push(s_avg);
 									s_cnt += 1;
 
-									src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = obj2;
+									src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = obj2;
 								}
 								else
-									src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj2;
+									src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
 							}
 							else
-								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj2;
+								src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
 						}
 					}
 				}

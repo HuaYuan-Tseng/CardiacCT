@@ -143,6 +143,12 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 																		// 0 : 左
 																		// 1 : 右
 
+	std::map<int, std::vector<int>> spine_edge;							// 記錄每張slice進行處理的垂直邊界
+																		// 0 : x_min
+																		// 1 : x_max
+																		// 2 : y_min
+																		// 3 : y_max
+
 	std::vector<int> judge_type;										// 紀錄判定類型 (+ : 要的 , - : 不要的)
 																		//  0 : 還沒判斷
 																		//  1.2 : spine (1RG, 2RG)
