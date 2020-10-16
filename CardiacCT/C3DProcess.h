@@ -191,7 +191,6 @@ public:
 	void	Dilation_3D(short** src, short element);
 
 	void	Spine_process();
-	void	Spine_process_test();
 	
 	void	RG_3D_Link(short** src, RG_factor& factor);
 	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均與當前強度)
