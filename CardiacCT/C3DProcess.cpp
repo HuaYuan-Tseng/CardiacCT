@@ -3440,14 +3440,15 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 			{
 				for (si = -s_range; si <= s_range; ++si)
 				{
-					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
+						src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] == 0)
 					{
-						if (src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] == 0)
-						{
-							n_pixel =
-								imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
+						n_pixel =
+							imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
 
-							if (abs(n_pixel - s_avg) <= th)
+						if (abs(n_pixel - s_avg) <= th)
+						{
+							if (1) // «Ý§ó·s
 							{
 								if (lineFunc_1(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
 									lineFunc_2(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
@@ -3469,6 +3470,8 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 							else
 								src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
 						}
+						else
+							src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
 					}
 				}
 			}
