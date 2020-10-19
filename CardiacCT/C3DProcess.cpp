@@ -1560,11 +1560,10 @@ void C3DProcess::Spine_process()
 	th_4.join(); th_5.join();
 
 	// Fix Spine Line
-	for (auto& elem : spine_line)
+	for (int s = 0; s < totalSlice; ++s)
 	{
-		if (elem.second.size() != 2)
+		if (spine_line[s].size() < 2)
 		{
-			int s = elem.first;
 			spine_line[s].clear();
 			spine_line[s].assign(2, std::make_pair(0.0f, 0.0f));
 			float slope1 = 0, slope2 = 0;						// 斜率 slope
@@ -1631,6 +1630,12 @@ void C3DProcess::Spine_process()
 	std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 	int avg_cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
 
+	auto outOfImg = [=](int px, int py)			// 影像邊界
+	{
+		if (px < col && px >= 0 && py < row && py >= 0)
+			return false;
+		else return true;
+	};
 	auto avgKernel = [=](BYTE* img, int x, int y)
 	{
 		int sum = 0, n = 0;
@@ -1638,8 +1643,11 @@ void C3DProcess::Spine_process()
 		{
 			for (int i = x - 1; i <= x + 1; ++i)
 			{
-				sum += (avg_coef[n] * img[j * col + i]);
-				n += 1;
+				if (!outOfImg(i, j))
+				{
+					sum += (avg_coef[n] * img[j * col + i]);
+					n += 1;
+				}
 			}
 		}
 		return sum / avg_cnt;
@@ -1689,8 +1697,11 @@ void C3DProcess::Spine_process()
 		{
 			for (int i = x - 1; i <= x + 1; ++i)
 			{
-				sum += (sharp_coef[n] * img[j * col + i]);
-				n += 1;
+				if (!outOfImg(i, j))
+				{
+					sum += (sharp_coef[n] * img[j * col + i]);
+					n += 1;
+				}
 			}
 		}
 		return sum;
@@ -3380,13 +3391,13 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	std::queue<Seed_s> sed_que;
 	std::queue<double> avg_que;
 	
-	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
+	auto lineFunc1 = [=](int px, int py, int pz)	// left line
 	{
 		float value = spine_line[pz].at(0).first * px + spine_line[pz].at(0).second - py;
 		if (value <= 0)	return true;				// 在left line(要倒著看)的左邊
 		else return false;
 	};
-	auto lineFunc_2 = [=](int px, int py, int pz)	// right line
+	auto lineFunc2 = [=](int px, int py, int pz)	// right line
 	{
 		float value = spine_line[pz].at(1).first * px + spine_line[pz].at(1).second - py;
 		if (value <= 0)	return true;				// 在right line(要倒著看)的右邊
@@ -3400,9 +3411,13 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 	};
 	auto outOfRange = [=](int px, int py, int pz)	// 判斷限制線的範圍
 	{
-		int x_l = spine_vertex[pz].at(0).first - 50;
-		int x_r = spine_vertex[pz].at(0).first + 50;
-		int y_d = spine_vertex[pz].at(0).second + 60;
+		//int x_l = spine_vertex[pz].at(0).first - 50;
+		//int x_r = spine_vertex[pz].at(0).first + 50;
+		//int y_d = spine_vertex[pz].at(0).second + 80;
+		//int y_t = spine_vertex[pz].at(0).second;
+		int x_l = spine_vertex[pz].at(1).first - 5;
+		int x_r = spine_vertex[pz].at(2).first + 5;
+		int y_d = max(spine_vertex[pz].at(1).second, spine_vertex[pz].at(2).second) + 5;
 		int y_t = spine_vertex[pz].at(0).second;
 		if (px >= x_l && px <= x_r && py <= y_d && py >= y_t)
 			return false;
@@ -3444,28 +3459,26 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		s_avg = avg_que.front();
 		s_pt = sed_que.front();
 
-		// 判斷是否符合成長標準
+		// 判斷三維空間範圍的像素點
 		for (sk = -s_range; sk <= s_range; ++sk)
 		{
 			for (sj = -s_range; sj <= s_range; ++sj)
 			{
 				for (si = -s_range; si <= s_range; ++si)
 				{
+					// 判斷有無超出影像範圍且還沒判定過
 					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
 						src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] == 0)
 					{
 						n_pixel =
 							imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
 
-						// 先判斷有無符合成長標準
 						if (abs(n_pixel - s_avg) <= th)
 						{
-							// 再判斷位置是否在需要用到限制線的範圍內
-							// 目前還很有問題!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 							if (!outOfRange(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
 							{
-								if (lineFunc_1(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
-									lineFunc_2(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+								if (lineFunc1(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
+									lineFunc2(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
 								{
 									n_pt.x = s_pt.x + si;
 									n_pt.y = s_pt.y + sj;
@@ -3479,7 +3492,9 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 									src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = obj2;
 								}
 								else
+								{
 									src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
+								}
 							}
 							else
 							{
@@ -3496,109 +3511,9 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 							}
 						}
 						else
-							src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
-					}
-				}
-			}
-		}
-		avg_que.pop();
-		sed_que.pop();
-	}
-
-	/*
-	
-	auto lineFunc_1 = [=](int px, int py, int pz)	// left line
-	{
-		float value = spine_line[pz].at(0).first * px + spine_line[pz].at(0).second - py;
-		if (value <= 0)	return true;				// 在left line(要倒著看)的左邊
-		else return false;
-	};
-	auto lineFunc_2 = [=](int px, int py, int pz)	// right line
-	{
-		float value = spine_line[pz].at(1).first * px + spine_line[pz].at(1).second - py;
-		if (value <= 0)	return true;				// 在right line(要倒著看)的右邊
-		else return false;
-	};
-	auto outOfImg = [=](int px, int py, int pz)	// 影像邊界
-	{
-		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
-			return false;
-		else return true;
-	};
-
-	// 先把第一次區域成長的種子點都加進來
-	// 原本判定不要的先歸零
-	register int si, sj, sk;
-	for (sj = 0; sj < totalSlice; ++sj)
-	{
-		for (si = 0; si < totalXY; ++si)
-		{
-			if (src[sj][si] == obj1)
-			{
-				n_pt.x = si % col;
-				n_pt.y = si / col;
-				n_pt.z = sj;
-
-				n_pixel = img[sj][si];
-				s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
-				s_cnt += 1;
-
-				avg_que.push(s_avg);
-				sed_que.push(n_pt);
-			}
-			else if (src[sj][si] == -obj1)
-				src[sj][si] = 0;
-		}
-	}
-
-	//sed_que.push(seed);
-	//avg_que.push(s_avg);
-
-	// 做第二次區域成長
-	while (!sed_que.empty())
-	{
-		s_avg = avg_que.front();
-		s_pt = sed_que.front();
-
-		// 判斷是否符合成長標準
-		for (sk = -s_range; sk <= s_range; ++sk)
-		{
-			for (sj = -s_range; sj <= s_range; ++sj)
-			{
-				for (si = -s_range; si <= s_range; ++si)
-				{
-					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
-						src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] == 0)
-					{
-						n_pixel =
-							imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
-
-						if (abs(n_pixel - s_avg) <= th)
 						{
-							if (1) // 待更新
-							{
-								if (lineFunc_1(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
-									lineFunc_2(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
-								{
-									n_pt.x = s_pt.x + si;
-									n_pt.y = s_pt.y + sj;
-									n_pt.z = s_pt.z + sk;
-									sed_que.push(n_pt);
-
-									s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
-									avg_que.push(s_avg);
-									s_cnt += 1;
-
-									src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = obj2;
-								}
-								else
-									src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
-							}
-							else
-								src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
-						}
-						else
 							src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
+						}
 					}
 				}
 			}
@@ -3606,8 +3521,6 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		avg_que.pop();
 		sed_que.pop();
 	}
-	
-	*/
 
 	
 }
