@@ -133,26 +133,40 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	bool			get_spine;
 	bool			get_sternum;
 
-	int x_avgPos, y_avgPos;
-	std::map<int, std::vector<std::pair<int, int>>> spine_vertex;		// 紀錄初步處理後的三個頂點
+	std::vector<int> judge_type;										// 紀錄判定類型 (+ : 要的 , - : 不要的)
+																		//  0 : 還沒判斷
+																		//  1.2 : spine (1RG, 2RG)
+																		//  3.4 : sternum (1RG, 2RG) 
+
+	std::map<int, std::vector<std::pair<int, int>>> spine_vertex;		// 紀錄脊椎初步處理後的三個頂點
 																		// 0 : 中間上面那點
 																		// 1 : 左下
 																		// 2 : 右下
 
-	std::map<int, std::vector<std::pair<float, float>>> spine_line;		// 紀錄每張slice的直線方程式的係數(斜率.截距)
+	std::map<int, std::vector<std::pair<float, float>>> spine_line;		// 紀錄脊椎每張slice的直線方程式的係數(斜率.截距)
 																		// 0 : 左
 																		// 1 : 右
 
-	std::map<int, std::vector<int>> spine_edge;							// 記錄每張slice進行處理的垂直邊界
+	std::map<int, std::vector<int>> spine_edge;							// 記錄脊椎每張slice將進行處理的範圍(垂直邊界)
 																		// 0 : x_min
 																		// 1 : x_max
 																		// 2 : y_min
 																		// 3 : y_max
 
-	std::vector<int> judge_type;										// 紀錄判定類型 (+ : 要的 , - : 不要的)
-																		//  0 : 還沒判斷
-																		//  1.2 : spine (1RG, 2RG)
-																		//  3.4 : sternum (1RG, 2RG) 
+	std::map<int, std::vector<std::pair<int, int>>> sternum_vertex;		// 紀錄胸骨每張slice的三頂點
+																		// 0 : 中間上面那點
+																		// 1 : 左下
+																		// 2 : 右下
+
+	std::map<int, std::vector<std::pair<float, float>>> sternum_line;	// 紀錄胸骨每張slice的直線方程式係數(斜率.截距)
+																		// 0 : 左
+																		// 1 : 右
+
+	std::map<int, std::vector<int>> sternum_edge;						// 記錄胸骨每張slice將進行處理的範圍(垂直邊界)
+																		// 0 : x_min
+																		// 1 : x_max
+																		// 2 : y_min
+																		// 3 : y_max
 
 
 ///------------- ↑ 實驗區 ↑ -------------///
@@ -190,13 +204,15 @@ public:
 	void	Erosion_3D(short** src, short element);
 	void	Dilation_3D(short** src, short element);
 
-	void	Spine_process();
-	
-	void	RG_3D_Link(short** src, RG_factor& factor);
-	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均與當前強度)
-	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);
-	void	RG2_3D_ConfidenceConnected(short** src, RG_factor& factor);
+	void	Spine_process();											// 脊椎二次成長 - 預處理
+	void	RG2_3D_Spine_process(short** src, RG_factor& factor);		// 脊椎二次成長 - 限制線與全域平均
 
+	void	Sternum_process();											// 胸骨二次成長 - 預處理
+	void	RG2_3D_Sternum_process(short** src, RG_factor& factor);		// 胸骨二次成長 - 限制線與全域平均
+	
+	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均)
+	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);	// 3D 區域成長(當前區域標準差與全域平均) 
+	
 
 ///------------- ↑ 實驗區 ↑ -------------///
 	

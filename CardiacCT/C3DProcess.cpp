@@ -995,6 +995,7 @@ void C3DProcess::OnBnClickedCheckSpine()
 		GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 	}
+
 	else if (!m_spine)
 	{	// 打開
 		m_spine = TRUE;
@@ -1010,6 +1011,7 @@ void C3DProcess::OnBnClickedCheckSpine()
 			GetDlgItem(IDC_BUTTON_GROWING_CLEAR)->EnableWindow(FALSE);
 		}
 	}
+
 	m_sternum = FALSE;
 	UpdateData(FALSE);
 }
@@ -1306,24 +1308,37 @@ void C3DProcess::OnBnClickedButtonDilation()
 	m_wait->setDisplay("2nd Region growing...");
 	
 	clock_t start = clock();
-	if (get_spine)
+	if (m_spine && get_spine)
 	{
 		if (!spine_vertex.empty())	spine_vertex.clear();
+		if (!spine_edge.empty()) spine_edge.clear();
 		if (!spine_line.empty()) spine_line.clear();
 		Spine_process();
 
-		// 二 次 區 域 成 長
+		// 二次區域成長
 		UpdateData(TRUE);
 		RG_term.seed = seed_img;
-		RG2_3D_ConfidenceConnected(judge, RG_term);
+		RG2_3D_Spine_process(judge, RG_term);
 
 		Dilation_3D(judge, 26);
 		spine_volume = Calculate_Volume(judge);
 		m_result.Format("%lf", spine_volume);
 	}
-	else if (get_sternum)
+	else if (m_sternum && get_sternum)
 	{
+		if (sternum_vertex.empty()) sternum_vertex.clear();
+		if (sternum_edge.empty()) sternum_edge.clear();
+		if (sternum_line.empty()) sternum_line.clear();
+		Sternum_process();
 
+		// 二次區域成長
+		UpdateData(TRUE);
+		RG_term.seed = seed_img;
+		RG2_3D_Sternum_process(judge, RG_term);
+
+		//Dilation_3D(judge, 26);
+		sternum_volume = Calculate_Volume(judge);
+		m_result.Format("%lf", sternum_volume);
 	}
 	clock_t end = clock();
 
@@ -1341,6 +1356,8 @@ void C3DProcess::OnBnClickedButtonDilation()
 
 void C3DProcess::Spine_process()
 {
+	// 脊椎進行二次成長前的預處理
+	//
 	const int obj = 1;
 	const int row = ROW;
 	const int col = COL;
@@ -1349,7 +1366,7 @@ void C3DProcess::Spine_process()
 	BYTE**& org = m_pDoc->m_img;
 	BYTE**& pro = m_pDoc->m_imgPro;
 
-	// 尋找每張slice的三角頂點以及垂直邊界
+	// 尋找每張slice的三角頂點
 	auto findVertex = [&](int start_slice)
 	{
 		int pos, x, y;
@@ -1745,6 +1762,324 @@ void C3DProcess::Spine_process()
 	
 }
 
+void C3DProcess::Sternum_process()
+{
+	// 胸骨進行二次成長前的預處理
+	//
+	const int obj = 3;
+	const int row = ROW;
+	const int col = COL;
+	const int totalXY = ROW * COL;
+	const int totalSlice = Total_Slice;
+	BYTE**& org = m_pDoc->m_img;
+	BYTE**& pro = m_pDoc->m_imgPro;
+
+	// 尋找每張slice的三角頂點
+	auto findVertex = [&](int start_slice)
+	{
+		int pos, x, y;
+		int s = start_slice;
+		std::vector<int> x_pos;
+		std::vector<int> y_pos;
+		x_pos.reserve(10000);
+		y_pos.reserve(10000);
+
+		while (s < totalSlice)
+		{
+			pos = 0;
+			int ly_max = 0, ry_max = 0;
+			int ver_lft = 0, ver_rht = 0, ver_mid = 0;
+
+			// 紀錄每個種子點的x.y座標值
+			for (x = 0; x < col; ++x)
+			{
+				for (y = (row - 1); y >= 0; --y)
+				{
+					pos = y * col + x;
+					if (judge[s][pos] == obj)
+					{
+						x_pos.push_back(x);
+						y_pos.push_back(y);
+
+						// 先大概搜尋左右邊最低(y最高)的點
+						// 不一定是要用來做限制線的點位置
+						if (x < 256 && y > ly_max)
+						{
+							ly_max = y;
+							ver_lft = pos;
+						}
+						else if (x > 256 && y > ry_max)
+						{
+							ry_max = y;
+							ver_rht = pos;
+						}
+					}
+				}
+			}
+
+			// 搜尋中間點
+			int mx = ((ver_rht % col) + (ver_lft % col)) / 2;
+			while (ver_mid == 0)
+			{
+				for (int y = (row - 1); y >= 0; --y)
+				{
+					pos = y * col + mx;
+					if (judge[s][pos] == obj)
+					{
+						ver_mid = pos;
+						break;
+					}
+				}
+				mx -= 1;
+			}
+
+			// 如果成長範圍太少導致判別會錯誤，就先跳過
+			if (x_pos.size() < 10 || y_pos.size() < 10)
+			{
+				TRACE("Are you kidding ???????!!!!!!! \n");
+				x_pos.clear();
+				y_pos.clear();
+				s += 2;
+				continue;
+			}
+			size_t x_len = x_pos.size();
+			size_t y_len = y_pos.size();
+
+			// 存頂點 - 初始化三個數值(避免 subscript out of range)
+			sternum_vertex[s].assign(3, std::make_pair(0, 0));
+			// 存三角頂點 - 中上點
+			sternum_vertex[s].at(0) = std::make_pair((ver_mid % col), (ver_mid / col));
+			// 存三角頂點 - 左下點
+			sternum_vertex[s].at(1) = std::make_pair((ver_lft % col), (ver_lft / col));
+			// 存三角頂點 - 右下點
+			sternum_vertex[s].at(2) = std::make_pair((ver_rht % col), (ver_rht / col));
+
+			// 取範圍邊界
+			auto x_mm = std::minmax_element(x_pos.begin(), x_pos.end());
+			auto y_mm = std::minmax_element(y_pos.begin(), y_pos.end());
+
+			// 存邊界位置 - 初始化
+			sternum_edge[s].assign(4, 0);
+			sternum_edge[s].at(0) = *(x_mm.first);		// 存邊界 - x 最小值
+			sternum_edge[s].at(1) = *(x_mm.second);		// 存邊界 - x 最大值
+			sternum_edge[s].at(2) = *(y_mm.first);		// 存邊界 - y 最小值
+			sternum_edge[s].at(3) = *(y_mm.second);		// 存邊界 - y 最大值
+
+			x_pos.clear();
+			y_pos.clear();
+			s += 2;
+		}	// end while
+
+		x_pos.shrink_to_fit();
+		y_pos.shrink_to_fit();
+		if (start_slice == 0)	TRACE("Find Vertex : Even Slice Success ! \n");
+		else TRACE("Find Vertex : Odd Slice Success ! \n");
+	};	// end findVertex();
+
+	thread th_0(findVertex, 0);
+	thread th_1(findVertex, 1);
+	th_0.join();	th_1.join();
+
+	auto lineIndex = [&](int start_slice)
+	{
+		int s = start_slice;
+		while (s < totalSlice)
+		{
+			// 存直線方程式係數 - 初始化
+			sternum_line[s].assign(2, std::make_pair(0.0f, 0.0f));
+
+			float slope1 = 0, slope2 = 0;		// 斜率 slope
+			float inter1 = 0, inter2 = 0;		// 截距 intercept
+
+			slope1 = (float)(sternum_vertex[s][0].second - sternum_vertex[s][1].second) /
+				(float)(sternum_vertex[s][0].first - sternum_vertex[s][1].first);
+			slope2 = (float)(sternum_vertex[s][0].second - sternum_vertex[s][2].second) /
+				(float)(sternum_vertex[s][0].first - sternum_vertex[s][2].first);
+
+			inter1 = (float)(sternum_vertex[s][0].second + sternum_vertex[s][1].second) -
+				slope1 * (sternum_vertex[s][0].first + sternum_vertex[s][1].first);
+			inter1 /= 2;
+			inter2 = (float)(sternum_vertex[s][0].second + sternum_vertex[s][2].second) -
+				slope2 * (sternum_vertex[s][0].first + sternum_vertex[s][2].first);
+			inter2 /= 2;
+
+			sternum_line[s].at(0) = std::make_pair(slope1, inter1);		// 左線
+			sternum_line[s].at(1) = std::make_pair(slope2, inter2);		// 右線
+
+			s += 2;
+		}
+		if (start_slice == 0) TRACE("Line Index : Even Slice Success ! \n");
+		else TRACE("Line Index : Odd Slice Success ! \n");
+	};
+
+	thread th_2(lineIndex, 0);
+	thread th_3(lineIndex, 1);
+	th_2.join();	th_3.join();
+
+	TRACE1("Sternum line's size : %d. \n", sternum_line.size());
+	TRACE1("Sternum edge's size : %d. \n", sternum_edge.size());
+	TRACE1("Sternum vertex's size : %d. \n", sternum_vertex.size());
+
+	// 對每一張slice的垂直邊界範圍作pixel處理
+	auto pixProcess = [&](int start_slice)
+	{
+		int s = start_slice;
+		std::map<int, std::vector<int>>::iterator it;
+		while (s < totalSlice)
+		{
+			if (sternum_edge.find(s) == sternum_edge.end() || sternum_edge[s].size() < 4)
+			{
+				TRACE1("%3d slice edge not found! \n", s);
+				s += 2;
+				continue;
+			}
+
+			it = sternum_edge.find(s);
+			for (int j = it->second.at(2); j <= it->second.at(3); ++j)
+			{
+				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
+				{
+					if (pro[s][j * col + i] <= 100)
+						pro[s][j * col + i] = 0;
+					else if (pro[s][j * col + i] <= 140)
+						pro[s][j * col + i] -= 30;
+					//else if (pro[s][j * col + i] <= 200 && pro[s][j * col + i] > 180)
+					//	pro[s][j * col + i] += 30;
+				}
+			}
+			s += 2;
+		}
+		if (start_slice == 0) TRACE("Pixel Process : Even Slice Success ! \n");
+		else TRACE("Pixel Process : Odd Slice Success ! \n");
+	};
+
+	thread th_4(pixProcess, 0);
+	thread th_5(pixProcess, 1);
+	th_4.join();	th_5.join();
+
+	// 低通 濾波 (mean filter)
+	//std::vector<int> avg_coef = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
+	std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	int avg_cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
+
+	auto outOfImg = [=](int px, int py)			// 影像邊界
+	{
+		if (px < col && px >= 0 && py < row && py >= 0)
+			return false;
+		else return true;
+	};
+
+	auto avgKernel = [=](BYTE* img, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				if (!outOfImg(i, j))
+				{
+					sum += (avg_coef[n] * img[j * col + i]);
+					n += 1;
+				}
+			}
+		}
+		return sum / avg_cnt;
+	};
+
+	auto avgFilter = [&](int start_slice)
+	{
+		std::map<int, std::vector<int>>::iterator it;
+		int s = start_slice;
+		while (s < totalSlice)
+		{
+			if (sternum_edge.find(s) == sternum_edge.end() || sternum_edge[s].size() < 4)
+			{
+				TRACE1("%3d slice edge not found ! \n", s);
+				s += 2;
+				continue;
+			}
+			it = sternum_edge.find(s);
+			BYTE* tmp = new BYTE[row * col];
+			std::memcpy(tmp, pro[s], sizeof(BYTE) * row * col);
+			for (int j = it->second.at(2); j <= it->second.at(3); ++j)
+			{
+				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
+				{
+					pro[s][j * col + i] = avgKernel(tmp, i, j);
+				}
+			}
+			delete[] tmp;
+			s += 2;
+		}
+		if (start_slice == 0)	TRACE("Avg Filter : Even Slice Success ! \n");
+		else TRACE("Avg Filter : Odd Slice Success ! \n");
+	};
+
+	thread th_6(avgFilter, 0);
+	thread th_7(avgFilter, 1);
+	th_6.join();	th_7.join();
+
+	// 高通 濾波 (laplace filter)
+	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
+	std::vector<int> sharp_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
+	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
+
+	auto sharpKernel = [=](BYTE* img, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				if (!outOfImg(i, j))
+				{
+					sum += (sharp_coef[n] * img[j * col + i]);
+					n += 1;
+				}
+			}
+		}
+		return sum;
+	};
+
+	auto sharpFilter = [&](int start_slice)
+	{
+		std::map<int, std::vector<int>>::iterator it;
+		int s = start_slice, pixel = 0;
+		while (s < totalSlice)
+		{
+			if (sternum_edge.find(s) == sternum_edge.end() || sternum_edge[s].size() < 4)
+			{
+				TRACE1("%3d slice edge not found ! \n", s);
+				s += 2;
+				continue;
+			}
+			it = sternum_edge.find(s);
+			BYTE* tmp = new BYTE[row * col];
+			std::memcpy(tmp, pro[s], sizeof(BYTE) * row * col);
+			for (int j = it->second.at(2); j <= it->second.at(3); ++j)
+			{
+				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
+				{
+					pixel = weight * sharpKernel(tmp, i, j);
+					pixel = tmp[j * col + i] + pixel;
+					if (pixel > 255)	pixel = 255;
+					else if (pixel < 0) pixel = 0;
+					pro[s][j * col + i] = pixel;
+				}
+			}
+			delete[] tmp;
+			s += 2;
+		}
+		if (start_slice == 0)	TRACE("High Filter : Even Slice Success ! \n");
+		else TRACE("High Filter : Odd Slice Success!\n");
+	};
+
+	thread th_8(sharpFilter, 0);
+	thread th_9(sharpFilter, 1);
+	th_8.join();	th_9.join();
+
+}
+
 void C3DProcess::OnBnClickedButtonGrowingRemove()
 {
 	// TODO: Add your control notification handler code here
@@ -1759,13 +2094,15 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 	const int sample_start = 0 + Mat_Offset;
 	const int sample_end = 0 + Mat_Offset + totalSlice;
 	register int i, j, k;
-	
+	int obj1, obj2;
+
 	// 脊椎骨的部分
-	if (get_spine)
+	if (m_spine)
 	{
+		obj1 = 1, obj2 = 2;
 		int long_slice = 0;
 		int long_dis = spine_vertex[0][2].first - spine_vertex[0][1].first;
-		
+
 		k = 0;
 		while (k < 512)
 		{
@@ -1790,7 +2127,8 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 				for (i = 2; i < col - 2; i += 1)
 				{
 					int y = 0;
-					while (y < row && judge[z_cur][y * col + i] <= 0)
+					while (y < row && (judge[z_cur][y * col + i] == -obj1 || 
+						judge[z_cur][y * col + i] == -obj2) )
 						y++;
 					for (j = y; j < row - 2; j += 1)
 					{
@@ -1806,10 +2144,10 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 							}
 						}
 					}
-					
-					for (j = 2; j < row-2; j += 2)
+
+					for (j = 2; j < row - 2; j += 2)
 					{
-						if (judge[z_cur][j * col + i] > 0)
+						if (judge[z_cur][j * col + i] == obj1 || judge[z_cur][j * col + i] == obj2)
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 								0, 0);
 					}
@@ -1829,16 +2167,17 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 							0, 0);
 					}
 				}
-					
+
 			}
 			k += 2;
 		}
 	}
-	else if (get_sternum)
+	else if (m_sternum)
 	{
+		obj1 = 3, obj2 = 4;
 
 	}
-	
+
 	LoadVolume();
 	Draw3DImage(true);
 }
@@ -2847,59 +3186,88 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 	//
 	if (!spine_vertex.empty())
 	{
-		std::map<int, std::vector<std::pair<int, int>>>::iterator iter;
+		std::map<int, std::vector<std::pair<int, int>>>::iterator it;
+		it = spine_vertex.find(slice);
 		CPoint pt;
-		
-		iter = spine_vertex.find(slice);
+	
+		// 中上點
 		for (i = -1; i <= 1; i++)
 		{
 			for (j = -1; j <= 1; j++)
 			{
-				pt.x = (LONG)iter->second.at(0).first + i;
-				pt.y = (LONG)iter->second.at(0).second + j;
+				pt.x = (LONG)it->second.at(0).first + i;
+				pt.y = (LONG)it->second.at(0).second + j;
 
 				dc.SetPixel(pt, RGB(255, 30, 30));
 			}
 		}
-		CPoint ptmp;
-		// 中上點與左下點的中間點
-		//ptmp.x = (iter->second.at(0).first + iter->second.at(1).first) / 2;
-		//ptmp.y = (iter->second.at(0).second + iter->second.at(1).second) / 2;
+
+		// 左下點
 		for (i = -1; i <= 1; i++)
 		{
 			for (j = -1; j <= 1; j++)
 			{
-				pt.x = (LONG)iter->second.at(1).first + i;
-				pt.y = (LONG)iter->second.at(1).second + j;
+				pt.x = (LONG)it->second.at(1).first + i;
+				pt.y = (LONG)it->second.at(1).second + j;
 
 				dc.SetPixel(pt, RGB(255, 30, 30));
 			}
 		}
-		// 中上點與左下點的中間點
-		//ptmp.x = (iter->second.at(0).first + iter->second.at(2).first) / 2;
-		//ptmp.y = (iter->second.at(0).second + iter->second.at(2).second) / 2;
+
+		// 右下點
 		for (i = -1; i <= 1; i++)
 		{
 			for (j = -1; j <= 1; j++)
 			{
-				pt.x = (LONG)iter->second.at(2).first + i;
-				pt.y = (LONG)iter->second.at(2).second + j;
+				pt.x = (LONG)it->second.at(2).first + i;
+				pt.y = (LONG)it->second.at(2).second + j;
 
 				dc.SetPixel(pt, RGB(255, 30, 30));
 			}
 		}
-		
+	}
+
+	if (!sternum_vertex.empty())
+	{
+		std::map<int, std::vector<std::pair<int, int>>>::iterator it;
+		it = sternum_vertex.find(slice);
+		CPoint pt;
+
+		// 中上點
 		for (i = -1; i <= 1; i++)
 		{
 			for (j = -1; j <= 1; j++)
 			{
-				pt.x = (LONG)x_avgPos + i;
-				pt.y = (LONG)y_avgPos + j;
+				pt.x = (LONG)it->second.at(0).first + i;
+				pt.y = (LONG)it->second.at(0).second + j;
 
-				dc.SetPixel(pt, RGB(70, 70, 255));
+				dc.SetPixel(pt, RGB(255, 30, 30));
 			}
 		}
 
+		// 左下點
+		for (i = -1; i <= 1; i++)
+		{
+			for (j = -1; j <= 1; j++)
+			{
+				pt.x = (LONG)it->second.at(1).first + i;
+				pt.y = (LONG)it->second.at(1).second + j;
+
+				dc.SetPixel(pt, RGB(255, 30, 30));
+			}
+		}
+
+		// 右下點
+		for (i = -1; i <= 1; i++)
+		{
+			for (j = -1; j <= 1; j++)
+			{
+				pt.x = (LONG)it->second.at(2).first + i;
+				pt.y = (LONG)it->second.at(2).second + j;
+
+				dc.SetPixel(pt, RGB(255, 30, 30));
+			}
+		}
 	}
 
 	// 寫字 (slice)
@@ -3357,22 +3725,13 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 
 }
 
-void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
+void C3DProcess::RG2_3D_Spine_process(short** src, RG_factor& factor)
 {
-	// DO : 3D - 2222222222222222222222222222222222 次區域成長
+	// DO : 3D - 脊椎 2222222222222222222222222222222222 次區域成長
 	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
 	//
-	int obj1, obj2;
-	if (m_spine)
-	{
-		obj1 = 1;
-		obj2 = 2;
-	}
-	else if (m_sternum)
-	{
-		obj1 = 3;
-		obj2 = 4;
-	}
+	const int obj1 = 1; 
+	const int obj2 = 2;
 	const int row = ROW;
 	const int col = COL;
 	const int totalXY = ROW * COL;
@@ -3459,7 +3818,7 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		s_avg = avg_que.front();
 		s_pt = sed_que.front();
 
-		// 判斷三維空間範圍的像素點
+		// 判斷三維空間範圍內的像素點
 		for (sk = -s_range; sk <= s_range; ++sk)
 		{
 			for (sj = -s_range; sj <= s_range; ++sj)
@@ -3521,76 +3880,130 @@ void C3DProcess::RG2_3D_ConfidenceConnected(short** src, RG_factor& factor)
 		avg_que.pop();
 		sed_que.pop();
 	}
-
 	
 }
 
-void C3DProcess::RG_3D_Link(short** src, RG_factor& factor)
+void C3DProcess::RG2_3D_Sternum_process(short** src, RG_factor& factor)
 {
-	//	DO : 3D 區域成長
-	//	將與種子點連接的像素點「連接」起來(確認最終分割區域與體積)
+	// DO : 3D - 胸骨 2222222222222222222222222222222222 次區域成長
+	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
 	//
+	const int obj1 = 3;
+	const int obj2 = 4;
 	const int row = ROW;
 	const int col = COL;
-	const int total_xy = ROW * COL;
+	const int totalXY = ROW * COL;
 	const int totalSlice = Total_Slice;
-	const int kernel = factor.n_kernel;
-	const int range = (kernel - 1) / 2;			// 判斷範圍
-	register int i, j, k;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	double th = factor.pix_thresh;
+	double co = factor.sd_coeffi;
+	Seed_s seed = factor.seed;
+	BYTE**& img = m_pDoc->m_img;
+	BYTE**& imgPro = m_pDoc->m_imgPro;
 
-	// src : 原始以及將要被更改的矩陣
-	// temp : 暫存原始狀態的矩陣(不做更動)
-	short** src_temp = New2Dmatrix(totalSlice, total_xy, short);
+	double s_avg = 0;
+	unsigned int s_cnt = 0, n_pixel = 0;
+	Seed_s s_pt, n_pt;
+	std::queue<Seed_s> sed_que;
+	std::queue<double> avg_que;
 
-	Seed_s temp;								// 當前 判斷的周圍seed
-	Seed_s current;								// 當前 判斷的中心seed
-	Seed_s seed = factor.seed;					// 初始seed
-	queue<Seed_s> sd_que;						// 暫存成長判斷為種子點的像素位置
-
-	// Deep copy (目前先以這樣的方式處理QQ)
-	//
-	for (j = 0; j < totalSlice; j++)
+	auto lineFunc1 = [=](int px, int py, int pz)	// left line
 	{
-		for (i = 0; i < total_xy; i++)
+		float value = sternum_line[pz].at(0).first * px + sternum_line[pz].at(0).second - py;
+		if (value >= 0) return true;				// 在left line(要倒著看)的右邊
+		else return false;
+	};
+	auto lineFunc2 = [=](int px, int py, int pz)	// right line
+	{
+		float value = sternum_line[pz].at(1).first * px + sternum_line[pz].at(1).second - py;
+		if (value >= 0)	return true;				// 在right line(要倒著看)的右邊
+		else return false;
+	};
+	auto outOfImg = [=](int px, int py, int pz)		// 影像邊界
+	{
+		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
+			return false;
+		else return true;
+	};
+
+	// 先把第一次區域成長的種子點都先加進來
+	// 原本判定不要的先歸零
+	register int si, sj, sk;
+	for (sj = 0; sj < totalSlice; ++sj)
+	{
+		for (si = 0; si < totalXY; ++si)
 		{
-			src_temp[j][i] = src[j][i];
-			src[j][i] = 0;
+			if (src[sj][si] == obj1)
+			{
+				n_pt.x = si % col;
+				n_pt.y = si / col;
+				n_pt.z = sj;
+
+				n_pixel = img[sj][si];
+				s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+				s_cnt += 1;
+
+				avg_que.push(s_avg);
+				sed_que.push(n_pt);
+			}
+			else if (src[sj][si] == -obj1)
+				src[sj][si] = 0;
 		}
 	}
 
-	src[seed.z][(seed.y) * col + (seed.x)] = 1;
-	sd_que.push(seed);
-
-	while (!sd_que.empty())
+	// 做第二次區域成長
+	while (!sed_que.empty())
 	{
-		current = sd_que.front();
-		for (k = -range; k <= range; k++)
-		{
-			for (j = -range; j <= range; j++)
-			{
-				for (i = -range; i <= range; i++)
-				{
-					if ((current.x + i) < (col) && (current.x + i) >= 0 &&
-						(current.y + j) < (row) && (current.y + j) >= 0 &&
-						(current.z + k) < (totalSlice) && (current.z + k) >= 0)
-					{
-						if (src[current.z + k][(current.y + j) * col + (current.x + i)] != 1 &&
-							src_temp[current.z + k][(current.y + j) * col + (current.x + i)] == 1)
-						{
-							temp.x = current.x + i;
-							temp.y = current.y + j;
-							temp.z = current.z + k;
-							sd_que.push(temp);
+		s_avg = avg_que.front();
+		s_pt = sed_que.front();
 
-							src[current.z + k][(current.y + j) * col + (current.x + i)] = 1;
+		// 判斷三維空間範圍內的像素點
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					// 判斷有無超出影像範圍且還沒判定過
+					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
+						src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] == 0)
+					{
+						n_pixel = imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
+						if (abs(n_pixel - s_avg) <= th)
+						{
+							if (lineFunc1(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) ||
+								lineFunc2(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+							{
+								n_pt.x = s_pt.x + si;
+								n_pt.y = s_pt.y + sj;
+								n_pt.z = s_pt.z + sk;
+								sed_que.push(n_pt);
+
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
+
+								src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = obj2;
+							}
+							else
+							{
+								src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
+							}
+						}
+						else
+						{
+							src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj2;
 						}
 					}
 				}
 			}
 		}
-		sd_que.pop();
+		avg_que.pop();
+		sed_que.pop();
 	}
-	delete src_temp;
+
+
+
 }
 
 void C3DProcess::Erosion_3D(short** src, short element)
@@ -3761,7 +4174,7 @@ void C3DProcess::Erosion_3D(short** src, short element)
 			}
 		}
 	}
-	delete temp;
+	delete[] temp;
 }
 
 void C3DProcess::Dilation_3D(short** src, short element)
@@ -3884,7 +4297,7 @@ void C3DProcess::Dilation_3D(short** src, short element)
 								{
 									if (src[k + nk][(j + nj) * col + (i + ni)] <= 0 &&
 										pro[k + nk][(j + nj) * col + (i + ni)] > 150)
-										src[k + nk][(j + nj) * col + (i + ni)] = 2;
+										src[k + nk][(j + nj) * col + (i + ni)] = obj2;
 								}
 							}
 						}
@@ -3893,7 +4306,7 @@ void C3DProcess::Dilation_3D(short** src, short element)
 			}
 		}
 	}
-	delete temp;
+	delete[] temp;
 }
 
 double C3DProcess::Calculate_Volume(short** src)
