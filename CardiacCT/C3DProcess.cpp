@@ -1885,6 +1885,13 @@ void C3DProcess::Sternum_process()
 		int s = start_slice;
 		while (s < totalSlice)
 		{
+			if (sternum_vertex.find(s) == sternum_vertex.end())
+			{
+				TRACE1("%3d slice vertex not found! \n", s);
+				s += 2;
+				continue;
+			}
+
 			// 存直線方程式係數 - 初始化
 			sternum_line[s].assign(2, std::make_pair(0.0f, 0.0f));
 
@@ -1915,6 +1922,34 @@ void C3DProcess::Sternum_process()
 	thread th_2(lineIndex, 0);
 	thread th_3(lineIndex, 1);
 	th_2.join();	th_3.join();
+
+	for (int s = 0; s < totalSlice; ++s)
+	{
+		if (sternum_line[s].size() < 2)
+		{
+			sternum_line[s].clear();
+			sternum_line[s].assign(2, std::make_pair(0.0f, 0.0f));
+
+			float slope1 = 0, slope2 = 0;		// 斜率 slope
+			float inter1 = 0, inter2 = 0;		// 截距 intercept
+
+			slope1 = (float)(sternum_vertex[s][0].second - sternum_vertex[s][1].second) /
+				(float)(sternum_vertex[s][0].first - sternum_vertex[s][1].first);
+			slope2 = (float)(sternum_vertex[s][0].second - sternum_vertex[s][2].second) /
+				(float)(sternum_vertex[s][0].first - sternum_vertex[s][2].first);
+
+			inter1 = (float)(sternum_vertex[s][0].second + sternum_vertex[s][1].second) -
+				slope1 * (sternum_vertex[s][0].first + sternum_vertex[s][1].first);
+			inter1 /= 2;
+			inter2 = (float)(sternum_vertex[s][0].second + sternum_vertex[s][2].second) -
+				slope2 * (sternum_vertex[s][0].first + sternum_vertex[s][2].first);
+			inter2 /= 2;
+
+			sternum_line[s].at(0) = std::make_pair(slope1, inter1);		// 左線
+			sternum_line[s].at(1) = std::make_pair(slope2, inter2);		// 右線
+		}
+	}
+	TRACE("Sternum line Fix : Success ! \n");
 
 	TRACE1("Sternum line's size : %d. \n", sternum_line.size());
 	TRACE1("Sternum edge's size : %d. \n", sternum_edge.size());
@@ -2127,8 +2162,8 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 				for (i = 2; i < col - 2; i += 1)
 				{
 					int y = 0;
-					while (y < row && (judge[z_cur][y * col + i] == -obj1 || 
-						judge[z_cur][y * col + i] == -obj2) )
+					while (y < row && (judge[z_cur][y * col + i] != obj1 ||
+						judge[z_cur][y * col + i] != obj2))
 						y++;
 					for (j = y; j < row - 2; j += 1)
 					{
@@ -2172,11 +2207,98 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 			k += 2;
 		}
 	}
+	// 胸骨的部分
 	else if (m_sternum)
 	{
 		obj1 = 3, obj2 = 4;
+		int long_slice = 0;
+		int long_dis = sternum_vertex[0][2].first - sternum_vertex[0][1].first;
+		int y_mid_pre = sternum_vertex[0][0].second;
 
-	}
+		k = 0;
+		while (k < 512)
+		{
+			if (k > sample_start && k <= sample_end)
+			{
+				int z_temp;
+				int z_cur = k - (Mat_Offset + 1);
+				int cur_dis = sternum_vertex[z_cur][2].first - sternum_vertex[z_cur][1].first;
+
+				if (abs(cur_dis - long_dis) > 30)
+				{
+					z_temp = long_slice;
+				}
+				else
+				{
+					z_temp = z_cur;
+					long_dis = cur_dis;
+					long_slice = z_cur;
+				}
+
+				// 先大概消除不要的部分
+				int y = 0; 							// 每一行 x 要開始消除的起始 y
+				int	y_pre = row-1;					// 前一行 x 要開始消除的起始 y
+				for (int i = 2; i < (col - 2); ++i)
+				{
+					y = row - 1;
+					while (y >= 0 && (judge[z_cur][y * col + i] != obj1 ||
+						judge[z_cur][y * col + i] != obj2) )
+						--y;
+
+					if (y == row - 1)
+						y = y_pre;
+					else
+						y_pre = y;
+
+					for (j = y; j >= 2; --j)
+					{
+						for (int nk = -1; nk <= 1; ++nk)
+						{
+							for (int nj = -1; nj <= 1; ++nj)
+							{
+								for (int ni = -1; ni <= 1; ++ni)
+								{
+									getRamp(&m_image0[((i + ni) / 2) * 256 * 256 + ((j + nj) / 2) * 256 + ((k + nk) / 2)][0],
+										0, 0);
+								}
+							}
+						}
+					}
+					y_pre = y;
+
+					// 挑一個離中間最近的點的y
+					int y_mid = sternum_vertex[z_cur][0].second;;
+					int x1 = abs(sternum_vertex[z_cur][0].first - 255);
+					int x2 = abs(sternum_vertex[z_cur][1].first - 255);
+					int x3 = abs(sternum_vertex[z_cur][2].first - 255);
+					
+					if (x1 < x2 && x1 < x3)
+						y_mid = sternum_vertex[z_cur][0].second;
+					else if (x2 < x1 && x2 < x3)
+						y_mid = sternum_vertex[z_cur][1].second;
+					else if (x3 < x1 && x3 < x2)
+						y_mid = sternum_vertex[z_cur][2].second;
+					
+					if (z_cur >= 10 && (y_mid_pre - y_mid) > 20)
+						y_mid = y_mid_pre;
+					else
+						y_mid_pre = y_mid;
+
+					for (j = 2; j < row - 2; j += 2)
+					{
+						if (judge[z_cur][j * col + i] == obj1 || judge[z_cur][j * col + i] == obj2 ||
+							 j <= y_mid)
+							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+								0, 0);
+					}
+
+				}	// end for
+				
+			}	// end if
+			k += 2;
+		}	// end while
+
+	}	// end else if
 
 	LoadVolume();
 	Draw3DImage(true);
