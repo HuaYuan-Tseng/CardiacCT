@@ -1375,8 +1375,8 @@ void C3DProcess::Spine_process()
 		int s = start_slice;
 		std::vector<int> x_pos;
 		std::vector<int> y_pos;
-		x_pos.reserve(10000);
-		y_pos.reserve(10000);
+		x_pos.reserve(15000);
+		y_pos.reserve(15000);
 
 		while (s < totalSlice)
 		{
@@ -1784,8 +1784,8 @@ void C3DProcess::Spine_process_fix()
 		int s = start_slice;
 		std::vector<int> x_pos;
 		std::vector<int> y_pos;
-		x_pos.reserve(10000);
-		y_pos.reserve(10000);
+		x_pos.reserve(15000);
+		y_pos.reserve(15000);
 
 		while (s < totalSlice)
 		{
@@ -2585,22 +2585,22 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 
 				// 先大概消除不要的部分
 				int y = 0; 							// 每一行 x 要開始消除的起始 y
-				int	y_pre = row-1;					// 前一行 x 要開始消除的起始 y
+				int	y_pre = row - 1;					// 前一行 x 要開始消除的起始 y
 				for (int i = 2; i < (col - 2); ++i)
 				{
 					y = row - 1;
 					while (y >= 0 && (judge[z_cur][y * col + i] == 0 ||
 						judge[z_cur][y * col + i] == obj1 ||
-						judge[z_cur][y * col + i] == obj2 || 
+						judge[z_cur][y * col + i] == obj2 ||
 						judge[z_cur][y * col + i] == -obj1 ||
-						judge[z_cur][y * col + i] == -obj2 ))
+						judge[z_cur][y * col + i] == -obj2))
 						--y;
 
 					if (y == row - 1)
 						y = y_pre;
 					else
 						y_pre = y;
-
+					
 					for (j = y; j >= 2; --j)
 					{
 						for (int nk = -1; nk <= 1; ++nk)
@@ -2622,29 +2622,52 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 					int x1 = abs(sternum_vertex[z_cur][0].first - 255);
 					int x2 = abs(sternum_vertex[z_cur][1].first - 255);
 					int x3 = abs(sternum_vertex[z_cur][2].first - 255);
-					
+
 					if (x1 < x2 && x1 < x3)
 						y_mid = sternum_vertex[z_cur][0].second;
 					else if (x2 < x1 && x2 < x3)
 						y_mid = sternum_vertex[z_cur][1].second;
 					else if (x3 < x1 && x3 < x2)
 						y_mid = sternum_vertex[z_cur][2].second;
-					
-					if (z_cur >= 10 && (y_mid_pre - y_mid) > 20)
+
+
+					// 如果是胸骨偏底部(幾乎都是肋軟骨)的slice
+					// 就從中間尋找最大的y
+					//
+					if (z_cur >= 310)
+					{
+						int y_max = 0;
+						for (int i = 180; i <= 310; ++i)
+						{
+							for (int j = 0; j < row; ++j)
+							{
+								if (judge[z_cur][j * col + i] == obj3 ||
+									judge[z_cur][j * col + i] == obj4)
+								{
+									if (j > y_max)	y_max = j;
+								}
+							}
+						}
+						y_mid = y_max;
+					}
+
+					// 記錄這個離胸骨中間最近的點的y座標
+					if (z_cur >= 10 && (y_mid_pre - y_mid) > 15)
 						y_mid = y_mid_pre;
 					else
 						y_mid_pre = y_mid;
 
 					for (j = 2; j < row - 2; j += 2)
 					{
-						if (judge[z_cur][j * col + i] == obj3 || judge[z_cur][j * col + i] == obj4 ||
-							 j <= y_mid)
+						if (judge[z_cur][j * col + i] == obj3 ||
+							judge[z_cur][j * col + i] == obj4 ||
+							j <= y_mid)
 							getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
 								0, 0);
 					}
 
 				}	// end for
-				
+
 			}	// end if
 			k += 2;
 		}	// end while
