@@ -205,9 +205,11 @@ public:
 	void	Dilation_3D(short** src, short element);
 
 	void	Spine_process();											// 脊椎二次成長 - 預處理
+	void	Spine_process_fix();										// 脊椎二次成長 - 修正成長後的資訊
 	void	RG2_3D_Spine_process(short** src, RG_factor& factor);		// 脊椎二次成長 - 限制線與全域平均
 
 	void	Sternum_process();											// 胸骨二次成長 - 預處理
+	void	Sternum_process_fix();										// 胸骨二次成長 - 修正成長後的資訊
 	void	RG2_3D_Sternum_process(short** src, RG_factor& factor);		// 胸骨二次成長 - 限制線與全域平均
 	
 	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均)
