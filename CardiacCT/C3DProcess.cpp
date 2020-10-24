@@ -1407,7 +1407,7 @@ void C3DProcess::Spine_process()
 					}
 				}
 			}
-			
+
 			// 如果成長範圍太少導致判別會錯誤，就先跳過
 			if (x_pos.size() < 50 || y_pos.size() < 50)
 			{
@@ -1439,13 +1439,13 @@ void C3DProcess::Spine_process()
 			// 計算三角頂點 - 右下點 (避免成長到影像一半以上的肋骨)
 			if ((ver_rht / col) <= (ver_mid / col) || (ver_rht % col) - (ver_mid % col) >= 200)
 			{
-				x = (ver_lft % col) + 2 *((ver_mid % col) - (ver_lft % col));
+				x = (ver_lft % col) + 2 * ((ver_mid % col) - (ver_lft % col));
 				y = ver_lft / col;
 				spine_vertex[s].at(2) = std::make_pair(x, y);
 			}
 			else
 				spine_vertex[s].at(2) = std::make_pair((ver_rht % col), (ver_rht / col));
-			
+
 			x_pos.clear();
 			y_pos.clear();
 			s += 2;
@@ -2649,13 +2649,20 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 							}
 						}
 						y_mid = y_max;
+						// 記錄這個離胸骨中間最近的點的y座標
+						if (z_cur >= 10 && (y_mid_pre - y_mid) > 5)
+							y_mid = y_mid_pre;
+						else
+							y_mid_pre = y_mid;
 					}
-
-					// 記錄這個離胸骨中間最近的點的y座標
-					if (z_cur >= 10 && (y_mid_pre - y_mid) > 15)
-						y_mid = y_mid_pre;
 					else
-						y_mid_pre = y_mid;
+					{
+						// 記錄這個離胸骨中間最近的點的y座標
+						if (z_cur >= 10 && (y_mid_pre - y_mid) > 15)
+							y_mid = y_mid_pre;
+						else
+							y_mid_pre = y_mid;
+					}
 
 					for (j = 2; j < row - 2; j += 2)
 					{
