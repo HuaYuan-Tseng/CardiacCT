@@ -1409,9 +1409,9 @@ void C3DProcess::Spine_process()
 			}
 
 			// 如果成長範圍太少導致判別會錯誤，就先跳過
-			if (x_pos.size() < 50 || y_pos.size() < 50)
+			if (x_pos.size() < 10 || y_pos.size() < 10)
 			{
-				TRACE("Are you kidding ???????!!!!!!! \n");
+				TRACE1("Slice : %3d cannot find vertex. \n", s);
 				x_pos.clear();
 				y_pos.clear();
 				s += 2;
@@ -1819,9 +1819,9 @@ void C3DProcess::Spine_process_fix()
 			}
 
 			// 如果成長範圍太少導致判別會錯誤，就先跳過
-			if (x_pos.size() < 50 || y_pos.size() < 50)
+			if (x_pos.size() < 10 || y_pos.size() < 10)
 			{
-				TRACE("Are you kidding ???????!!!!!!! \n");
+				TRACE1("Slice : %3d cannot find vertex. \n", s);
 				x_pos.clear();
 				y_pos.clear();
 				s += 2;
@@ -1964,8 +1964,8 @@ void C3DProcess::Sternum_process()
 		int s = start_slice;
 		std::vector<int> x_pos;
 		std::vector<int> y_pos;
-		x_pos.reserve(10000);
-		y_pos.reserve(10000);
+		x_pos.reserve(15000);
+		y_pos.reserve(15000);
 
 		while (s < totalSlice)
 		{
@@ -2019,7 +2019,7 @@ void C3DProcess::Sternum_process()
 			// 如果成長範圍太少導致判別會錯誤，就先跳過
 			if (x_pos.size() < 10 || y_pos.size() < 10)
 			{
-				TRACE("Are you kidding ???????!!!!!!! \n");
+				TRACE1("Slice : %3d cannot find vertex. \n", s);
 				x_pos.clear();
 				y_pos.clear();
 				s += 2;
@@ -2062,6 +2062,9 @@ void C3DProcess::Sternum_process()
 	thread th_0(findVertex, 0);
 	thread th_1(findVertex, 1);
 	th_0.join();	th_1.join();
+
+
+
 
 	auto lineIndex = [&](int start_slice)
 	{
@@ -2106,6 +2109,7 @@ void C3DProcess::Sternum_process()
 	thread th_3(lineIndex, 1);
 	th_2.join();	th_3.join();
 
+	// 修正沒有計算出sternum_line的slice
 	for (int s = 0; s < totalSlice; ++s)
 	{
 		if (sternum_line[s].size() < 2)
@@ -2375,7 +2379,7 @@ void C3DProcess::Sternum_process_fix()
 			// 如果成長範圍太少導致判別會錯誤，就先跳過
 			if (x_pos.size() < 10 || y_pos.size() < 10)
 			{
-				TRACE("Are you kidding ???????!!!!!!! \n");
+				TRACE1("Slice : %3d cannot find vertex. \n", s);
 				x_pos.clear();
 				y_pos.clear();
 				s += 2;
@@ -2803,12 +2807,13 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 		{
 			for (i = 0; i < col; ++i)
 			{
-				pixel = m_pDoc->m_img[k][j * col + i];
-				m_pDoc->m_imgPro[k][j * col + i] = (BYTE)pixel;
-
 				if (judge[k][j * col + i] == obj1 || judge[k][j * col + i] == -obj1 ||
 					judge[k][j * col + i] == obj2 || judge[k][j * col + i] == -obj2)
+				{
 					judge[k][j * col + i] = 0;
+					pixel = m_pDoc->m_img[k][j * col + i];
+					m_pDoc->m_imgPro[k][j * col + i] = (BYTE)pixel;
+				}
 			}
 		}
 		k += 1;
