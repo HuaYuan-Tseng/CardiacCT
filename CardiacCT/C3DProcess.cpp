@@ -2019,7 +2019,7 @@ void C3DProcess::Sternum_process()
 			// 如果成長範圍太少導致判別會錯誤，就先跳過
 			if (x_pos.size() < 10 || y_pos.size() < 10)
 			{
-				TRACE1("Slice : %3d cannot find vertex. \n", s);
+				//TRACE1("Slice : %3d cannot find vertex. \n", s);
 				x_pos.clear();
 				y_pos.clear();
 				s += 2;
@@ -2063,9 +2063,64 @@ void C3DProcess::Sternum_process()
 	thread th_1(findVertex, 1);
 	th_0.join();	th_1.join();
 
+	 // 修正沒有判斷到頂點的slice
+	int n = 0;
+	if (sternum_vertex.find(n) == sternum_vertex.end() || sternum_vertex[n].size() < 3)
+	{
+		int s = n + 1;
+		// 直到找到有頂點的slice為止
+		while (sternum_vertex.find(s) == sternum_vertex.end() || sternum_vertex[s].size() < 3)
+			s++;
+		for (; n < s; ++n)
+		{
+			sternum_vertex[n].assign(3, std::make_pair(0, 0));
+			sternum_vertex[n] = sternum_vertex[s];
+		}
+		TRACE("0 slice's vertex have been fixed ! \n");
+	}
+	else
+		TRACE("0 slice have vertex ! \n");
 
+	while (n < totalSlice)
+	{
+		if (sternum_vertex.find(n) == sternum_vertex.end() || sternum_vertex[n].size() < 3)
+		{
+			sternum_vertex[n].assign(3, std::make_pair(0, 0));
+			sternum_vertex[n] = sternum_vertex[n - 1];
+		}
+		++n;
+	}
+	TRACE("Vertex Fix : Success ! \n");
 
+	// 修正沒有判斷到邊界的slice
+	n = 0;
+	if (sternum_edge.find(n) == sternum_edge.end() || sternum_edge[n].size() < 4)
+	{
+		int s = n + 1;
+		while (sternum_edge.find(s) == sternum_edge.end() || sternum_edge[s].size() < 4)
+			s++;
+		for (; n < s; ++n)
+		{
+			sternum_edge[n].assign(4, 0);
+			sternum_edge[n] = sternum_edge[s];
+		}
+		TRACE("0 slice's edge have been fixed ! \n");
+	}
+	else
+		TRACE("0 slice have edge ! \n");
 
+	while (n < totalSlice)
+	{
+		if (sternum_edge.find(n) == sternum_edge.end() || sternum_edge[n].size() < 4)
+		{
+			sternum_edge[n].assign(4, 0);
+			sternum_edge[n] = sternum_edge[n - 1];
+		}
+		++n;
+	}
+	TRACE("Edge Fix : Success ! \n");
+
+	// 計算斜線方程式的係數
 	auto lineIndex = [&](int start_slice)
 	{
 		int s = start_slice;
@@ -2379,7 +2434,7 @@ void C3DProcess::Sternum_process_fix()
 			// 如果成長範圍太少導致判別會錯誤，就先跳過
 			if (x_pos.size() < 10 || y_pos.size() < 10)
 			{
-				TRACE1("Slice : %3d cannot find vertex. \n", s);
+				//TRACE1("Slice : %3d cannot find vertex. \n", s);
 				x_pos.clear();
 				y_pos.clear();
 				s += 2;
