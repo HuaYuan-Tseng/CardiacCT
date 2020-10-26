@@ -3059,9 +3059,9 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 					judge[k][j * col + i] == obj2 || judge[k][j * col + i] == -obj2)
 				{
 					judge[k][j * col + i] = 0;
-					pixel = m_pDoc->m_img[k][j * col + i];
-					m_pDoc->m_imgPro[k][j * col + i] = (BYTE)pixel;
 				}
+				pixel = m_pDoc->m_img[k][j * col + i];
+				m_pDoc->m_imgPro[k][j * col + i] = (BYTE)pixel;
 			}
 		}
 		k += 1;
