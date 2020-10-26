@@ -2801,8 +2801,12 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 								break;
 							}
 						}
-						if (y_mid == INT_MAX)
-							y_mid = y_mid_pre;
+						if (y_mid == INT_MAX || abs(y_mid - y_mid_pre) > 10)
+						{
+							if (z_cur <= 50) y_mid_pre = y_mid;
+							else if (z_cur > 150) y_mid = mid_fix_pt.second;
+							else y_mid = y_mid_pre;
+						}
 						else
 							y_mid_pre = y_mid;
 					}

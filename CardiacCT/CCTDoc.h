@@ -5,6 +5,7 @@
 #pragma once
 #include "DcmDir.h"
 #include <vector>
+#include <map>
 using namespace std;
 
 class CCTDoc : public CDocument
