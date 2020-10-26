@@ -1450,7 +1450,10 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	if (m_spine)
 	{
 		start = clock();
-		RG_3D_ConfidenceConnected(judge, RG_term);
+		if (!spine_line.empty())
+			RG_3D_Spine_process(judge, RG_term);
+		else
+			RG_3D_ConfidenceConnected(judge, RG_term);
 		end = clock();
 		spine_volume = Calculate_Volume(judge);
 		m_result.Format("%lf", spine_volume);
@@ -4478,10 +4481,191 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 
 }
 
+void C3DProcess::RG_3D_Spine_process(short** src, RG_factor& factor)
+{
+	// DO : 3D - 脊椎 1111111111111111111111111111111111 次區域成長
+	// 利用「全域平均值」與「標準差」界定成長標準，並以「限制線」避免成長溢出
+	//
+	const int obj = 1;
+	const int row = ROW;
+	const int col = COL;
+	const int totalXY = ROW * COL;
+	const int totalSlice = Total_Slice;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	const double pix_th = factor.pix_thresh;
+	const double sd_th = factor.sd_thresh;
+	const double sd_co = factor.sd_coeffi;
+	Seed_s	seed = factor.seed;
+	BYTE**& img = m_pDoc->m_img;
+	BYTE**& imgPro = m_pDoc->m_imgPro;
+
+	double	s_avg = 0;
+	unsigned int s_cnt = 0, n_pixel = 0;
+	Seed_s	s_pt, n_pt;
+	std::queue<Seed_s> sed_que;
+	std::queue<double> avg_que;
+
+	auto lineFunc1 = [=](int px, int py, int pz)	// left line
+	{
+		float value = spine_line[pz].at(0).first * px + spine_line[pz].at(0).second - py;
+		if (value <= 0)	return true;				// 在left line(要倒著看)的左邊
+		else return false;
+	};
+	auto lineFunc2 = [=](int px, int py, int pz)	// right line
+	{
+		float value = spine_line[pz].at(1).first * px + spine_line[pz].at(1).second - py;
+		if (value <= 0)	return true;				// 在right line(要倒著看)的右邊
+		else return false;
+	};
+	auto outOfImg = [=](int px, int py, int pz)		// 影像邊界
+	{
+		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
+			return false;
+		else return true;
+	};
+	auto outOfRange = [=](int px, int py, int pz)	// 判斷限制線的範圍
+	{
+		//int x_l = spine_vertex[pz].at(0).first - 50;
+		//int x_r = spine_vertex[pz].at(0).first + 50;
+		//int y_d = spine_vertex[pz].at(0).second + 80;
+		//int y_t = spine_vertex[pz].at(0).second;
+
+		/*int x_l = spine_vertex[pz].at(1).first - 5;
+		int x_r = spine_vertex[pz].at(2).first + 5;
+		int y_d = max(spine_vertex[pz].at(1).second, spine_vertex[pz].at(2).second) + 5;
+		int y_t = spine_vertex[pz].at(0).second;
+
+		if (px >= x_l && px <= x_r && py <= y_d && py >= y_t)
+			return false;
+		else
+			return true;*/
+
+		if (pz >= 150 && pz <= 170)
+			return false;
+		else
+			return true;
+	};
+	
+	s_avg = imgPro[seed.z][seed.y * col + seed.x];
+	src[seed.z][seed.y * col + seed.x] = obj;
+	avg_que.push(s_avg);
+	sed_que.push(seed);
+	s_cnt += 1;
+
+	// 做區域成長
+	while (!sed_que.empty())
+	{
+		register int si, sj, sk;
+		s_avg = avg_que.front();
+		s_pt = sed_que.front();
+
+		// 計算 總合 與 平均
+		double sum = 0, cnt = 0;
+		double n_avg = 0, n_sd = 0;
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+					{
+						sum +=
+							imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
+						cnt += 1;
+					}
+				}
+			}
+		}
+		n_avg = sum / cnt;
+
+		// 計算 標準差
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+					{
+						n_pixel =
+							imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
+						n_sd += pow((n_pixel - n_avg), 2);
+					}
+				}
+			}
+		}
+		n_sd = sqrt(n_sd / cnt);
+
+		// 判斷三維空間範圍內的像素點
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					// 判斷有無超出影像範圍且還沒判定過
+					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
+						src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] == 0)
+					{
+						n_pixel =
+							imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
+
+						if ( (n_sd <= sd_th && abs(n_pixel - s_avg) <= pix_th) )
+						{
+							if (!outOfRange(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+							{
+								if (lineFunc1(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
+									lineFunc2(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+								{
+									n_pt.x = s_pt.x + si;
+									n_pt.y = s_pt.y + sj;
+									n_pt.z = s_pt.z + sk;
+									sed_que.push(n_pt);
+
+									s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+									avg_que.push(s_avg);
+									s_cnt += 1;
+
+									src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = obj;
+								}
+								else
+								{
+									src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj;
+								}
+							}
+							else
+							{
+								n_pt.x = s_pt.x + si;
+								n_pt.y = s_pt.y + sj;
+								n_pt.z = s_pt.z + sk;
+								sed_que.push(n_pt);
+
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
+
+								src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = obj;
+							}
+						}
+						else
+						{
+							src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj;
+						}
+					}
+				}
+			}
+		}
+		avg_que.pop();
+		sed_que.pop();
+	}
+
+}
+
 void C3DProcess::RG2_3D_Spine_process(short** src, RG_factor& factor)
 {
 	// DO : 3D - 脊椎 2222222222222222222222222222222222 次區域成長
-	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
+	// 利用「全域平均值」界定成長標準，並以「限制線」避免成長溢出
 	//
 	const int obj1 = 1; 
 	const int obj2 = 2;
@@ -4636,10 +4820,153 @@ void C3DProcess::RG2_3D_Spine_process(short** src, RG_factor& factor)
 	
 }
 
+void C3DProcess::RG_3D_Sternum_process(short** src, RG_factor& factor)
+{
+	// DO : 3D - 胸骨 1111111111111111111111111111111111 次區域成長
+	// 利用「全域平均值」與「標準差」界定成長標準，並以「限制線」避免成長溢出
+	//
+	const int obj = 3;
+	const int row = ROW;
+	const int col = COL;
+	const int totalXY = ROW * COL;
+	const int totalSlice = Total_Slice;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	const double pix_th = factor.pix_thresh;
+	const double sd_th = factor.sd_thresh;
+	const double sd_co = factor.sd_coeffi;
+	Seed_s	seed = factor.seed;
+	BYTE**& img = m_pDoc->m_img;
+	BYTE**& imgPro = m_pDoc->m_imgPro;
+
+	double	s_avg = 0;
+	unsigned int s_cnt = 0, n_pixel = 0;
+	Seed_s	s_pt, n_pt;
+	std::queue<Seed_s> sed_que;
+	std::queue<double> avg_que;
+
+	auto lineFunc1 = [=](int px, int py, int pz)	// left line
+	{
+		float value = sternum_line[pz].at(0).first * px + sternum_line[pz].at(0).second - py;
+		if (value >= 0) return true;				// 在left line(要倒著看)的右邊
+		else return false;
+	};
+	auto lineFunc2 = [=](int px, int py, int pz)	// right line
+	{
+		float value = sternum_line[pz].at(1).first * px + sternum_line[pz].at(1).second - py;
+		if (value >= 0)	return true;				// 在right line(要倒著看)的右邊
+		else return false;
+	};
+	auto outOfImg = [=](int px, int py, int pz)		// 影像邊界
+	{
+		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
+			return false;
+		else return true;
+	};
+
+	s_avg = imgPro[seed.z][seed.y * col + seed.x];
+	src[seed.z][seed.y * col + seed.x] = obj;
+	avg_que.push(s_avg);
+	sed_que.push(seed);
+	s_cnt += 1;
+
+	// 做區域成長
+	while (!sed_que.empty())
+	{
+		register int si, sj, sk;
+		s_avg = avg_que.front();
+		s_pt = sed_que.front();
+
+		// 計算 總合 與 平均
+		double sum = 0, cnt = 0;
+		double n_avg = 0, n_sd = 0;
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+					{
+						sum +=
+							imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
+						cnt += 1;
+					}
+				}
+			}
+		}
+		n_avg = sum / cnt;
+
+		// 計算 標準差
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+					{
+						n_pixel =
+							imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
+						n_sd += pow((n_pixel - n_avg), 2);
+					}
+				}
+			}
+		}
+		n_sd = sqrt(n_sd / cnt);
+
+		// 判斷三維空間範圍內的像素點
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					// 判斷有無超出影像範圍且還沒判定過
+					if (!outOfImg(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) &&
+						src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] == 0)
+					{
+						n_pixel =
+							imgPro[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)];
+
+						if ((n_sd <= sd_th && abs(n_pixel - s_avg) <= pix_th))
+						{
+							if (lineFunc1(s_pt.x + si, s_pt.y + sj, s_pt.z + sk) ||
+								lineFunc2(s_pt.x + si, s_pt.y + sj, s_pt.z + sk))
+							{
+								n_pt.x = s_pt.x + si;
+								n_pt.y = s_pt.y + sj;
+								n_pt.z = s_pt.z + sk;
+								sed_que.push(n_pt);
+
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
+
+								src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = obj;
+							}
+							else
+							{
+								src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj;
+							}
+						}
+						else
+						{
+							src[s_pt.z + sk][(s_pt.y + sj) * col + (s_pt.x + si)] = -obj;
+						}
+					}
+				}
+			}
+		}
+		avg_que.pop();
+		sed_que.pop();
+	}
+
+}
+
 void C3DProcess::RG2_3D_Sternum_process(short** src, RG_factor& factor)
 {
 	// DO : 3D - 胸骨 2222222222222222222222222222222222 次區域成長
-	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
+	// 利用「全域平均值」與「標準差」界定成長標準，並以「限制線」避免成長溢出
 	//
 	const int obj1 = 3;
 	const int obj2 = 4;
@@ -4754,8 +5081,6 @@ void C3DProcess::RG2_3D_Sternum_process(short** src, RG_factor& factor)
 		avg_que.pop();
 		sed_que.pop();
 	}
-
-
 
 }
 
