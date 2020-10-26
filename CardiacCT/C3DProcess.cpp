@@ -90,6 +90,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	get_3Dseed = false;
 	get_3Dimage = false;
 	get_regionGrow = false;
+	get_mid_fix = false;
 	get_sternum = false;
 	get_spine = false;
 	
@@ -123,6 +124,7 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	seed_pt = { 0, 0, 0 };
 	seed_img = { 0, 0, 0 };
 	seed_gl = { 0.0L, 0.0L, 0.0L };
+	mid_fix_pt = std::make_pair(0, 0);
 	
 	glVertexPt = New2Dmatrix(64, 3, float);
 	lastPos = new float[3]{ 0.0F, 0.0F, 0.0F };
@@ -186,6 +188,73 @@ C3DProcess::~C3DProcess()
 		m_SDth.Empty();
 	if (m_SDco.IsEmpty() != true)
 		m_SDco.Empty();
+
+	if (spine_vertex.empty() != true)
+	{
+		for (auto& n : spine_vertex)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		spine_vertex.swap(empty_map);
+		spine_vertex.clear();
+	}
+	if (spine_line.empty() != true)
+	{
+		for (auto& n : spine_line)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<float, float>>> empty_map;
+		spine_line.swap(empty_map);
+		spine_line.clear();
+	}
+	if (spine_edge.empty() != true)
+	{
+		for (auto& n : spine_edge)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<int>> empty_map;
+		spine_edge.swap(empty_map);
+		spine_edge.clear();
+	}
+	if (sternum_vertex.empty() != true)
+	{
+		for (auto& n : sternum_vertex)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		sternum_vertex.swap(empty_map);
+		sternum_vertex.clear();
+	}
+	if (sternum_line.empty() != true)
+	{
+		for (auto& n : sternum_line)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<float, float>>> empty_map;
+		sternum_line.swap(empty_map);
+		sternum_line.clear();
+	}
+	if (sternum_edge.empty() != true)
+	{
+		for (auto& n : sternum_edge)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<int>> empty_map;
+		sternum_edge.swap(empty_map);
+		sternum_edge.clear();
+	}
 
 	glDeleteTextures(ImageFrame, textureName);
 }
@@ -280,6 +349,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_PIX_TH, &C3DProcess::OnEnChangeEditPixTh)
 	ON_EN_CHANGE(IDC_EDIT_SD_TH, &C3DProcess::OnEnChangeEditSdTh)
 	ON_EN_CHANGE(IDC_EDIT_SD_CO, &C3DProcess::OnEnChangeEditSdCo)
+	ON_BN_CLICKED(IDC_MID_FIX, &C3DProcess::OnBnClickedMidFix)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -1233,6 +1303,25 @@ void C3DProcess::OnBnClickedButtonSeedChange()
 	}
 }
 
+void C3DProcess::OnBnClickedMidFix()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Mid_Fix
+	//
+	if (get_2Dseed)
+	{
+		mid_fix_pt.first = seed_pt.x;
+		mid_fix_pt.second = seed_pt.y;
+		get_mid_fix = true;
+	}
+	else
+	{
+		mid_fix_pt = std::make_pair(0, 0);
+		get_mid_fix = false;
+	}
+
+}
+
 void C3DProcess::OnBnClickedButtonRegionGrowing()
 {
 	// TODO: Add your control notification handler code here
@@ -1986,9 +2075,8 @@ void C3DProcess::Sternum_process()
 
 						// 先大概搜尋左右邊最低(y最高)的點
 						// 不一定是要用來做限制線的點位置
-						if (x < 256 && y > ly_max)
+						if (x < 256 && ver_lft == 0)
 						{
-							ly_max = y;
 							ver_lft = pos;
 						}
 						else if (x > 256 && y > ry_max)
@@ -1998,6 +2086,16 @@ void C3DProcess::Sternum_process()
 						}
 					}
 				}
+			}
+
+			// 如果成長範圍太少導致判別會錯誤，就先跳過
+			if (x_pos.size() < 10 || y_pos.size() < 10)
+			{
+				//TRACE1("Slice : %3d cannot find vertex. \n", s);
+				x_pos.clear();
+				y_pos.clear();
+				s += 2;
+				continue;
 			}
 
 			// 搜尋中間點
@@ -2015,16 +2113,7 @@ void C3DProcess::Sternum_process()
 				}
 				mx -= 1;
 			}
-
-			// 如果成長範圍太少導致判別會錯誤，就先跳過
-			if (x_pos.size() < 10 || y_pos.size() < 10)
-			{
-				//TRACE1("Slice : %3d cannot find vertex. \n", s);
-				x_pos.clear();
-				y_pos.clear();
-				s += 2;
-				continue;
-			}
+			
 			size_t x_len = x_pos.size();
 			size_t y_len = y_pos.size();
 
@@ -2400,9 +2489,9 @@ void C3DProcess::Sternum_process_fix()
 
 						// 先大概搜尋左右邊最低(y最高)的點
 						// 不一定是要用來做限制線的點位置
-						if (x < 256 && y > ly_max)
+						if (x < 256 && ver_lft == 0)
 						{
-							ly_max = y;
+							//ly_max = y;
 							ver_lft = pos;
 						}
 						else if (x > 256 && y > ry_max)
@@ -2412,6 +2501,16 @@ void C3DProcess::Sternum_process_fix()
 						}
 					}
 				}
+			}
+
+			// 如果成長範圍太少導致判別會錯誤，就先跳過
+			if (x_pos.size() < 10 || y_pos.size() < 10)
+			{
+				//TRACE1("Slice : %3d cannot find vertex. \n", s);
+				x_pos.clear();
+				y_pos.clear();
+				s += 2;
+				continue;
 			}
 
 			// 搜尋中間點
@@ -2430,16 +2529,7 @@ void C3DProcess::Sternum_process_fix()
 				}
 				mx -= 1;
 			}
-
-			// 如果成長範圍太少導致判別會錯誤，就先跳過
-			if (x_pos.size() < 10 || y_pos.size() < 10)
-			{
-				//TRACE1("Slice : %3d cannot find vertex. \n", s);
-				x_pos.clear();
-				y_pos.clear();
-				s += 2;
-				continue;
-			}
+			
 			size_t x_len = x_pos.size();
 			size_t y_len = y_pos.size();
 
@@ -2641,12 +2731,12 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 					long_dis = cur_dis;
 					long_slice = z_cur;
 				}
-
-				// 先大概消除不要的部分
+				
 				int y = 0; 							// 每一行 x 要開始消除的起始 y
-				int	y_pre = row - 1;					// 前一行 x 要開始消除的起始 y
+				int	y_pre = row - 1;				// 前一行 x 要開始消除的起始 y
 				for (int i = 2; i < (col - 2); ++i)
 				{
+					// 先大概消除不要的部分
 					y = row - 1;
 					while (y >= 0 && (judge[z_cur][y * col + i] == 0 ||
 						judge[z_cur][y * col + i] == obj1 ||
@@ -2676,52 +2766,47 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 					}
 					y_pre = y;
 
-					// 挑一個離中間最近的點的y
-					int y_mid = sternum_vertex[z_cur][0].second;;
-					int x1 = abs(sternum_vertex[z_cur][0].first - 255);
-					int x2 = abs(sternum_vertex[z_cur][1].first - 255);
-					int x3 = abs(sternum_vertex[z_cur][2].first - 255);
-
-					if (x1 < x2 && x1 < x3)
-						y_mid = sternum_vertex[z_cur][0].second;
-					else if (x2 < x1 && x2 < x3)
-						y_mid = sternum_vertex[z_cur][1].second;
-					else if (x3 < x1 && x3 < x2)
-						y_mid = sternum_vertex[z_cur][2].second;
-
-
-					// 如果是胸骨偏底部(幾乎都是肋軟骨)的slice
-					// 就從中間尋找最大的y
-					//
-					if (z_cur >= 310)
+					int y_mid = INT_MAX;
+					if (!get_mid_fix)
 					{
-						int y_max = 0;
+						int y_min = 512;
 						for (int i = 180; i <= 310; ++i)
 						{
-							for (int j = 0; j < row; ++j)
+							for (int j = row - 1; j >= 0; --j)
 							{
 								if (judge[z_cur][j * col + i] == obj3 ||
 									judge[z_cur][j * col + i] == obj4)
 								{
-									if (j > y_max)	y_max = j;
+									if (j < y_min) y_min = j;
+									break;
 								}
 							}
 						}
-						y_mid = y_max;
-						// 記錄這個離胸骨中間最近的點的y座標
-						if (z_cur >= 10 && (y_mid_pre - y_mid) > 5)
+						y_mid = y_min;
+
+						if (abs(y_mid - y_mid_pre) > 5)
 							y_mid = y_mid_pre;
 						else
 							y_mid_pre = y_mid;
 					}
 					else
 					{
-						// 記錄這個離胸骨中間最近的點的y座標
-						if (z_cur >= 10 && (y_mid_pre - y_mid) > 15)
+						int x_mid = mid_fix_pt.first;
+						for (int j = row-1; j >= 0; --j)
+						{
+							if (judge[z_cur][j * col + x_mid] == obj3 ||
+								judge[z_cur][j * col + x_mid] == obj4)
+							{
+								y_mid = j;
+								break;
+							}
+						}
+						if (y_mid == INT_MAX)
 							y_mid = y_mid_pre;
 						else
 							y_mid_pre = y_mid;
 					}
+
 
 					for (j = 2; j < row - 2; j += 2)
 					{

@@ -132,8 +132,10 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 	bool			get_spine;
 	bool			get_sternum;
+	bool			get_mid_fix;
+	pair<int, int>	mid_fix_pt;
 
-	std::vector<int> judge_type;										// 紀錄判定類型 (+ : 要的 , - : 不要的)
+	//std::vector<int> judge_type;										// 紀錄判定類型 (+ : 要的 , - : 不要的)
 																		//  0 : 還沒判斷
 																		//  1.2 : spine (1RG, 2RG)
 																		//  3.4 : sternum (1RG, 2RG) 
@@ -291,6 +293,11 @@ public:
 	afx_msg void OnEnChangeEditSlices();
 	afx_msg void OnEnChangeEditHuThreshold();
 	afx_msg void OnEnChangeEditPixelThreshold();
+	afx_msg void OnEnChangeEditSKernel();
+	afx_msg void OnEnChangeEditNKernel();
+	afx_msg void OnEnChangeEditPixTh();
+	afx_msg void OnEnChangeEditSdTh();
+	afx_msg void OnEnChangeEditSdCo();
 
 	afx_msg void OnBnClickedButton2dseedClear();
 	afx_msg void OnBnClickedButton3dseedClear();
@@ -311,9 +318,5 @@ public:
 	afx_msg void OnBnClickedCheckDispOrg();
 	afx_msg void OnBnClickedCheckSternum();
 	afx_msg void OnBnClickedCheckSpine();
-	afx_msg void OnEnChangeEditSKernel();
-	afx_msg void OnEnChangeEditNKernel();
-	afx_msg void OnEnChangeEditPixTh();
-	afx_msg void OnEnChangeEditSdTh();
-	afx_msg void OnEnChangeEditSdCo();
+	afx_msg void OnBnClickedMidFix();
 };

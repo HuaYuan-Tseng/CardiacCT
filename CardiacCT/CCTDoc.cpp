@@ -75,6 +75,74 @@ CCTDoc::~CCTDoc()
 		delete[] m_img;
 	if (m_imgPro != nullptr)
 		delete[] m_imgPro;
+
+	if (spine_vertex.empty() != true)
+	{
+		for (auto& n : spine_vertex)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		spine_vertex.swap(empty_map);
+		spine_vertex.clear();
+	}
+	if (spine_line.empty() != true)
+	{
+		for (auto& n : spine_line)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<float, float>>> empty_map;
+		spine_line.swap(empty_map);
+		spine_line.clear();
+	}
+	if (spine_edge.empty() != true)
+	{
+		for (auto& n : spine_edge)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<int>> empty_map;
+		spine_edge.swap(empty_map);
+		spine_edge.clear();
+	}
+	if (sternum_vertex.empty() != true)
+	{
+		for (auto& n : sternum_vertex)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		sternum_vertex.swap(empty_map);
+		sternum_vertex.clear();
+	}
+	if (sternum_line.empty() != true)
+	{
+		for (auto& n : sternum_line)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<float, float>>> empty_map;
+		sternum_line.swap(empty_map);
+		sternum_line.clear();
+	}
+	if (sternum_edge.empty() != true)
+	{
+		for (auto& n : sternum_edge)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<int>> empty_map;
+		sternum_edge.swap(empty_map);
+		sternum_edge.clear();
+	}
+
 }
 
 BOOL CCTDoc::OnNewDocument()
