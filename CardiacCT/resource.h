@@ -88,8 +88,9 @@
 #define IDC_EDIT_SD_TH                  1057
 #define IDC_EDIT_SD_CO                  1058
 #define IDC_MID_FIX                     1059
-#define IDC_BUTTON3                     1060
+#define IDC_BUTTON_REUSE_LIMIT          1060
 #define IDC_BUTTON5                     1061
+#define IDC_BUTTON_RECORD_LIMIT         1061
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773

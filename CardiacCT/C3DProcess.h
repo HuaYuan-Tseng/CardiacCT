@@ -313,10 +313,13 @@ public:
 	afx_msg void OnBnClickedButtonGrowingRecovery();
 	afx_msg void OnBnClickedButtonGrowingRemove();
 	afx_msg void OnBnClickedButtonGrowingClear();
+	afx_msg void OnBnClickedButtonRecordLimit();
+	afx_msg void OnBnClickedButtonReuseLimit();
 	afx_msg void OnBnClickedButtonDilation();
 	afx_msg void OnBnClickedCheckDispPro0();
 	afx_msg void OnBnClickedCheckDispOrg();
 	afx_msg void OnBnClickedCheckSternum();
 	afx_msg void OnBnClickedCheckSpine();
 	afx_msg void OnBnClickedMidFix();
+
 };

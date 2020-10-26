@@ -336,6 +336,8 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_GROWING_CLEAR, &C3DProcess::OnBnClickedButtonGrowingClear)
 	ON_BN_CLICKED(IDC_BUTTON_2DSEED_CLEAR, &C3DProcess::OnBnClickedButton2dseedClear)
 	ON_BN_CLICKED(IDC_BUTTON_3DSEED_CLEAR, &C3DProcess::OnBnClickedButton3dseedClear)
+	ON_BN_CLICKED(IDC_BUTTON_RECORD_LIMIT, &C3DProcess::OnBnClickedButtonRecordLimit)
+	ON_BN_CLICKED(IDC_BUTTON_REUSE_LIMIT, &C3DProcess::OnBnClickedButtonReuseLimit)
 	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 	ON_BN_CLICKED(IDC_BUTTON_DILATION, &C3DProcess::OnBnClickedButtonDilation)
 	ON_BN_CLICKED(IDC_CHECK_STERNUM, &C3DProcess::OnBnClickedCheckSternum)
@@ -350,6 +352,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_SD_TH, &C3DProcess::OnEnChangeEditSdTh)
 	ON_EN_CHANGE(IDC_EDIT_SD_CO, &C3DProcess::OnEnChangeEditSdCo)
 	ON_BN_CLICKED(IDC_MID_FIX, &C3DProcess::OnBnClickedMidFix)
+	
 END_MESSAGE_MAP()
 
 //=================================//
@@ -1320,6 +1323,104 @@ void C3DProcess::OnBnClickedMidFix()
 		get_mid_fix = false;
 	}
 
+}
+
+void C3DProcess::OnBnClickedButtonReuseLimit()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Reuse Limit (vertex.edge.line)
+	//
+	if (!m_pDoc->spine_vertex.empty())
+	{
+		if (!spine_vertex.empty())
+			spine_vertex.clear();
+		spine_vertex = m_pDoc->spine_vertex;
+		TRACE("Spine Vertex has been reuse ! \n");
+	}
+	if (!m_pDoc->spine_line.empty())
+	{
+		if (!spine_line.empty())
+			spine_line.clear();
+		spine_line = m_pDoc->spine_line;
+		TRACE("Spine Line has been reuse ! \n");
+	}
+	if (!m_pDoc->spine_edge.empty())
+	{
+		if (!spine_edge.empty())
+			spine_edge.clear();
+		spine_edge = m_pDoc->spine_edge;
+		TRACE("Spine Edge has been reuse ! \n");
+	}
+	if (!m_pDoc->sternum_vertex.empty())
+	{
+		if (!sternum_vertex.empty())
+			sternum_vertex.clear();
+		sternum_vertex = m_pDoc->sternum_vertex;
+		TRACE("Sternum Vertex has been reuse ! \n");
+	}
+	if (!m_pDoc->sternum_line.empty())
+	{
+		if (!sternum_line.empty())
+			sternum_line.clear();
+		sternum_line = m_pDoc->sternum_line;
+		TRACE("Sternum Line has been reuse ! \n");
+	}
+	if (!m_pDoc->sternum_edge.empty())
+	{
+		if (!sternum_edge.empty())
+			sternum_edge.clear();
+		sternum_edge = m_pDoc->sternum_edge;
+		TRACE("Sternum Edge has been reuse ! \n");
+	}
+}
+
+void C3DProcess::OnBnClickedButtonRecordLimit()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Record Limit (vertex.edge.line)
+	//
+	if (!spine_vertex.empty())
+	{
+		if (!m_pDoc->spine_vertex.empty())
+			m_pDoc->spine_vertex.clear();
+		m_pDoc->spine_vertex = spine_vertex;
+		TRACE("Spine Vertex has been record ! \n");
+	}
+	if (!spine_line.empty())
+	{
+		if (!m_pDoc->spine_line.empty())
+			m_pDoc->spine_line.clear();
+		m_pDoc->spine_line = spine_line;
+		TRACE("Spine Line has been record ! \n");
+	}
+	if (!spine_edge.empty())
+	{
+		if (!m_pDoc->spine_edge.empty())
+			m_pDoc->spine_edge.clear();
+		m_pDoc->spine_edge = spine_edge;
+		TRACE("Spine Edge has been record ! \n");
+	}
+	if (!sternum_vertex.empty())
+	{
+		if (!m_pDoc->sternum_vertex.empty())
+			m_pDoc->sternum_vertex.clear();
+		m_pDoc->sternum_vertex = sternum_vertex;
+		TRACE("Sternum Vertex has been record ! \n");
+	}
+	if (!sternum_line.empty())
+	{
+		if (!m_pDoc->sternum_line.empty())
+			m_pDoc->sternum_line.clear();
+		m_pDoc->sternum_line = sternum_line;
+		TRACE("Sternum Line has been record ! \n");
+	}
+	if (!sternum_edge.empty())
+	{
+		if (!m_pDoc->sternum_edge.empty())
+			m_pDoc->sternum_edge.clear();
+		m_pDoc->sternum_edge = sternum_edge;
+		TRACE("Sternum Edge has been record ! \n");
+	}
 }
 
 void C3DProcess::OnBnClickedButtonRegionGrowing()
