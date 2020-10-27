@@ -47,6 +47,7 @@ IMPLEMENT_DYNAMIC(C3DProcess, CDialogEx)
 C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_3DPROCESS, pParent)
 	, m_2Dseed(FALSE)
+	, m_2Dverify(FALSE)
 	, m_3Dseed(FALSE)
 	, m_spine(FALSE)
 	, m_sternum(FALSE)
@@ -281,6 +282,7 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_STERNUM, m_sternum);
 	DDX_Check(pDX, IDC_CHECK_DISP_ORG, m_disp_org);
 	DDX_Check(pDX, IDC_CHECK_DISP_PRO0, m_disp_pro0);
+	DDX_Check(pDX, IDC_CHECK_2D_VERIFY, m_2Dverify);
 	DDX_Check(pDX, IDC_CHECK_COMPLETE, m_complete);
 	DDX_Check(pDX, IDC_CHECK_HU_THRESHOLD, m_thresholdHU);
 	DDX_Check(pDX, IDC_CHECK_PIXEL_THRESHOLD, m_thresholdPixel);
@@ -330,6 +332,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(ID_EXIT, &C3DProcess::OnBnClickedExit)
 	ON_BN_CLICKED(IDC_CHECK_SPINE, &C3DProcess::OnBnClickedCheckSpine)
 	ON_BN_CLICKED(IDC_CHECK_STERNUM, &C3DProcess::OnBnClickedCheckSternum)
+	ON_BN_CLICKED(IDC_CHECK_2D_VERIFY, &C3DProcess::OnBnClickedCheck2dVerify)
 	ON_BN_CLICKED(IDC_CHECK_2D_SEED, &C3DProcess::OnBnClickedCheck2dSeed)
 	ON_BN_CLICKED(IDC_CHECK_3D_SEED, &C3DProcess::OnBnClickedCheck3dSeed)
 	ON_BN_CLICKED(IDC_CHECK_PLANE, &C3DProcess::OnBnClickedCheckPlane)
@@ -340,7 +343,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_HU_THRESHOLD, &C3DProcess::OnBnClickedCheckHuThreshold)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
 	
-	ON_BN_CLICKED(IDC_BUTTON_MID_FIX, &C3DProcess::OnBnClickedMidFix)
+	ON_BN_CLICKED(IDC_BUTTON_MID_FIX, &C3DProcess::OnBnClickedButtonMidFix)
 	ON_BN_CLICKED(IDC_BUTTON_PLANE_RESET, &C3DProcess::OnBnClickedButtonPlaneReset)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_PLUS, &C3DProcess::OnBnClickedButtonSlicesPlus)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_MINUS, &C3DProcess::OnBnClickedButtonSlicesMinus)
@@ -1060,15 +1063,49 @@ void C3DProcess::OnBnClickedCheckHuThreshold()
 	Draw2DImage(DisplaySlice);
 }
 
+void C3DProcess::OnBnClickedCheck2dVerify()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : 2D_verify (m_2Dverify)
+	//
+
+	if (!m_2Dverify)
+	{	// 打開
+		m_2Dverify = TRUE;
+		
+
+
+		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
+	}
+	else
+	{	// 關閉
+		m_2Dverify = FALSE;
+
+
+
+		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
+	}
+
+	m_2Dseed = FALSE;
+	UpdateData(FALSE);
+	Draw3DImage(true);
+	Draw2DImage(DisplaySlice);
+}
+
 void C3DProcess::OnBnClickedCheck2dSeed()
 {
 	// TODO: Add your control notification handler code here
 	// CheckBox : 2D_seed (m_2Dseed)
 	//
-	UpdateData(TRUE);
-	if (m_2Dseed == TRUE)
-	{
-		if (get_2Dseed)	
+	
+	if (!m_2Dseed)
+	{	// 打開
+		m_2Dseed = TRUE;
+		if (get_2Dseed)
 		{
 			GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(TRUE);
 			if (m_3Dseed)
@@ -1077,10 +1114,14 @@ void C3DProcess::OnBnClickedCheck2dSeed()
 		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(TRUE);
 	}
 	else
-	{
+	{	// 關閉
+		m_2Dseed = FALSE;
 		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
 	}
+
+	m_2Dverify = FALSE;
+	UpdateData(FALSE);
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
 }
@@ -1378,7 +1419,7 @@ void C3DProcess::OnBnClickedButtonSeedChange()
 	}
 }
 
-void C3DProcess::OnBnClickedMidFix()
+void C3DProcess::OnBnClickedButtonMidFix()
 {
 	// TODO: Add your control notification handler code here
 	// Button : Mid_Fix
@@ -5558,6 +5599,9 @@ double C3DProcess::Calculate_Volume(short** src)
 		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	}
 */
+
+
+
 
 
 

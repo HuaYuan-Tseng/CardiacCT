@@ -239,13 +239,13 @@ public:
 	enum { IDD = IDD_DIALOG_3DPROCESS };
 #endif
 public:										// CString的部分，有在Attributes另外設變數儲存
-	
 	BOOL		m_spine;
 	BOOL		m_sternum;
 	BOOL		m_plane;
 	BOOL		m_object;
 	BOOL		m_2Dseed;
 	BOOL		m_3Dseed;
+	BOOL		m_2Dverify;
 	BOOL		m_disp_org;
 	BOOL		m_disp_pro0;
 	BOOL		m_complete;
@@ -296,6 +296,12 @@ public:
 	afx_msg void OnBnClickedCheckComplete();
 	afx_msg void OnBnClickedCheckHuThreshold();
 	afx_msg void OnBnClickedCheckPixelThreshold();
+	afx_msg void OnBnClickedCheckDispPro0();
+	afx_msg void OnBnClickedCheckDispOrg();
+	afx_msg void OnBnClickedCheckSternum();
+	afx_msg void OnBnClickedCheckSpine();
+	afx_msg void OnBnClickedCheck2dSeed();
+	afx_msg void OnBnClickedCheck2dVerify();
 
 	afx_msg void OnEnChangeEditSlices();
 	afx_msg void OnEnChangeEditHuUpThreshold();
@@ -325,11 +331,6 @@ public:
 	afx_msg void OnBnClickedButtonRecordLimit();
 	afx_msg void OnBnClickedButtonReuseLimit();
 	afx_msg void OnBnClickedButtonDilation();
-	afx_msg void OnBnClickedCheckDispPro0();
-	afx_msg void OnBnClickedCheckDispOrg();
-	afx_msg void OnBnClickedCheckSternum();
-	afx_msg void OnBnClickedCheckSpine();
-	afx_msg void OnBnClickedMidFix();
+	afx_msg void OnBnClickedButtonMidFix();
 	
-	afx_msg void OnBnClickedCheck2dSeed();
 };
