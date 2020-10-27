@@ -34,9 +34,11 @@
 #define IDC_CHECK3                      1009
 #define IDC_CHECK_PLANE                 1009
 #define IDC_EDIT_PIXEL_THRESHOLD        1010
+#define IDC_EDIT_PIXEL_DOWN_THRESHOLD   1010
 #define IDC_CHECK_COMPLETE              1011
 #define IDC_CHECK_PIXEL_THRESHOLD       1012
 #define IDC_EDIT_HU_THRESHOLD           1013
+#define IDC_EDIT_HU_DOWN_THRESHOLD      1013
 #define IDC_CHECK1                      1014
 #define IDC_CHECK_HU_THRESHOLD          1014
 #define IDC_EDIT_INTENSITY              1015
@@ -49,7 +51,9 @@
 #define IDC_STATIC_DENSITY              1022
 #define IDC_STATIC_SLICES               1023
 #define IDC_STATIC_PIXEL_THRESHOLD      1024
+#define IDC_STATIC_PIXEL_DOWN_THRESHOLD 1024
 #define IDC_STATIC_HU_THRESHOLD         1025
+#define IDC_STATIC_HU_DOWN_THRESHOLD    1025
 #define IDC_EDIT_SLICES                 1026
 #define IDC_BUTTON_SLICES_PLUS          1027
 #define IDC_BUTTON2                     1028
@@ -61,6 +65,7 @@
 #define IDC_EDIT_POS4                   1033
 #define IDC_BUTTON_3DSEED_CLEAR         1034
 #define IDC_BUTTON_SEED_CHANGE          1035
+#define IDC_STATIC_PIXEL_UP_THRESHOLD   1036
 #define IDC_BUTTON_REGION_GROWING       1037
 #define IDC_EDIT_POS5                   1038
 #define IDC_EDIT_POS6                   1039
@@ -88,9 +93,13 @@
 #define IDC_EDIT_SD_TH                  1057
 #define IDC_EDIT_SD_CO                  1058
 #define IDC_MID_FIX                     1059
+#define IDC_BUTTON_MID_FIX              1059
 #define IDC_BUTTON_REUSE_LIMIT          1060
-#define IDC_BUTTON5                     1061
 #define IDC_BUTTON_RECORD_LIMIT         1061
+#define IDC_EDIT_PIXEL_UP_THRESHOLD     1062
+#define IDC_STATIC_HU_UP_THRESHOLD      1063
+#define IDC_EDIT_HU_UP_THRESHOLD        1064
+#define IDC_CHECK_2D_SEED               1065
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -103,7 +112,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        325
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1062
+#define _APS_NEXT_CONTROL_VALUE         1066
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

@@ -35,9 +35,9 @@ CDIB::CDIB()
 
 CDIB::~CDIB()
 {
-	if (m_lpbmi != NULL)	
+	if (m_lpbmi != nullptr)	
 		delete[]	(PBYTE) m_lpbmi;
-	if (m_lpPal != NULL)	
+	if (m_lpPal != nullptr)	
 		delete[]	(PBYTE) m_lpPal;
 	if (DICMRGB != nullptr)
 		delete[]	DICMRGB;
@@ -49,8 +49,8 @@ CDIB::~CDIB()
 
 void CDIB::InitDIB(int &width, int &height)
 {
-	if (m_lpbmi != NULL)	delete[](PBYTE)m_lpbmi;
-	if (m_lpPal != NULL)	delete[](PBYTE)m_lpPal;
+	if (m_lpbmi != nullptr)	delete[](PBYTE)m_lpbmi;
+	if (m_lpPal != nullptr)	delete[](PBYTE)m_lpPal;
 
 	int len = sizeof(BITMAPINFOHEADER) + 256 * sizeof(RGBQUAD);
 	m_lpbmi = (LPBITMAPINFO) new BYTE[len];

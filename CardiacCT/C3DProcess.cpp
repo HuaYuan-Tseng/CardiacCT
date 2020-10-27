@@ -46,6 +46,7 @@ IMPLEMENT_DYNAMIC(C3DProcess, CDialogEx)
 
 C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_DIALOG_3DPROCESS, pParent)
+	, m_2Dseed(FALSE)
 	, m_3Dseed(FALSE)
 	, m_spine(FALSE)
 	, m_sternum(FALSE)
@@ -56,8 +57,10 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_complete(TRUE)
 	, m_thresholdHU(FALSE)
 	, m_thresholdPixel(FALSE)
-	, m_HUThreshold(_T("210"))
-	, m_pixelThreshold(_T("150"))
+	, m_HU_up_threshold(_T("3072"))
+	, m_HU_down_threshold(_T("210"))
+	, m_pixel_up_threshold(_T("255"))
+	, m_pixel_down_threshold(_T("150"))
 	, m_intensity(_T("0.8125"))
 	, m_density(_T("0.0"))
 	, m_slices(_T("512"))
@@ -112,8 +115,10 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	DisplaySlice = 0;
 	spine_volume = 0.0;
 	sternum_volume = 0.0;
-	HUThreshold = atoi(m_HUThreshold);
-	PixelThreshold = atoi(m_pixelThreshold);
+	HU_up_threshold = atoi(m_HU_up_threshold);
+	HU_down_threshold = atoi(m_HU_down_threshold);
+	pixel_up_threshold = atoi(m_pixel_up_threshold);
+	pixel_down_threshold = atoi(m_pixel_down_threshold);
 
 	RG_term.s_kernel = 3;
 	RG_term.n_kernel = 3;
@@ -150,10 +155,14 @@ C3DProcess::~C3DProcess()
 	if (judge != nullptr)
 		delete[] judge;
 	
-	if (m_pixelThreshold.IsEmpty() != true)
-		m_pixelThreshold.Empty();
-	if (m_HUThreshold.IsEmpty() != true)
-		m_HUThreshold.Empty();
+	if (m_pixel_down_threshold.IsEmpty() != true)
+		m_pixel_down_threshold.Empty();
+	if (m_pixel_up_threshold.IsEmpty() != true)
+		m_pixel_up_threshold.Empty();
+	if (m_HU_down_threshold.IsEmpty() != true)
+		m_HU_down_threshold.Empty();
+	if (m_HU_up_threshold.IsEmpty() != true)
+		m_HU_up_threshold.Empty();
 	if (m_intensity.IsEmpty() != true)
 		m_intensity.Empty();
 	if (m_density.IsEmpty() != true)
@@ -267,6 +276,7 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_PLANE, m_plane);
 	DDX_Check(pDX, IDC_CHECK_Object, m_object);
 	DDX_Check(pDX, IDC_CHECK_3D_SEED, m_3Dseed);
+	DDX_Check(pDX, IDC_CHECK_2D_SEED, m_2Dseed);
 	DDX_Check(pDX, IDC_CHECK_SPINE, m_spine);
 	DDX_Check(pDX, IDC_CHECK_STERNUM, m_sternum);
 	DDX_Check(pDX, IDC_CHECK_DISP_ORG, m_disp_org);
@@ -276,13 +286,16 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_PIXEL_THRESHOLD, m_thresholdPixel);
 
 	DDX_Text(pDX, IDC_EDIT_SLICES, m_slices);
+	DDX_Text(pDX, IDC_EDIT_HU_UP_THRESHOLD, m_HU_up_threshold);
+	DDX_Text(pDX, IDC_EDIT_HU_DOWN_THRESHOLD, m_HU_down_threshold);
+	DDX_Text(pDX, IDC_EDIT_PIXEL_UP_THRESHOLD, m_pixel_up_threshold);
+	DDX_Text(pDX, IDC_EDIT_PIXEL_DOWN_THRESHOLD, m_pixel_down_threshold);
+
 	DDV_MinMaxInt(pDX, atoi(m_slices), 1, 512);
-
-	DDX_Text(pDX, IDC_EDIT_HU_THRESHOLD, m_HUThreshold);
-	DDV_MinMaxShort(pDX, atoi(m_HUThreshold), HU_Min, HU_Max);
-
-	DDX_Text(pDX, IDC_EDIT_PIXEL_THRESHOLD, m_pixelThreshold);
-	DDV_MinMaxShort(pDX, atoi(m_pixelThreshold), 0, 255);
+	DDV_MinMaxShort(pDX, atoi(m_pixel_up_threshold), 0, 255);
+	DDV_MinMaxShort(pDX, atoi(m_pixel_down_threshold), 0, 255);
+	DDV_MinMaxShort(pDX, atoi(m_HU_up_threshold), HU_Min, HU_Max);
+	DDV_MinMaxShort(pDX, atoi(m_HU_down_threshold), HU_Min, HU_Max);
 
 	DDX_Text(pDX, IDC_EDIT_INTENSITY, m_intensity);
 	DDX_Text(pDX, IDC_EDIT_DENSITY, m_density);
@@ -300,6 +313,7 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_PIX_TH, m_pix_th);
 	DDX_Text(pDX, IDC_EDIT_SD_TH, m_SDth);
 	DDX_Text(pDX, IDC_EDIT_SD_CO, m_SDco);
+	
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -314,6 +328,9 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_WM_RBUTTONDBLCLK()
 
 	ON_BN_CLICKED(ID_EXIT, &C3DProcess::OnBnClickedExit)
+	ON_BN_CLICKED(IDC_CHECK_SPINE, &C3DProcess::OnBnClickedCheckSpine)
+	ON_BN_CLICKED(IDC_CHECK_STERNUM, &C3DProcess::OnBnClickedCheckSternum)
+	ON_BN_CLICKED(IDC_CHECK_2D_SEED, &C3DProcess::OnBnClickedCheck2dSeed)
 	ON_BN_CLICKED(IDC_CHECK_3D_SEED, &C3DProcess::OnBnClickedCheck3dSeed)
 	ON_BN_CLICKED(IDC_CHECK_PLANE, &C3DProcess::OnBnClickedCheckPlane)
 	ON_BN_CLICKED(IDC_CHECK_Object, &C3DProcess::OnBnClickedCheckObject)
@@ -323,6 +340,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_HU_THRESHOLD, &C3DProcess::OnBnClickedCheckHuThreshold)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
 	
+	ON_BN_CLICKED(IDC_BUTTON_MID_FIX, &C3DProcess::OnBnClickedMidFix)
 	ON_BN_CLICKED(IDC_BUTTON_PLANE_RESET, &C3DProcess::OnBnClickedButtonPlaneReset)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_PLUS, &C3DProcess::OnBnClickedButtonSlicesPlus)
 	ON_BN_CLICKED(IDC_BUTTON_SLICES_MINUS, &C3DProcess::OnBnClickedButtonSlicesMinus)
@@ -340,18 +358,17 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_REUSE_LIMIT, &C3DProcess::OnBnClickedButtonReuseLimit)
 	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 	ON_BN_CLICKED(IDC_BUTTON_DILATION, &C3DProcess::OnBnClickedButtonDilation)
-	ON_BN_CLICKED(IDC_CHECK_STERNUM, &C3DProcess::OnBnClickedCheckSternum)
-	ON_BN_CLICKED(IDC_CHECK_SPINE, &C3DProcess::OnBnClickedCheckSpine)
 
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
-	ON_EN_CHANGE(IDC_EDIT_HU_THRESHOLD, &C3DProcess::OnEnChangeEditHuThreshold)
-	ON_EN_CHANGE(IDC_EDIT_PIXEL_THRESHOLD, &C3DProcess::OnEnChangeEditPixelThreshold)
+	ON_EN_CHANGE(IDC_EDIT_HU_UP_THRESHOLD, &C3DProcess::OnEnChangeEditHuUpThreshold)
+	ON_EN_CHANGE(IDC_EDIT_HU_DOWN_THRESHOLD, &C3DProcess::OnEnChangeEditHuDownThreshold)
+	ON_EN_CHANGE(IDC_EDIT_PIXEL_UP_THRESHOLD, &C3DProcess::OnEnChangeEditPixelUpThreshold)
+	ON_EN_CHANGE(IDC_EDIT_PIXEL_DOWN_THRESHOLD, &C3DProcess::OnEnChangeEditPixelDownThreshold)
 	ON_EN_CHANGE(IDC_EDIT_S_KERNEL, &C3DProcess::OnEnChangeEditSKernel)
 	ON_EN_CHANGE(IDC_EDIT_N_KERNEL, &C3DProcess::OnEnChangeEditNKernel)
 	ON_EN_CHANGE(IDC_EDIT_PIX_TH, &C3DProcess::OnEnChangeEditPixTh)
 	ON_EN_CHANGE(IDC_EDIT_SD_TH, &C3DProcess::OnEnChangeEditSdTh)
 	ON_EN_CHANGE(IDC_EDIT_SD_CO, &C3DProcess::OnEnChangeEditSdCo)
-	ON_BN_CLICKED(IDC_MID_FIX, &C3DProcess::OnBnClickedMidFix)
 	
 END_MESSAGE_MAP()
 
@@ -406,6 +423,11 @@ BOOL C3DProcess::OnInitDialog()
 
 	GetDlgItem(IDC_CHECK_SPINE)->EnableWindow(FALSE);
 	GetDlgItem(IDC_CHECK_STERNUM)->EnableWindow(FALSE);
+
+	GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
+	
 
 	//-------------------------------------------------------------------------------------//
 	// 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值
@@ -719,70 +741,75 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 	//
 	if (point.x < m_2D_rect.right && point.x > m_2D_rect.left && point.y < m_2D_rect.bottom && point.y > m_2D_rect.top)
 	{
-		seed_pt.x = (short)(point.x - m_2D_rect.left);
-		seed_pt.y = (short)(point.y - m_2D_rect.top);
-		seed_pt.z = DisplaySlice;
-
-		m_pos_1.Format("%d", (int)seed_pt.x);
-		m_pos_2.Format("%d", (int)seed_pt.y);
-		m_pos_3.Format("%d", (int)seed_pt.z);
-		if (m_disp_org)
-			m_pos_4.Format("%d", (int)m_pDoc->m_img[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
-		else if (m_disp_pro0)
-			m_pos_4.Format("%d", (int)m_pDoc->m_imgPro[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
-
-
-		// 觀察一下標準差
-		std::vector<int> pixel;
-		double avg = 0, sd = 0, cnt = 0;
-		auto outOfRange = [=](int x, int y, int z)
+		if (m_2Dseed)
 		{
-			if (x < COL && x >= 0 && y < ROW && y >= 0 && z < Total_Slice && z >= 0)
-				return false;
-			else
-				return true;
-		};
-		auto average = [&](Seed_s s, std::vector<int>& v)
-		{	// 計算周圍像素平均
-			register int i, j, k;
-			for (k = -1; k <= 1; ++k)
+			seed_pt.x = (short)(point.x - m_2D_rect.left);
+			seed_pt.y = (short)(point.y - m_2D_rect.top);
+			seed_pt.z = DisplaySlice;
+
+			m_pos_1.Format("%d", (int)seed_pt.x);
+			m_pos_2.Format("%d", (int)seed_pt.y);
+			m_pos_3.Format("%d", (int)seed_pt.z);
+			if (m_disp_org)
+				m_pos_4.Format("%d", (int)m_pDoc->m_img[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
+			else if (m_disp_pro0)
+				m_pos_4.Format("%d", (int)m_pDoc->m_imgPro[seed_pt.z][(seed_pt.y * COL) + seed_pt.x]);
+
+
+			// 觀察一下點的位置周圍標準差
+			std::vector<int> pixel;
+			double avg = 0, sd = 0, cnt = 0;
+			auto outOfRange = [=](int x, int y, int z)
 			{
-				for (j = -1; j <= 1; ++j)
+				if (x < COL && x >= 0 && y < ROW && y >= 0 && z < Total_Slice && z >= 0)
+					return false;
+				else
+					return true;
+			};
+			auto average = [&](Seed_s s, std::vector<int>& v)
+			{	// 計算周圍像素平均
+				register int i, j, k;
+				for (k = -1; k <= 1; ++k)
 				{
-					for (i = -1; i <= 1; ++i)
+					for (j = -1; j <= 1; ++j)
 					{
-						if (!outOfRange(s.x + i, s.x + j, s.z + k))
+						for (i = -1; i <= 1; ++i)
 						{
-							v.push_back(m_pDoc->m_imgPro[s.z + k][(s.y + j) * COL + (s.x + i)]);
-							cnt += 1;
+							if (!outOfRange(s.x + i, s.x + j, s.z + k))
+							{
+								v.push_back(m_pDoc->m_imgPro[s.z + k][(s.y + j) * COL + (s.x + i)]);
+								cnt += 1;
+							}
 						}
 					}
 				}
-			}
-			return (std::accumulate(v.begin(), v.end(), 0.0L) / cnt);
-		};
-		auto standard_deviation = [&](std::vector<int>& v, double AVG)
-		{	// 計算周圍像素標準差
-			double SD = 0;
-			for (const auto& n : v)
-			{
-				SD += pow((n - AVG), 2);
-			}
-			return sqrt(SD / cnt);
-		};
-		avg = average(seed_pt, pixel);
-		sd = standard_deviation(pixel, avg);
-
-		TRACE1("Pixel = %s \n", m_pos_4);
-		TRACE3("Cnt = %f, Avg = %f, Sd = %f \n", cnt, avg, sd);
-		TRACE1("Judge = %d \n\n", judge[seed_pt.z][seed_pt.y * COL + seed_pt.x]);
+				return (std::accumulate(v.begin(), v.end(), 0.0L) / cnt);
+			};
+			auto standard_deviation = [&](std::vector<int>& v, double AVG)
+			{	// 計算周圍像素標準差
+				double SD = 0;
+				for (const auto& n : v)
+				{
+					SD += pow((n - AVG), 2);
+				}
+				return sqrt(SD / cnt);
+			};
+			avg = average(seed_pt, pixel);
+			sd = standard_deviation(pixel, avg);
+			TRACE1("Pixel = %s \n", m_pos_4);
+			TRACE3("Cnt = %f, Avg = %f, Sd = %f \n", cnt, avg, sd);
+			TRACE1("Judge = %d \n\n", judge[seed_pt.z][seed_pt.y * COL + seed_pt.x]);
 
 
-		if (m_3Dseed)
-			GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
-		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(TRUE);
+			if (m_3Dseed)
+				GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
+			GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(TRUE);
 
-		get_2Dseed = true;
+			get_2Dseed = true;
+		}
+
+
+
 		UpdateData(FALSE);
 		Draw2DImage(DisplaySlice);
 	}
@@ -850,23 +877,43 @@ void C3DProcess::OnRButtonDblClk(UINT nFlags, CPoint point)
 	CDialogEx::OnRButtonDblClk(nFlags, point);
 }
 
-void C3DProcess::OnEnChangeEditPixelThreshold()
+void C3DProcess::OnEnChangeEditPixelDownThreshold()
 {
-	// 更換 二值化閾值 (Pixel)
-	// EditBox : Pixel Threshold (m_pixelThreshold)
+	// 更換 二值化 低閾值 (Down Pixel)
+	// EditBox : Pixel Threshold (m_pixel_down_threshold)
 	//
 	UpdateData(TRUE);
-	PixelThreshold = atoi(m_pixelThreshold);
+	pixel_down_threshold = atoi(m_pixel_down_threshold);
 	Draw2DImage(DisplaySlice);
 }
 
-void C3DProcess::OnEnChangeEditHuThreshold()
+void C3DProcess::OnEnChangeEditPixelUpThreshold()
 {
-	// 更換 二值化閾值 (HU)
-	// EditBox : HU Threshold (m_HUThreshold)
+	// 更換 二值化 高閾值 (Up Pixel)
+	// EditBox : Pixel Threshold (m_pixel_up_threshold)
 	//
 	UpdateData(TRUE);
-	HUThreshold = atoi(m_HUThreshold);
+	pixel_up_threshold = atoi(m_pixel_up_threshold);
+	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnEnChangeEditHuDownThreshold()
+{
+	// 更換 二值化閾值 (Down HU)
+	// EditBox : HU Threshold (m_HU_down_threshold)
+	//
+	UpdateData(TRUE);
+	HU_down_threshold = atoi(m_HU_down_threshold);
+	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnEnChangeEditHuUpThreshold()
+{
+	// 更換 二值化閾值 (Up HU)
+	// EditBox : HU Threshold (m_HU_up_threshold)
+	//
+	UpdateData(TRUE);
+	HU_up_threshold = atoi(m_HU_up_threshold);
 	Draw2DImage(DisplaySlice);
 }
 
@@ -1010,6 +1057,31 @@ void C3DProcess::OnBnClickedCheckHuThreshold()
 	m_thresholdHU = TRUE;
 	m_thresholdPixel = FALSE;
 	UpdateData(FALSE);
+	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnBnClickedCheck2dSeed()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : 2D_seed (m_2Dseed)
+	//
+	UpdateData(TRUE);
+	if (m_2Dseed == TRUE)
+	{
+		if (get_2Dseed)	
+		{
+			GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(TRUE);
+			if (m_3Dseed)
+				GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
+		}
+		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(TRUE);
+	}
+	else
+	{
+		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
+	}
+	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
 }
 
@@ -1499,7 +1571,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	m_wait->Create(IDD_DIALOG_WAIT);
 	m_wait->ShowWindow(SW_NORMAL);
 	m_wait->setDisplay("2nd Region growing...");
-	
+
 	clock_t start = clock();
 	if (m_spine && get_spine)
 	{
@@ -1540,7 +1612,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 	PrepareVolume();
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
-	
+
 	TRACE("Growing Volume : " + m_result + " (cm3) \n");
 	TRACE1("2nd process Time : %f (s)\n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	m_wait->DestroyWindow();
@@ -3684,7 +3756,7 @@ void C3DProcess::Draw3DImage(bool which)
 	glLineWidth(2);
 	glBegin(GL_LINES);
 	{
-		glColor3f(0.902f, 1.0f, 1.0f);
+		glColor4f(0.902f, 1.0f, 1.0f, 0.1f);
 
 		glVertex3f(1.0f, 1.0f, 1.0f);
 		glVertex3f(1.0f, 1.0f, -1.0f);
@@ -3790,7 +3862,8 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			i = 0;
 			while (i < Row * Col)
 			{
-				if (m_pDoc->m_img[slice][i] > PixelThreshold)
+				if (m_pDoc->m_img[slice][i] >= pixel_down_threshold && 
+					m_pDoc->m_img[slice][i] <= pixel_up_threshold )
 					image_thres[i] = 255;
 				else
 					image_thres[i] = 0;
@@ -3807,7 +3880,8 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			i = 0;
 			while (i < Row * Col)
 			{
-				if (m_pDoc->m_HUimg[slice][i] > HUThreshold)
+				if (m_pDoc->m_HUimg[slice][i] >= HU_down_threshold &&
+					m_pDoc->m_HUimg[slice][i] <= HU_up_threshold )
 					image_thres[i] = 255;
 				else
 					image_thres[i] = 0;
@@ -3832,7 +3906,8 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			i = 0;
 			while (i < Row * Col)
 			{
-				if (m_pDoc->m_imgPro[slice][i] > PixelThreshold)
+				if (m_pDoc->m_imgPro[slice][i] >= pixel_down_threshold &&
+					m_pDoc->m_imgPro[slice][i] <= pixel_up_threshold )
 					image_thres[i] = 255;
 				else
 					image_thres[i] = 0;
@@ -3849,7 +3924,8 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			i = 0;
 			while (i < Row * Col)
 			{
-				if (m_pDoc->m_HUimg[slice][i] > HUThreshold)
+				if (m_pDoc->m_HUimg[slice][i] >= HU_down_threshold &&
+					m_pDoc->m_HUimg[slice][i] <= HU_up_threshold )
 					image_thres[i] = 255;
 				else
 					image_thres[i] = 0;
@@ -5482,4 +5558,6 @@ double C3DProcess::Calculate_Volume(short** src)
 		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	}
 */
+
+
 

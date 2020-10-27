@@ -77,9 +77,11 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	double*			user_Plane;
 ///-------------------------◆ openGL 砞﹚把计 ◆----------------------------------------///
 
-	short			HUThreshold;		// て霩(HU)
-	unsigned short	PixelThreshold;		// て霩(pixel)
-	unsigned short	DisplaySlice;		// 陪ボslice(眖0秨﹍)
+	short			HU_down_threshold;		// て : 霩 (HU)
+	short			HU_up_threshold;		// て : 蔼霩 (HU)
+	unsigned short	pixel_down_threshold;	// て : 霩 (pixel)
+	unsigned short	pixel_up_threshold;		// て : 蔼霩 (pixel)
+	unsigned short	DisplaySlice;			// 陪ボslice(眖0秨﹍)
 
 ///-------------------------□ 3D seed 把计 □---------------------------------------///
 
@@ -237,20 +239,23 @@ public:
 	enum { IDD = IDD_DIALOG_3DPROCESS };
 #endif
 public:										// CString场だΤAttributes砞跑计纗
-	BOOL		m_3Dseed;
+	
 	BOOL		m_spine;
 	BOOL		m_sternum;
-	
 	BOOL		m_plane;
 	BOOL		m_object;
+	BOOL		m_2Dseed;
+	BOOL		m_3Dseed;
 	BOOL		m_disp_org;
 	BOOL		m_disp_pro0;
 	BOOL		m_complete;
 	BOOL		m_thresholdHU;
 	BOOL		m_thresholdPixel;
 
-	CString		m_pixelThreshold;
-	CString		m_HUThreshold;
+	CString		m_pixel_down_threshold;
+	CString		m_pixel_up_threshold;
+	CString		m_HU_down_threshold;
+	CString		m_HU_up_threshold;
 	CString		m_intensity;
 	CString		m_density;
 	CString		m_slices;
@@ -293,8 +298,10 @@ public:
 	afx_msg void OnBnClickedCheckPixelThreshold();
 
 	afx_msg void OnEnChangeEditSlices();
-	afx_msg void OnEnChangeEditHuThreshold();
-	afx_msg void OnEnChangeEditPixelThreshold();
+	afx_msg void OnEnChangeEditHuUpThreshold();
+	afx_msg void OnEnChangeEditHuDownThreshold();
+	afx_msg void OnEnChangeEditPixelUpThreshold();
+	afx_msg void OnEnChangeEditPixelDownThreshold();
 	afx_msg void OnEnChangeEditSKernel();
 	afx_msg void OnEnChangeEditNKernel();
 	afx_msg void OnEnChangeEditPixTh();
@@ -323,5 +330,6 @@ public:
 	afx_msg void OnBnClickedCheckSternum();
 	afx_msg void OnBnClickedCheckSpine();
 	afx_msg void OnBnClickedMidFix();
-
+	
+	afx_msg void OnBnClickedCheck2dSeed();
 };
