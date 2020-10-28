@@ -99,8 +99,10 @@
 #define IDC_STATIC_HU_UP_THRESHOLD      1063
 #define IDC_EDIT_HU_UP_THRESHOLD        1064
 #define IDC_CHECK_2D_SEED               1065
-#define IDC_CHECK_D_VERIFY              1066
 #define IDC_CHECK_2D_VERIFY             1066
+#define IDC_CHECK_SPINE_VERIFY          1067
+#define IDC_CHECK6                      1068
+#define IDC_CHECK_STERNUM_VERIFY        1068
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -113,7 +115,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        325
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1067
+#define _APS_NEXT_CONTROL_VALUE         1069
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

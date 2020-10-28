@@ -58,6 +58,8 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_complete(TRUE)
 	, m_thresholdHU(FALSE)
 	, m_thresholdPixel(FALSE)
+	, m_spine_verify(FALSE)
+	, m_sternum_verify(FALSE)
 	, m_HU_up_threshold(_T("3072"))
 	, m_HU_down_threshold(_T("210"))
 	, m_pixel_up_threshold(_T("255"))
@@ -126,6 +128,9 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	RG_term.pix_thresh = 50.0;
 	RG_term.sd_thresh = 20.0;
 	RG_term.sd_coeffi = 1.5;
+
+	draw_pt_cnt = 0;
+	draw_pt_total = 2;
 
 	seed_pt = { 0, 0, 0 };
 	seed_img = { 0, 0, 0 };
@@ -265,6 +270,52 @@ C3DProcess::~C3DProcess()
 		sternum_edge.swap(empty_map);
 		sternum_edge.clear();
 	}
+	if (draw_spine_pt.empty() != true)
+	{
+		for (auto& n : draw_spine_pt)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		draw_spine_pt.swap(empty_map);
+		draw_spine_pt.clear();
+	}
+	if (draw_sternum_pt.empty() != true)
+	{
+		for (auto& n : draw_sternum_pt)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		draw_sternum_pt.swap(empty_map);
+		draw_sternum_pt.clear();
+	}
+	if (draw_spine_line.empty() != true)
+	{
+		for (auto& n : draw_spine_line)
+		{
+			n.second.clear();
+			std::set<std::pair<int, int>> empty_set;
+			n.second.swap(empty_set);
+		}
+		std::map<int, std::set<std::pair<int, int>>> empty_map;
+		draw_spine_line.swap(empty_map);
+		draw_spine_line.clear();
+	}
+	if (draw_sternum_line.empty() != true)
+	{
+		for (auto& n : draw_sternum_line)
+		{
+			n.second.clear();
+			std::set<std::pair<int, int>> empty_set;
+			n.second.swap(empty_set);
+		}
+		std::map<int, std::set<std::pair<int, int>>> empty_map;
+		draw_sternum_line.swap(empty_map);
+		draw_sternum_line.clear();
+	}
 
 	glDeleteTextures(ImageFrame, textureName);
 }
@@ -283,6 +334,8 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_CHECK_DISP_ORG, m_disp_org);
 	DDX_Check(pDX, IDC_CHECK_DISP_PRO0, m_disp_pro0);
 	DDX_Check(pDX, IDC_CHECK_2D_VERIFY, m_2Dverify);
+	DDX_Check(pDX, IDC_CHECK_SPINE_VERIFY, m_spine_verify);
+	DDX_Check(pDX, IDC_CHECK_STERNUM_VERIFY, m_sternum_verify);
 	DDX_Check(pDX, IDC_CHECK_COMPLETE, m_complete);
 	DDX_Check(pDX, IDC_CHECK_HU_THRESHOLD, m_thresholdHU);
 	DDX_Check(pDX, IDC_CHECK_PIXEL_THRESHOLD, m_thresholdPixel);
@@ -315,7 +368,7 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_PIX_TH, m_pix_th);
 	DDX_Text(pDX, IDC_EDIT_SD_TH, m_SDth);
 	DDX_Text(pDX, IDC_EDIT_SD_CO, m_SDco);
-	
+
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -342,6 +395,8 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_CHECK_COMPLETE, &C3DProcess::OnBnClickedCheckComplete)
 	ON_BN_CLICKED(IDC_CHECK_HU_THRESHOLD, &C3DProcess::OnBnClickedCheckHuThreshold)
 	ON_BN_CLICKED(IDC_CHECK_PIXEL_THRESHOLD, &C3DProcess::OnBnClickedCheckPixelThreshold)
+	ON_BN_CLICKED(IDC_CHECK_SPINE_VERIFY, &C3DProcess::OnBnClickedCheckSpineVerify)
+	ON_BN_CLICKED(IDC_CHECK_STERNUM_VERIFY, &C3DProcess::OnBnClickedCheckSternumVerify)
 	
 	ON_BN_CLICKED(IDC_BUTTON_MID_FIX, &C3DProcess::OnBnClickedButtonMidFix)
 	ON_BN_CLICKED(IDC_BUTTON_PLANE_RESET, &C3DProcess::OnBnClickedButtonPlaneReset)
@@ -431,6 +486,8 @@ BOOL C3DProcess::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
 	
+	GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(FALSE);
+	GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(FALSE);
 
 	//-------------------------------------------------------------------------------------//
 	// 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值
@@ -544,10 +601,8 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 	ScreenToClient(&mpt);
 	const int TotalSlice = Total_Slice;
 
-	// 在 二維 影像視窗範圍內
-	//
 	if (mpt.x < m_2D_rect.right && mpt.x > m_2D_rect.left && mpt.y < m_2D_rect.bottom && mpt.y > m_2D_rect.top)
-	{
+	{	// 在 二維 影像視窗範圍內
 		if (zDelta < 0)
 			DisplaySlice += 1;
 		else if (zDelta > 0 && DisplaySlice > 0)
@@ -558,6 +613,7 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		else if (DisplaySlice < 0)
 			DisplaySlice = 0;
 
+		draw_pt_cnt = 0;
 		Draw2DImage(DisplaySlice);
 		m_ScrollBar.SetScrollPos(DisplaySlice);
 
@@ -576,11 +632,8 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 		}*/
 
 	}
-
-	// 在 三維 影像視窗範圍內
-	//
 	if (mpt.x < m_3D_rect.right && mpt.x > m_3D_rect.left && mpt.y < m_3D_rect.bottom && mpt.y > m_3D_rect.top)
-	{
+	{	// 在 三維 影像視窗範圍內
 		if (mode == ControlModes::ControlObject)
 		{
 			if (zDelta < 0)
@@ -642,6 +695,7 @@ void C3DProcess::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 	else if (n < 0)
 		n = 0;
 	
+	draw_pt_cnt = 0;
 	m_ScrollBar.SetScrollPos(n);
 	DisplaySlice = n;
 	Draw2DImage(DisplaySlice);
@@ -655,7 +709,7 @@ void C3DProcess::OnMouseMove(UINT nFlags, CPoint point)
 	// 滑鼠移動事件
 	//
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
-	{
+	{	// 在 三維 影像視窗
 		if (nFlags == MK_LBUTTON || nFlags == MK_RBUTTON)
 		{
 			ActTracking(point.x - m_3D_rect.left, point.y - m_3D_rect.top);
@@ -676,9 +730,9 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 	if (point.x < m_3D_rect.right && point.x > m_3D_rect.left && point.y < m_3D_rect.bottom && point.y > m_3D_rect.top)
 	{
 		ActStart(nFlags, point.x - m_3D_rect.left, point.y - m_3D_rect.top);
-
+		
 		if (m_3Dseed == TRUE)
-		{
+		{	// 點選3D種子點功能
 			if (get_3Dseed == false)
 			{
 				GLfloat		win_x, win_y, win_z;
@@ -743,9 +797,9 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 	// 二維 影像視窗
 	//
 	if (point.x < m_2D_rect.right && point.x > m_2D_rect.left && point.y < m_2D_rect.bottom && point.y > m_2D_rect.top)
-	{
+	{	
 		if (m_2Dseed)
-		{
+		{	// 點選2D種子點功能
 			seed_pt.x = (short)(point.x - m_2D_rect.left);
 			seed_pt.y = (short)(point.y - m_2D_rect.top);
 			seed_pt.z = DisplaySlice;
@@ -810,8 +864,93 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 
 			get_2Dseed = true;
 		}
+		else if (m_2Dverify)
+		{	// 2D驗證功能 (繪製範圍線)
+			if (!m_spine_verify && !m_sternum_verify)
+			{
+				MessageBox("Please Select the Bone !!");
+				return;
+			}
 
+			unsigned short& s = DisplaySlice;
 
+			std::pair<int, int> click_pt;
+			click_pt.first = static_cast<int>(point.x - m_2D_rect.left);
+			click_pt.second = static_cast<int>(point.y - m_2D_rect.top);
+
+			// 將要畫線的點，記錄起來
+			if (m_spine_verify)
+			{
+				draw_spine_pt[s].push_back(click_pt);
+			}
+			else if (m_sternum_verify)
+			{
+				draw_sternum_pt[s].push_back(click_pt);
+			}
+			draw_pt_cnt += 1;
+			
+			// 當點的數目，到達"要把線畫出來"的數目時
+			if (draw_pt_cnt == draw_pt_total)
+			{
+				if (m_spine_verify)
+				{
+					auto len = draw_spine_pt[s].size();
+
+					// 透過內插的方式，把點補齊，連成線
+					for (int i = 0; i < draw_pt_total-1; ++i)
+					{
+						auto start = len - draw_pt_total + i;
+						auto end = len - draw_pt_total + i + 1;
+
+						std::pair<int, int> start_pt;
+						std::pair<int, int> end_pt;
+						start_pt = draw_spine_pt[s].at(start);
+						end_pt = draw_spine_pt[s].at(end);
+
+						float seg_x = (end_pt.first - start_pt.first) / 511.0f;
+						float seg_y = (end_pt.second - start_pt.second) / 511.0f;
+
+						std::pair<int, int> new_pt;
+						for (int j = 0; j <= 511; ++j)
+						{
+							new_pt.first = static_cast<int>(start_pt.first + j * seg_x);
+							new_pt.second = static_cast<int>(start_pt.second + j * seg_y);
+
+							draw_spine_line[s].insert(new_pt);
+						}
+					}
+				}
+				else if (m_sternum_verify)
+				{
+					auto len = draw_sternum_pt[s].size();
+
+					// 透過內插的方式，把點補齊，連成線
+					for (int i = 0; i < draw_pt_total - 1; ++i)
+					{
+						auto start = len - draw_pt_total + i;
+						auto end = len - draw_pt_total + i + 1;
+
+						std::pair<int, int> start_pt;
+						std::pair<int, int> end_pt;
+						start_pt = draw_sternum_pt[s].at(start);
+						end_pt = draw_sternum_pt[s].at(end);
+
+						float seg_x = (end_pt.first - start_pt.first) / 511.0f;
+						float seg_y = (end_pt.second - start_pt.second) / 511.0f;
+
+						std::pair<int, int> new_pt;
+						for (int j = 0; j <= 511; ++j)
+						{
+							new_pt.first = static_cast<int>(start_pt.first + j * seg_x);
+							new_pt.second = static_cast<int>(start_pt.second + j * seg_y);
+
+							draw_sternum_line[s].insert(new_pt);
+						}
+					}
+				}
+				draw_pt_cnt = 0;
+			}	// end if 
+		}	// end else if
 
 		UpdateData(FALSE);
 		Draw2DImage(DisplaySlice);
@@ -1063,6 +1202,50 @@ void C3DProcess::OnBnClickedCheckHuThreshold()
 	Draw2DImage(DisplaySlice);
 }
 
+void C3DProcess::OnBnClickedCheckSpineVerify()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : 2D_verify - Spine (m_spine_verify)
+	//
+	if (!m_spine_verify)
+	{	// 打開
+		m_spine_verify = TRUE;
+
+	}
+	else
+	{	// 關閉
+		m_spine_verify = FALSE;
+
+	}
+	draw_pt_cnt = 0;
+	m_sternum_verify = FALSE;
+	UpdateData(FALSE);
+	Draw3DImage(true);
+	Draw2DImage(DisplaySlice);
+}
+
+void C3DProcess::OnBnClickedCheckSternumVerify()
+{
+	// TODO: Add your control notification handler code here
+	// CheckBox : 2D_verify - Sternum (m_sternum_verify)
+	//
+	if (!m_sternum_verify)
+	{	// 打開
+		m_sternum_verify = TRUE;
+
+	}
+	else
+	{	// 關閉
+		m_sternum_verify = FALSE;
+
+	}
+	draw_pt_cnt = 0;
+	m_spine_verify = FALSE;
+	UpdateData(FALSE);
+	Draw3DImage(true);
+	Draw2DImage(DisplaySlice);
+}
+
 void C3DProcess::OnBnClickedCheck2dVerify()
 {
 	// TODO: Add your control notification handler code here
@@ -1078,6 +1261,9 @@ void C3DProcess::OnBnClickedCheck2dVerify()
 		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
+
+		GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(TRUE);
+		GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(TRUE);
 	}
 	else
 	{	// 關閉
@@ -1088,8 +1274,11 @@ void C3DProcess::OnBnClickedCheck2dVerify()
 		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
-	}
 
+		GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(FALSE);
+		GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(FALSE);
+	}
+	draw_pt_cnt = 0;
 	m_2Dseed = FALSE;
 	UpdateData(FALSE);
 	Draw3DImage(true);
@@ -1112,12 +1301,20 @@ void C3DProcess::OnBnClickedCheck2dSeed()
 				GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(TRUE);
 		}
 		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(TRUE);
+
+		GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(FALSE);
+		GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(FALSE);
+
+
 	}
 	else
 	{	// 關閉
 		m_2Dseed = FALSE;
+
 		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
+
+
 	}
 
 	m_2Dverify = FALSE;
@@ -3995,6 +4192,91 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		}
 	}
 
+	// 於2D影像顯示繪製的線(用於驗證)
+	if (m_2Dverify)
+	{
+		if (!draw_spine_pt.empty())
+		{
+			std::map<int, std::vector<std::pair<int, int>>>::iterator it;
+			if ((it = draw_spine_pt.find(slice)) != draw_spine_pt.end())
+			{
+				CPoint pt;
+				for (const auto& n : it->second)
+				{
+					for (int j = -1; j <= 1; ++j)
+					{
+						for (int i = -1; i <= 1; ++i)
+						{
+							pt.x = n.first + i;
+							pt.y = n.second + j;
+							dc.SetPixel(pt, RGB(0, 255, 255));
+						}
+					}
+				}
+			}
+		}
+		if (!draw_sternum_pt.empty())
+		{
+			std::map<int, std::vector<std::pair<int, int>>>::iterator it;
+			if ((it = draw_sternum_pt.find(slice)) != draw_sternum_pt.end())
+			{
+				CPoint pt;
+				for (const auto& n : it->second)
+				{
+					for (int j = -1; j <= 1; ++j)
+					{
+						for (int i = -1; i <= 1; ++i)
+						{
+							pt.x = n.first + i;
+							pt.y = n.second + j;
+							dc.SetPixel(pt, RGB(255, 255, 0));
+						}
+					}
+				}
+			}
+		}
+		if (!draw_spine_line.empty())
+		{
+			std::map<int, std::set<std::pair<int, int>>>::iterator it;
+			if ((it = draw_spine_line.find(slice)) != draw_spine_line.end())
+			{
+				CPoint pt;
+				for (const auto& n : it->second)
+				{
+					for (int j = -1; j <= 1; ++j)
+					{
+						for (int i = -1; i <= 1; ++i)
+						{
+							pt.x = n.first + i;
+							pt.y = n.second + j;
+							dc.SetPixel(pt, RGB(0, 255, 255));
+						}
+					}
+				}
+			}
+		}
+		if (!draw_sternum_line.empty())
+		{
+			std::map<int, std::set<std::pair<int, int>>>::iterator it;
+			if ((it = draw_sternum_line.find(slice)) != draw_sternum_line.end())
+			{
+				CPoint pt;
+				for (const auto& n : it->second)
+				{
+					for (int j = -1; j <= 1; ++j)
+					{
+						for (int i = -1; i <= 1; ++i)
+						{
+							pt.x = n.first + i;
+							pt.y = n.second + j;
+							dc.SetPixel(pt, RGB(255, 255, 0));
+						}
+					}
+				}
+			}
+		}
+	}
+
 	//  3D seed 功能
 	if (m_3Dseed)
 	{
@@ -4099,7 +4381,6 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			}
 		}
 	}
-
 	if (!sternum_vertex.empty())
 	{
 		std::map<int, std::vector<std::pair<int, int>>>::iterator it;
@@ -4142,6 +4423,7 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 			}
 		}
 	}
+	
 
 	// 寫字 (slice)
 	CString str;
@@ -5599,9 +5881,5 @@ double C3DProcess::Calculate_Volume(short** src)
 		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	}
 */
-
-
-
-
 
 

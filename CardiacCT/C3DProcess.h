@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <map>
+#include <set>
 
 #define _IN							
 #define _OUT		
@@ -126,7 +127,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 ///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
 
-///------------- ↓ 實驗區 ↓ -------------///
+///------------- ↓ 3D 實驗區 ↓ -------------///
 
 	RG_factor		RG_term;			// 3D區域成長 : 條件因子
 	double			spine_volume;		// 3D區域成長 : 脊椎骨體積
@@ -172,8 +173,23 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 																		// 2 : y_min
 																		// 3 : y_max
 
+///------------- ↑ 3D 實驗區 ↑ -------------///
 
-///------------- ↑ 實驗區 ↑ -------------///
+///------------- ↓ 2D 實驗區(verify的東西) ↓ -------------///
+
+	int	draw_pt_cnt;					// 畫線時，畫到第幾點
+	int	draw_pt_total;					// 畫線時，共幾點畫線
+
+
+	std::map<int, std::vector<std::pair<int, int>>> draw_spine_pt;		// 畫線時，點擊繪製的點
+	std::map<int, std::vector<std::pair<int, int>>> draw_sternum_pt;	// 畫線時，點擊繪製的點
+
+	std::map<int, std::set<std::pair<int, int>>> draw_spine_line;		// 畫線時，點的那些點所連成的線
+	std::map<int, std::set<std::pair<int, int>>> draw_sternum_line;		// 畫線時，點的那些點所連成的線
+
+
+
+///------------- ↑ 2D 實驗區(verify的東西) ↑ -------------///
 
 //================//
 //   Operations   //
@@ -241,6 +257,8 @@ public:
 public:										// CString的部分，有在Attributes另外設變數儲存
 	BOOL		m_spine;
 	BOOL		m_sternum;
+	BOOL		m_spine_verify;
+	BOOL		m_sternum_verify;
 	BOOL		m_plane;
 	BOOL		m_object;
 	BOOL		m_2Dseed;
@@ -302,6 +320,8 @@ public:
 	afx_msg void OnBnClickedCheckSpine();
 	afx_msg void OnBnClickedCheck2dSeed();
 	afx_msg void OnBnClickedCheck2dVerify();
+	afx_msg void OnBnClickedCheckSpineVerify();
+	afx_msg void OnBnClickedCheckSternumVerify();
 
 	afx_msg void OnEnChangeEditSlices();
 	afx_msg void OnEnChangeEditHuUpThreshold();
