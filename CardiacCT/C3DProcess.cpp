@@ -100,6 +100,11 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	get_sternum = false;
 	get_spine = false;
 	
+	draw_pt_cnt = 0;
+	draw_pt_total = 2;
+	verify_reference_slice = 0;
+	get_verify_reference = false;
+
 	x_index = 0.5F;
 	y_index = 0.5F;
 	z_index = 0.7F;
@@ -128,9 +133,6 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	RG_term.pix_thresh = 50.0;
 	RG_term.sd_thresh = 20.0;
 	RG_term.sd_coeffi = 1.5;
-
-	draw_pt_cnt = 0;
-	draw_pt_total = 2;
 
 	seed_pt = { 0, 0, 0 };
 	seed_img = { 0, 0, 0 };
@@ -416,6 +418,10 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_REUSE_LIMIT, &C3DProcess::OnBnClickedButtonReuseLimit)
 	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 	ON_BN_CLICKED(IDC_BUTTON_DILATION, &C3DProcess::OnBnClickedButtonDilation)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_ERASE, &C3DProcess::OnBnClickedButtonVerifyLineErase)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_CLEAR, &C3DProcess::OnBnClickedButtonVerifyLineClear)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_REFERENCE, &C3DProcess::OnBnClickedButtonVerifyLineReference)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE, &C3DProcess::OnBnClickedButtonVerifyLineCancelReference)
 
 	ON_EN_CHANGE(IDC_EDIT_SLICES, &C3DProcess::OnEnChangeEditSlices)
 	ON_EN_CHANGE(IDC_EDIT_HU_UP_THRESHOLD, &C3DProcess::OnEnChangeEditHuUpThreshold)
@@ -478,16 +484,18 @@ BOOL C3DProcess::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_GROWING_RECOVERY)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_DILATION)->EnableWindow(FALSE);
-
-	GetDlgItem(IDC_CHECK_SPINE)->EnableWindow(FALSE);
-	GetDlgItem(IDC_CHECK_STERNUM)->EnableWindow(FALSE);
-
 	GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
-	
+
+	GetDlgItem(IDC_CHECK_SPINE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_CHECK_STERNUM)->EnableWindow(FALSE);
 	GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(FALSE);
 	GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_ERASE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CLEAR)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
 
 	//-------------------------------------------------------------------------------------//
 	// 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值
@@ -614,6 +622,21 @@ BOOL C3DProcess::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
 			DisplaySlice = 0;
 
 		draw_pt_cnt = 0;
+		unsigned short& s = DisplaySlice;
+		if (m_2Dverify && get_verify_reference)
+		{
+			if (m_spine_verify)
+			{
+				draw_spine_pt[s] = draw_spine_pt[verify_reference_slice];
+				draw_spine_line[s] = draw_spine_line[verify_reference_slice];
+			}
+			else if (m_sternum_verify)
+			{
+				draw_sternum_pt[s] = draw_sternum_pt[verify_reference_slice];
+				draw_sternum_line[s] = draw_sternum_line[verify_reference_slice];
+			}
+		}
+
 		Draw2DImage(DisplaySlice);
 		m_ScrollBar.SetScrollPos(DisplaySlice);
 
@@ -694,10 +717,26 @@ void C3DProcess::OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 		n = TotalSlice - 1;
 	else if (n < 0)
 		n = 0;
-	
-	draw_pt_cnt = 0;
+
 	m_ScrollBar.SetScrollPos(n);
 	DisplaySlice = n;
+
+	draw_pt_cnt = 0;
+	unsigned short& s = DisplaySlice;
+	if (m_2Dverify && get_verify_reference)
+	{
+		if (m_spine_verify)
+		{
+			draw_spine_pt[s] = draw_spine_pt[verify_reference_slice];
+			draw_spine_line[s] = draw_spine_line[verify_reference_slice];
+		}
+		else if (m_sternum_verify)
+		{
+			draw_sternum_pt[s] = draw_sternum_pt[verify_reference_slice];
+			draw_sternum_line[s] = draw_sternum_line[verify_reference_slice];
+		}
+	}
+
 	Draw2DImage(DisplaySlice);
 
 	CDialogEx::OnVScroll(nSBCode, nPos, pScrollBar);
@@ -1256,20 +1295,30 @@ void C3DProcess::OnBnClickedCheck2dVerify()
 	{	// 打開
 		m_2Dverify = TRUE;
 		
-
-
 		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_SEED_CHANGE)->EnableWindow(FALSE);
 
 		GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(TRUE);
 		GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(TRUE);
+
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_ERASE)->EnableWindow(TRUE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_CLEAR)->EnableWindow(TRUE);
+		if (get_verify_reference)
+		{
+			GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(FALSE);
+			GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(TRUE);
+		}
+		else
+		{
+			GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(TRUE);
+			GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
+		}
+		
 	}
 	else
 	{	// 關閉
 		m_2Dverify = FALSE;
-
-
 
 		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
@@ -1277,6 +1326,11 @@ void C3DProcess::OnBnClickedCheck2dVerify()
 
 		GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(FALSE);
 		GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(FALSE);
+
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_ERASE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_CLEAR)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
 	}
 	draw_pt_cnt = 0;
 	m_2Dseed = FALSE;
@@ -1305,7 +1359,10 @@ void C3DProcess::OnBnClickedCheck2dSeed()
 		GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(FALSE);
 		GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(FALSE);
 
-
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_ERASE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_CLEAR)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
 	}
 	else
 	{	// 關閉
@@ -1313,8 +1370,6 @@ void C3DProcess::OnBnClickedCheck2dSeed()
 
 		GetDlgItem(IDC_BUTTON_MID_FIX)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_2DSEED_CLEAR)->EnableWindow(FALSE);
-
-
 	}
 
 	m_2Dverify = FALSE;
@@ -1428,6 +1483,131 @@ void C3DProcess::OnBnClickedCheckSternum()
 	}
 	m_spine = FALSE;
 	UpdateData(FALSE);
+}
+
+void C3DProcess::OnBnClickedButtonVerifyLineErase()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Erase Lines - Erase Verify Line
+	//
+	if (!m_spine_verify && !m_sternum_verify)
+	{
+		MessageBox("Please Select the Bone !!");
+		return;
+	}
+	unsigned short& s = DisplaySlice;
+	if (m_spine_verify)
+	{
+		if (!draw_spine_pt.empty())
+		{
+			if (draw_spine_pt.find(s) != draw_spine_pt.end())
+			{
+				draw_spine_pt[s].clear();
+			}
+		}
+		if (!draw_spine_line.empty())
+		{
+			if (draw_spine_line.find(s) != draw_spine_line.end())
+			{
+				draw_spine_line[s].clear();
+			}
+		}
+	}
+	else if (m_sternum_verify)
+	{
+		if (!draw_sternum_pt.empty())
+		{
+			if (draw_sternum_pt.find(s) != draw_sternum_pt.end())
+			{
+				draw_sternum_pt[s].clear();
+			}
+		}
+		if (!draw_sternum_line.empty())
+		{
+			if (draw_sternum_line.find(s) != draw_sternum_line.end())
+			{
+				draw_sternum_line[s].clear();
+			}
+		}
+	}
+	draw_pt_cnt = 0;
+	Draw2DImage(s);
+}
+
+void C3DProcess::OnBnClickedButtonVerifyLineClear()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Clear Lines - Clear Verify Line
+	//
+	if (!m_spine_verify && !m_sternum_verify)
+	{
+		MessageBox("Please Select the Bone !!");
+		return;
+	}
+	if (m_spine_verify)
+	{
+		if (!draw_spine_pt.empty())
+		{
+			draw_spine_pt.clear();
+		}
+		if (!draw_spine_line.empty())
+		{
+			draw_spine_line.clear();
+		}
+	}
+	else if (m_sternum_verify)
+	{
+		if (!draw_sternum_pt.empty())
+		{
+			draw_sternum_pt.clear();
+		}
+		if (!draw_sternum_line.empty())
+		{
+			draw_sternum_line.clear();
+		}
+	}
+	draw_pt_cnt = 0;
+	verify_reference_slice = 0;
+	get_verify_reference = false;
+	Draw2DImage(DisplaySlice);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(TRUE);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
+}
+
+void C3DProcess::OnBnClickedButtonVerifyLineReference()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Reference - Reference displaySlice's Line
+	// 
+	get_verify_reference = true;
+	verify_reference_slice = DisplaySlice;
+	if (m_spine_verify)
+	{
+		if (draw_spine_pt.find(DisplaySlice) == draw_spine_pt.end())
+			draw_spine_pt[DisplaySlice] = {};
+		if (draw_spine_line.find(DisplaySlice) == draw_spine_line.end())
+			draw_spine_line[DisplaySlice] = {};
+	}
+	else if (m_sternum_verify)
+	{
+		if (draw_sternum_pt.find(DisplaySlice) == draw_sternum_pt.end())
+			draw_sternum_pt[DisplaySlice] = {};
+		if (draw_sternum_line.find(DisplaySlice) == draw_sternum_line.end())
+			draw_sternum_line[DisplaySlice] = {};
+	}
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(TRUE);
+}
+
+void C3DProcess::OnBnClickedButtonVerifyLineCancelReference()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Cancel Ref. - Cancel reference line
+	//
+	get_verify_reference = false;
+	verify_reference_slice = 0;
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(TRUE);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
 }
 
 void C3DProcess::OnBnClickedButtonIntensityPlus()

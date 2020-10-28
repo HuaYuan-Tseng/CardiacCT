@@ -177,8 +177,11 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 ///------------- ↓ 2D 實驗區(verify的東西) ↓ -------------///
 
-	int	draw_pt_cnt;					// 畫線時，畫到第幾點
-	int	draw_pt_total;					// 畫線時，共幾點畫線
+	int		draw_pt_cnt;					// 畫線時，畫到第幾點
+	int		draw_pt_total;					// 畫線時，共幾點畫線
+
+	int		verify_reference_slice;
+	bool	get_verify_reference;
 
 
 	std::map<int, std::vector<std::pair<int, int>>> draw_spine_pt;		// 畫線時，點擊繪製的點
@@ -186,8 +189,7 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 
 	std::map<int, std::set<std::pair<int, int>>> draw_spine_line;		// 畫線時，點的那些點所連成的線
 	std::map<int, std::set<std::pair<int, int>>> draw_sternum_line;		// 畫線時，點的那些點所連成的線
-
-
+	
 
 ///------------- ↑ 2D 實驗區(verify的東西) ↑ -------------///
 
@@ -352,5 +354,9 @@ public:
 	afx_msg void OnBnClickedButtonReuseLimit();
 	afx_msg void OnBnClickedButtonDilation();
 	afx_msg void OnBnClickedButtonMidFix();
-	
+	afx_msg void OnBnClickedButtonVerifyLineErase();
+	afx_msg void OnBnClickedButtonVerifyLineClear();
+	afx_msg void OnBnClickedButtonVerifyLineReference();
+	afx_msg void OnBnClickedButtonVerifyLineCancelReference();
+
 };
