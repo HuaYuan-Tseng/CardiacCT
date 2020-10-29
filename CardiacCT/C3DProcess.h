@@ -361,4 +361,6 @@ public:
 	afx_msg void OnBnClickedButtonVerifyLineReference();
 	afx_msg void OnBnClickedButtonVerifyLineCancelReference();
 	
+	afx_msg void OnBnClickedButtonVerifyRecord();
+	afx_msg void OnBnClickedButtonVerifyReuse();
 };

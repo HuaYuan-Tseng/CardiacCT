@@ -437,6 +437,8 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_SD_TH, &C3DProcess::OnEnChangeEditSdTh)
 	ON_EN_CHANGE(IDC_EDIT_SD_CO, &C3DProcess::OnEnChangeEditSdCo)
 	
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_RECORD, &C3DProcess::OnBnClickedButtonVerifyRecord)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_REUSE, &C3DProcess::OnBnClickedButtonVerifyReuse)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -1498,6 +1500,7 @@ void C3DProcess::OnBnClickedButtonVerifyLineErase()
 		MessageBox("Please Select the Bone !!");
 		return;
 	}
+
 	unsigned short& s = DisplaySlice;
 	if (m_spine_verify)
 	{
@@ -1757,6 +1760,76 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
 	Draw2DImage(DisplaySlice);
 	UpdateData(FALSE);
+}
+
+void C3DProcess::OnBnClickedButtonVerifyRecord()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Record Lines (Verify Lines Record)
+	//
+	if (!draw_spine_pt.empty())
+	{
+		if (!m_pDoc->draw_spine_pt.empty())
+			m_pDoc->draw_spine_pt.clear();
+		m_pDoc->draw_spine_pt = draw_spine_pt;
+		TRACE("Verify Spine Point has been record ! \n");
+	}
+	if (!draw_spine_line.empty())
+	{
+		if (!m_pDoc->draw_spine_line.empty())
+			m_pDoc->draw_spine_line.clear();
+		m_pDoc->draw_spine_line = draw_spine_line;
+		TRACE("Verify Spine Line has been record ! \n");
+	}
+	if (!draw_sternum_pt.empty())
+	{
+		if (!m_pDoc->draw_sternum_pt.empty())
+			m_pDoc->draw_sternum_pt.clear();
+		m_pDoc->draw_sternum_pt = draw_sternum_pt;
+		TRACE("Verify Sternum Point has been record ! \n");
+	}
+	if (!draw_sternum_line.empty())
+	{
+		if (!m_pDoc->draw_sternum_line.empty())
+			m_pDoc->draw_sternum_line.clear();
+		m_pDoc->draw_sternum_line = draw_sternum_line;
+		TRACE("Verify Sternum Line has been record ! \n");
+	}
+}
+
+void C3DProcess::OnBnClickedButtonVerifyReuse()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Reuse Lines (Verify Lines Reuse)
+	//
+	if (!m_pDoc->draw_spine_pt.empty())
+	{
+		if (!draw_spine_pt.empty())
+			draw_spine_pt.clear();
+		draw_spine_pt = m_pDoc->draw_spine_pt;
+		TRACE("Verify Spine Point has been reuse ! \n");
+	}
+	if (!m_pDoc->draw_spine_line.empty())
+	{
+		if (!draw_spine_line.empty())
+			draw_spine_line.clear();
+		draw_spine_line = m_pDoc->draw_spine_line;
+		TRACE("Verify Spine Line has been reuse ! \n");
+	}
+	if (!m_pDoc->draw_sternum_pt.empty())
+	{
+		if (!draw_sternum_pt.empty())
+			draw_sternum_pt.clear();
+		draw_sternum_pt = m_pDoc->draw_sternum_pt;
+		TRACE("Verify Spine Point has been reuse ! \n");
+	}
+	if (!m_pDoc->draw_sternum_line.empty())
+	{
+		if (!draw_sternum_line.empty())
+			draw_sternum_line.clear();
+		draw_sternum_line = m_pDoc->draw_sternum_line;
+		TRACE("Verify Spine Point has been reuse ! \n");
+	}
 }
 
 void C3DProcess::OnBnClickedButtonIntensityPlus()

@@ -142,7 +142,52 @@ CCTDoc::~CCTDoc()
 		sternum_edge.swap(empty_map);
 		sternum_edge.clear();
 	}
-
+	if (draw_spine_pt.empty() != true)
+	{
+		for (auto& n : draw_spine_pt)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		draw_spine_pt.swap(empty_map);
+		draw_spine_pt.clear();
+	}
+	if (draw_sternum_pt.empty() != true)
+	{
+		for (auto& n : draw_sternum_pt)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		draw_sternum_pt.swap(empty_map);
+		draw_sternum_pt.clear();
+	}
+	if (draw_spine_line.empty() != true)
+	{
+		for (auto& n : draw_spine_line)
+		{
+			n.second.clear();
+			std::set<std::pair<int, int>> empty_set;
+			n.second.swap(empty_set);
+		}
+		std::map<int, std::set<std::pair<int, int>>> empty_map;
+		draw_spine_line.swap(empty_map);
+		draw_spine_line.clear();
+	}
+	if (draw_sternum_line.empty() != true)
+	{
+		for (auto& n : draw_sternum_line)
+		{
+			n.second.clear();
+			std::set<std::pair<int, int>> empty_set;
+			n.second.swap(empty_set);
+		}
+		std::map<int, std::set<std::pair<int, int>>> empty_map;
+		draw_sternum_line.swap(empty_map);
+		draw_sternum_line.clear();
+	}
 }
 
 BOOL CCTDoc::OnNewDocument()

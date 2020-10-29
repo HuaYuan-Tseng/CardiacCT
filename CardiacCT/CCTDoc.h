@@ -26,35 +26,54 @@ public:
 unsigned int	displaySeries;			// 整個程式要顯示的時序
 
 
-std::map<int, std::vector<std::pair<int, int>>> spine_vertex;		// 紀錄脊椎初步處理後的三個頂點
-																	// 0 : 中間上面那點
-																	// 1 : 左下
-																	// 2 : 右下
+///------------- ↓ 3D 實驗區 ↓ -------------///
+	
+	
+	std::map<int, std::vector<std::pair<int, int>>> spine_vertex;		// 紀錄脊椎初步處理後的三個頂點
+																		// 0 : 中間上面那點
+																		// 1 : 左下
+																		// 2 : 右下
 
-std::map<int, std::vector<std::pair<float, float>>> spine_line;		// 紀錄脊椎每張slice的直線方程式的係數(斜率.截距)
-																	// 0 : 左
-																	// 1 : 右
+	std::map<int, std::vector<std::pair<float, float>>> spine_line;		// 紀錄脊椎每張slice的直線方程式的係數(斜率.截距)
+																		// 0 : 左
+																		// 1 : 右
 
-std::map<int, std::vector<int>> spine_edge;							// 記錄脊椎每張slice將進行處理的範圍(垂直邊界)
-																	// 0 : x_min
-																	// 1 : x_max
-																	// 2 : y_min
-																	// 3 : y_max
+	std::map<int, std::vector<int>> spine_edge;							// 記錄脊椎每張slice將進行處理的範圍(垂直邊界)
+																		// 0 : x_min
+																		// 1 : x_max
+																		// 2 : y_min
+																		// 3 : y_max
 
-std::map<int, std::vector<std::pair<int, int>>> sternum_vertex;		// 紀錄胸骨每張slice的三頂點
-																	// 0 : 中間上面那點
-																	// 1 : 左下
-																	// 2 : 右下
+	std::map<int, std::vector<std::pair<int, int>>> sternum_vertex;		// 紀錄胸骨每張slice的三頂點
+																		// 0 : 中間上面那點
+																		// 1 : 左下
+																		// 2 : 右下
 
-std::map<int, std::vector<std::pair<float, float>>> sternum_line;	// 紀錄胸骨每張slice的直線方程式係數(斜率.截距)
-																	// 0 : 左
-																	// 1 : 右
+	std::map<int, std::vector<std::pair<float, float>>> sternum_line;	// 紀錄胸骨每張slice的直線方程式係數(斜率.截距)
+																		// 0 : 左
+																		// 1 : 右
 
-std::map<int, std::vector<int>> sternum_edge;						// 記錄胸骨每張slice將進行處理的範圍(垂直邊界)
-																	// 0 : x_min
-																	// 1 : x_max
-																	// 2 : y_min
-																	// 3 : y_max
+	std::map<int, std::vector<int>> sternum_edge;						// 記錄胸骨每張slice將進行處理的範圍(垂直邊界)
+																		// 0 : x_min
+																		// 1 : x_max
+																		// 2 : y_min
+																		// 3 : y_max
+
+
+///------------- ↑ 3D 實驗區 ↑ -------------///
+
+
+///------------- ↓ 2D 實驗區(verify的東西) ↓ -------------///
+
+
+	std::map<int, std::vector<std::pair<int, int>>> draw_spine_pt;		// 畫線時，點擊繪製的點
+	std::map<int, std::vector<std::pair<int, int>>> draw_sternum_pt;	// 畫線時，點擊繪製的點
+
+	std::map<int, std::set<std::pair<int, int>>> draw_spine_line;		// 畫線時，點的那些點所連成的線
+	std::map<int, std::set<std::pair<int, int>>> draw_sternum_line;		// 畫線時，點的那些點所連成的線
+	
+
+///------------- ↑ 2D 實驗區(verify的東西) ↑ -------------///
 
 
 //================//
