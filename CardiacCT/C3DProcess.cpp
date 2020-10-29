@@ -420,6 +420,10 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_REUSE_LIMIT, &C3DProcess::OnBnClickedButtonReuseLimit)
 	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 	ON_BN_CLICKED(IDC_BUTTON_DILATION, &C3DProcess::OnBnClickedButtonDilation)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_SAVE, &C3DProcess::OnBnClickedButtonVerifySave)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LOAD, &C3DProcess::OnBnClickedButtonVerifyLoad)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_REUSE, &C3DProcess::OnBnClickedButtonVerifyReuse)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_RECORD, &C3DProcess::OnBnClickedButtonVerifyRecord)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_CALCULATE, &C3DProcess::OnBnClickedButtonVerifyCalculate)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_ERASE, &C3DProcess::OnBnClickedButtonVerifyLineErase)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_CLEAR, &C3DProcess::OnBnClickedButtonVerifyLineClear)
@@ -437,8 +441,6 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_SD_TH, &C3DProcess::OnEnChangeEditSdTh)
 	ON_EN_CHANGE(IDC_EDIT_SD_CO, &C3DProcess::OnEnChangeEditSdCo)
 	
-	ON_BN_CLICKED(IDC_BUTTON_VERIFY_RECORD, &C3DProcess::OnBnClickedButtonVerifyRecord)
-	ON_BN_CLICKED(IDC_BUTTON_VERIFY_REUSE, &C3DProcess::OnBnClickedButtonVerifyReuse)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -501,6 +503,11 @@ BOOL C3DProcess::OnInitDialog()
 	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CLEAR)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(FALSE);
 	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_CALCULATE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_RECORD)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_REUSE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_SAVE)->EnableWindow(FALSE);
+	GetDlgItem(IDC_BUTTON_VERIFY_LOAD)->EnableWindow(FALSE);
 
 	//-------------------------------------------------------------------------------------//
 	// 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值
@@ -1307,8 +1314,14 @@ void C3DProcess::OnBnClickedCheck2dVerify()
 		GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(TRUE);
 		GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(TRUE);
 
+		GetDlgItem(IDC_BUTTON_VERIFY_SAVE)->EnableWindow(TRUE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LOAD)->EnableWindow(TRUE);
+		GetDlgItem(IDC_BUTTON_VERIFY_REUSE)->EnableWindow(TRUE);
+		GetDlgItem(IDC_BUTTON_VERIFY_RECORD)->EnableWindow(TRUE);
+		GetDlgItem(IDC_BUTTON_VERIFY_CALCULATE)->EnableWindow(TRUE);
 		GetDlgItem(IDC_BUTTON_VERIFY_LINE_ERASE)->EnableWindow(TRUE);
 		GetDlgItem(IDC_BUTTON_VERIFY_LINE_CLEAR)->EnableWindow(TRUE);
+
 		if (get_verify_reference)
 		{
 			GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(FALSE);
@@ -1332,6 +1345,11 @@ void C3DProcess::OnBnClickedCheck2dVerify()
 		GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(FALSE);
 		GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(FALSE);
 
+		GetDlgItem(IDC_BUTTON_VERIFY_SAVE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LOAD)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_REUSE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_RECORD)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_CALCULATE)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_VERIFY_LINE_ERASE)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_VERIFY_LINE_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(FALSE);
@@ -1364,6 +1382,11 @@ void C3DProcess::OnBnClickedCheck2dSeed()
 		GetDlgItem(IDC_CHECK_SPINE_VERIFY)->EnableWindow(FALSE);
 		GetDlgItem(IDC_CHECK_STERNUM_VERIFY)->EnableWindow(FALSE);
 
+		GetDlgItem(IDC_BUTTON_VERIFY_SAVE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_LOAD)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_REUSE)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_RECORD)->EnableWindow(FALSE);
+		GetDlgItem(IDC_BUTTON_VERIFY_CALCULATE)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_VERIFY_LINE_ERASE)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_VERIFY_LINE_CLEAR)->EnableWindow(FALSE);
 		GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(FALSE);
@@ -1830,6 +1853,53 @@ void C3DProcess::OnBnClickedButtonVerifyReuse()
 		draw_sternum_line = m_pDoc->draw_sternum_line;
 		TRACE("Verify Spine Point has been reuse ! \n");
 	}
+}
+
+void C3DProcess::OnBnClickedButtonVerifySave()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Save Lines (Verify Lines Save)
+	//
+	CString dir_path_name = m_pDoc->m_dir->DirPathName;
+	CString dir_file_name = m_pDoc->m_dir->DirFileName;
+	CString path = dir_path_name.Left(dir_path_name.Find(dir_file_name));
+	CString series_number = m_pDoc->m_dir->SeriesList[m_pDoc->displaySeries]->SeriesNumber;
+	CString save_path_root = path + "Data\\";
+	CreateDirectory(save_path_root, NULL);
+	save_path_root += series_number + "\\";
+	CreateDirectory(save_path_root, NULL);
+
+	CFile fp;
+	if (!draw_spine_pt.empty())
+	{
+		CString save_path = save_path_root + "Verify_Spine_Pt\\";
+		CreateDirectory(save_path, NULL);
+		for (const auto& n : draw_spine_pt)
+		{
+			CString file;	file.Format("%d", n.first);
+			CString file_name = save_path + file;
+			if (fp.Open(file_name, CFile::modeCreate | CFile::modeWrite))
+			{	
+				int buffer;
+				for (const auto& p : n.second)
+				{
+					buffer = static_cast<DWORD>(p.first);
+					fp.Write(&buffer, sizeof(byte)*2);
+					buffer = static_cast<DWORD>(p.second);
+					fp.Write(&buffer, sizeof(byte)*2);
+				}
+				fp.Close();
+			}
+		}
+	}
+}
+
+void C3DProcess::OnBnClickedButtonVerifyLoad()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Load Lines (Verify Lines Load)
+	//
+
 }
 
 void C3DProcess::OnBnClickedButtonIntensityPlus()
@@ -6284,4 +6354,8 @@ double C3DProcess::Calculate_Volume(short** src)
 		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	}
 */
+
+
+
+
 

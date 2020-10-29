@@ -302,9 +302,9 @@ protected:
 public:
 	afx_msg void OnPaint();
 	afx_msg void OnBnClickedExit();
-	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
-	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
+	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	afx_msg void OnRButtonDblClk(UINT nFlags, CPoint point);
 	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
@@ -355,12 +355,14 @@ public:
 	afx_msg void OnBnClickedButtonReuseLimit();
 	afx_msg void OnBnClickedButtonDilation();
 	afx_msg void OnBnClickedButtonMidFix();
+	afx_msg void OnBnClickedButtonVerifySave();
+	afx_msg void OnBnClickedButtonVerifyLoad();
+	afx_msg void OnBnClickedButtonVerifyReuse();
+	afx_msg void OnBnClickedButtonVerifyRecord();
 	afx_msg void OnBnClickedButtonVerifyCalculate();
 	afx_msg void OnBnClickedButtonVerifyLineErase();
 	afx_msg void OnBnClickedButtonVerifyLineClear();
 	afx_msg void OnBnClickedButtonVerifyLineReference();
 	afx_msg void OnBnClickedButtonVerifyLineCancelReference();
 	
-	afx_msg void OnBnClickedButtonVerifyRecord();
-	afx_msg void OnBnClickedButtonVerifyReuse();
 };
