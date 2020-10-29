@@ -67,7 +67,6 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_intensity(_T("0.8125"))
 	, m_density(_T("0.0"))
 	, m_slices(_T("512"))
-	, m_result(_T("0.0"))
 	, m_pos_1(_T("0"))
 	, m_pos_2(_T("0"))
 	, m_pos_3(_T("0"))
@@ -76,11 +75,13 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	, m_pos_6(_T("0"))
 	, m_pos_7(_T("0"))
 	, m_pos_8(_T("0"))
-	, m_sKernel(_T("3"))
-	, m_nKernel(_T("3"))
+	, m_result(_T("0.0"))
+	, m_result_2(_T("0.0"))
 	, m_pix_th(_T("50.0"))
 	, m_SDth(_T("20.0"))
 	, m_SDco(_T("1.0"))
+	, m_sKernel(_T("3"))
+	, m_nKernel(_T("3"))
 {
 	mode = ControlModes::ControlObject;
 
@@ -356,7 +357,6 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Text(pDX, IDC_EDIT_INTENSITY, m_intensity);
 	DDX_Text(pDX, IDC_EDIT_DENSITY, m_density);
-	DDX_Text(pDX, IDC_EDIT_RESULT, m_result);
 	DDX_Text(pDX, IDC_EDIT_POS1, m_pos_1);
 	DDX_Text(pDX, IDC_EDIT_POS2, m_pos_2);
 	DDX_Text(pDX, IDC_EDIT_POS3, m_pos_3);
@@ -365,12 +365,14 @@ void C3DProcess::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_POS6, m_pos_6);
 	DDX_Text(pDX, IDC_EDIT_POS7, m_pos_7);
 	DDX_Text(pDX, IDC_EDIT_POS8, m_pos_8);
+	DDX_Text(pDX, IDC_EDIT_RESULT, m_result);
+	DDX_Text(pDX, IDC_EDIT_RESULT_2, m_result_2);
 	DDX_Text(pDX, IDC_EDIT_S_KERNEL, m_sKernel);
 	DDX_Text(pDX, IDC_EDIT_N_KERNEL, m_nKernel);
 	DDX_Text(pDX, IDC_EDIT_PIX_TH, m_pix_th);
 	DDX_Text(pDX, IDC_EDIT_SD_TH, m_SDth);
 	DDX_Text(pDX, IDC_EDIT_SD_CO, m_SDco);
-
+	
 }
 
 BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
@@ -418,6 +420,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_REUSE_LIMIT, &C3DProcess::OnBnClickedButtonReuseLimit)
 	ON_BN_CLICKED(IDC_BUTTON_SEED_CHANGE, &C3DProcess::OnBnClickedButtonSeedChange)
 	ON_BN_CLICKED(IDC_BUTTON_DILATION, &C3DProcess::OnBnClickedButtonDilation)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_CALCULATE, &C3DProcess::OnBnClickedButtonVerifyCalculate)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_ERASE, &C3DProcess::OnBnClickedButtonVerifyLineErase)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_CLEAR, &C3DProcess::OnBnClickedButtonVerifyLineClear)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_REFERENCE, &C3DProcess::OnBnClickedButtonVerifyLineReference)
@@ -1608,6 +1611,152 @@ void C3DProcess::OnBnClickedButtonVerifyLineCancelReference()
 	verify_reference_slice = 0;
 	GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(TRUE);
 	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
+}
+
+void C3DProcess::OnBnClickedButtonVerifyCalculate()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Calculate - Verify volume calculate
+	//
+	size_t spine_line_size = draw_spine_line.size();
+	size_t sternum_line_size = draw_sternum_line.size();
+	size_t totalSlice = static_cast<size_t>(Total_Slice);
+
+	if (spine_line_size != totalSlice &&
+		sternum_line_size != totalSlice )
+	{
+		MessageBox("Please draw the line completely !!");
+		return;
+	}
+
+	double volume = 0.0;
+	const int row = ROW;
+	const int col = COL;
+	if (m_spine_verify)
+	{	// 檢查 spine_line 每張切片的線
+		// 讓每條線延伸到影像邊界
+		for (auto& n : draw_spine_line)
+		{
+			int x_start = n.second.begin()->first;
+			int y_start = n.second.begin()->second;
+			int x_end = n.second.rbegin()->first;
+			int y_end = n.second.rbegin()->second;
+			if (x_start != 0)
+			{
+				for (int i = 0; i < x_start; ++i)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = y_start;
+					n.second.insert(pt);
+				}
+			}
+			if (x_end != 511)
+			{
+				for (int i = x_end; i <= 511; ++i)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = y_end;
+					n.second.insert(pt);
+				}
+			}
+		}	// end for
+
+		// 計算每張切片，範圍內，符合HU閥值的像素數目
+		int n = 0;
+		unsigned long long cnt = 0;
+		while (n < totalSlice)
+		{
+			for (int i = 0; i < col; ++i)
+			{
+				auto it = std::find_if(draw_spine_line[n].begin(),
+					draw_spine_line[n].end(),
+					[&](const pair<int, int>& p) {return p.first == i;} );
+
+				int y_start = it->second;
+				for (int j = y_start; j < row; ++j)
+				{
+					if (m_pDoc->m_HUimg[n][j * col + i] >= HU_down_threshold &&
+						m_pDoc->m_HUimg[n][j * col + i] <= HU_up_threshold)
+					{
+						cnt += 1;
+					}
+				}
+			}
+			n += 1;
+		}
+		volume = static_cast<double>(
+			(cnt * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000.0);
+		TRACE1("Spine Verify Volume = %d. \n", volume);
+	}
+	else if (m_sternum_verify)
+	{	// 檢查 sternum_line 每張切片的線
+		// 讓每條線延伸到影像邊界
+		for (auto& n : draw_sternum_line)
+		{
+			int x_start = n.second.begin()->first;
+			int y_start = n.second.begin()->second;
+			int x_end = n.second.rbegin()->first;
+			int y_end = n.second.rbegin()->second;
+			if (x_start != 0)
+			{
+				for (int i = 0; i < x_start; ++i)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = y_start;
+					n.second.insert(pt);
+				}
+			}
+			if (x_end != 511)
+			{
+				for (int i = x_end; i <= 511; ++i)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = y_end;
+					n.second.insert(pt);
+				}
+			}
+		}	// end for
+
+		// 計算每張切片，範圍內，符合HU閥值的像素數目
+		int n = 0;
+		unsigned long long cnt = 0;
+		while (n < totalSlice)
+		{
+			for (int i = 0; i < col; ++i)
+			{
+				auto it = std::find_if(draw_sternum_line[n].begin(),
+					draw_sternum_line[n].end(),
+					[&](const std::pair<int, int>& p) {return p.first == i;} );
+
+				int y_end = it->second;
+				for (int j = 0; j < y_end; ++j)
+				{
+					if (m_pDoc->m_HUimg[n][j * col + i] >= HU_down_threshold &&
+						m_pDoc->m_HUimg[n][j * col + i] <= HU_up_threshold)
+					{
+						cnt += 1;
+					}
+				}
+			}
+			n += 1;
+		}
+		volume = static_cast<double>(
+			(cnt * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000.0);
+		TRACE1("Sternum Verify Volume = %d. \n", volume);
+	}
+
+	draw_pt_cnt = 0;
+	verify_reference_slice = 0;
+	get_verify_reference = false;
+	m_result_2.Format("%lf", volume);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(TRUE);
+	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
+	Draw2DImage(DisplaySlice);
+	UpdateData(FALSE);
 }
 
 void C3DProcess::OnBnClickedButtonIntensityPlus()
@@ -3562,6 +3711,7 @@ void C3DProcess::OnBnClickedButtonGrowingClear()
 	Draw3DImage(true);
 	Draw2DImage(DisplaySlice);
 }
+
 
 
 //==========================//
@@ -6061,5 +6211,4 @@ double C3DProcess::Calculate_Volume(short** src)
 		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	}
 */
-
 

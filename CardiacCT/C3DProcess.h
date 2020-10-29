@@ -279,7 +279,6 @@ public:										// CString场だΤAttributes砞跑计纗
 	CString		m_intensity;
 	CString		m_density;
 	CString		m_slices;
-	CString		m_result;
 	CString		m_pos_1;
 	CString		m_pos_2;
 	CString		m_pos_3;
@@ -288,6 +287,8 @@ public:										// CString场だΤAttributes砞跑计纗
 	CString		m_pos_6;
 	CString		m_pos_7;
 	CString		m_pos_8;
+	CString		m_result;
+	CString		m_result_2;
 	CString		m_sKernel;
 	CString		m_nKernel;
 	CString		m_pix_th;
@@ -354,9 +355,10 @@ public:
 	afx_msg void OnBnClickedButtonReuseLimit();
 	afx_msg void OnBnClickedButtonDilation();
 	afx_msg void OnBnClickedButtonMidFix();
+	afx_msg void OnBnClickedButtonVerifyCalculate();
 	afx_msg void OnBnClickedButtonVerifyLineErase();
 	afx_msg void OnBnClickedButtonVerifyLineClear();
 	afx_msg void OnBnClickedButtonVerifyLineReference();
 	afx_msg void OnBnClickedButtonVerifyLineCancelReference();
-
+	
 };

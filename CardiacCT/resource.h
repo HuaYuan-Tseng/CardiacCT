@@ -105,8 +105,10 @@
 #define IDC_BUTTON_VERIFY_LINE_ERASE    1069
 #define IDC_BUTTON_VERIFY_LINE_CLEAR    1070
 #define IDC_BUTTON_VERIFY_LINE_REFERENCE 1071
-#define IDC_BUTTON6                     1072
 #define IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE 1072
+#define IDC_BUTTON_VERIFY_CALCULATE     1073
+#define IDC_EDIT2                       1074
+#define IDC_EDIT_RESULT_2               1074
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -119,7 +121,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        325
 #define _APS_NEXT_COMMAND_VALUE         32776
-#define _APS_NEXT_CONTROL_VALUE         1073
+#define _APS_NEXT_CONTROL_VALUE         1075
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif
