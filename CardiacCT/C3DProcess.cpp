@@ -1729,7 +1729,7 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 		}
 		volume = static_cast<double>(
 			(cnt * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000.0);
-		TRACE1("Spine Verify Volume = %d. \n", volume);
+		TRACE1("Spine Verify Volume = %lf. \n", volume);
 	}
 	else if (m_sternum_verify)
 	{	// 檢查 sternum_line 每張切片的線
@@ -1802,7 +1802,7 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 		}
 		volume = static_cast<double>(
 			(cnt * VoxelSpacing_X * VoxelSpacing_Y * VoxelSpacing_Z) / 1000.0);
-		TRACE1("Sternum Verify Volume = %d. \n", volume);
+		TRACE1("Sternum Verify Volume = %lf. \n", volume);
 	}
 
 	draw_pt_cnt = 0;
@@ -1883,6 +1883,7 @@ void C3DProcess::OnBnClickedButtonVerifyReuse()
 		draw_sternum_line = m_pDoc->draw_sternum_line;
 		TRACE("Verify Spine Point has been reuse ! \n");
 	}
+	Draw2DImage(DisplaySlice);
 }
 
 void C3DProcess::OnBnClickedButtonVerifySave()
