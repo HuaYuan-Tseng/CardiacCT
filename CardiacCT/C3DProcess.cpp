@@ -1669,7 +1669,7 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 			int y_end = n.second.rbegin()->second;
 			if (x_start != 0)
 			{
-				for (int i = 0; i < x_start; ++i)
+				for (int i = 0; i <= x_start; ++i)
 				{
 					std::pair<int, int> pt;
 					pt.first = i;
@@ -1686,6 +1686,21 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 					pt.second = y_end;
 					n.second.insert(pt);
 				}
+			}
+			std::pair<int, int> pt;
+			for (int i = 0; i < 511; ++i)
+			{
+				auto it = std::find_if(n.second.begin(), n.second.end(),
+					[&](const pair<int, int>& p) {return p.first == i; });
+				if (it == n.second.end())
+				{
+					std::pair<int, int> new_pt;
+					new_pt.first = i;
+					new_pt.second = pt.second;
+					n.second.insert(new_pt);
+				}
+				else
+					pt = *it;
 			}
 		}	// end for
 
@@ -1744,6 +1759,21 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 					pt.second = y_end;
 					n.second.insert(pt);
 				}
+			}
+			std::pair<int, int> pt;
+			for (int i = 0; i < 511; ++i)
+			{
+				auto it = std::find_if(n.second.begin(), n.second.end(),
+					[&](const pair<int, int>& p) {return p.first == i; });
+				if (it == n.second.end())
+				{
+					std::pair<int, int> new_pt;
+					new_pt.first = i;
+					new_pt.second = pt.second;
+					n.second.insert(new_pt);
+				}
+				else
+					pt = *it;
 			}
 		}	// end for
 
@@ -2042,6 +2072,7 @@ void C3DProcess::OnBnClickedButtonVerifyLoad()
 				fp.Close();
 			}
 		}
+		file_list.clear();
 		TRACE("Spine Verify Points Load Success ! \n");
 	}
 
@@ -2094,6 +2125,7 @@ void C3DProcess::OnBnClickedButtonVerifyLoad()
 				fp.Close();
 			}
 		}
+		file_list.clear();
 		TRACE("Spine Verify Lines Load Success ! \n");
 	}
 
@@ -2145,6 +2177,7 @@ void C3DProcess::OnBnClickedButtonVerifyLoad()
 				fp.Close();
 			}
 		}
+		file_list.clear();
 		TRACE("Sternum Verify Points Load Success ! \n");
 	}
 
@@ -2197,6 +2230,7 @@ void C3DProcess::OnBnClickedButtonVerifyLoad()
 				fp.Close();
 			}
 		}
+		file_list.clear();
 		TRACE("Sternum Verify Lines Load Success ! \n");
 	}
 
