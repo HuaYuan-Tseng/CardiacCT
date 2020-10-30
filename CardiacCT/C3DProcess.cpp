@@ -1870,6 +1870,8 @@ void C3DProcess::OnBnClickedButtonVerifySave()
 	CreateDirectory(save_path_root, NULL);
 
 	CFile fp;
+	
+	// 儲存 Spine Verify Point
 	if (!draw_spine_pt.empty())
 	{
 		CString save_path = save_path_root + "Verify_Spine_Pt\\";
@@ -1878,20 +1880,101 @@ void C3DProcess::OnBnClickedButtonVerifySave()
 		{
 			CString file;	file.Format("%d", n.first);
 			CString file_name = save_path + file;
-			if (fp.Open(file_name, CFile::modeCreate | CFile::modeWrite))
+			if (fp.Open(file_name, CFile::modeCreate | 
+				CFile::modeWrite | CFile::typeBinary))
 			{	
 				int buffer;
 				for (const auto& p : n.second)
 				{
-					buffer = static_cast<DWORD>(p.first);
-					fp.Write(&buffer, sizeof(byte)*2);
-					buffer = static_cast<DWORD>(p.second);
-					fp.Write(&buffer, sizeof(byte)*2);
+					buffer = p.first;
+					fp.Write(&buffer, sizeof(int));
+					buffer = p.second;
+					fp.Write(&buffer, sizeof(int));
 				}
 				fp.Close();
 			}
 		}
+		TRACE("Spine Verify Points Save Success ! \n");
 	}
+
+	// 儲存 Spine Verify Line
+	if (!draw_spine_line.empty())
+	{
+		CString save_path = save_path_root + "Verify_Spine_Line\\";
+		CreateDirectory(save_path, NULL);
+		for (const auto& n : draw_spine_line)
+		{
+			CString file;	file.Format("%d", n.first);
+			CString file_name = save_path + file;
+			if (fp.Open(file_name, CFile::modeCreate |
+			CFile::modeWrite | CFile::typeBinary))
+			{
+				int buffer;
+				for (const auto& p : n.second)
+				{
+					buffer = p.first;
+					fp.Write(&buffer, sizeof(int));
+					buffer = p.second;
+					fp.Write(&buffer, sizeof(int));
+				}
+				fp.Close();
+			}
+		}
+		TRACE("Spine Verify Lines Save Success ! \n");
+	}
+
+	// 儲存 Sternum Verify Point
+	if (!draw_sternum_pt.empty())
+	{
+		CString save_path = save_path_root + "Verify_Sternum_Pt\\";
+		CreateDirectory(save_path, NULL);
+		for (const auto& n : draw_sternum_pt)
+		{
+			CString file;	file.Format("%d", n.first);
+			CString file_name = save_path + file;
+			if (fp.Open(file_name, CFile::modeCreate |
+				CFile::modeWrite | CFile::typeBinary))
+			{
+				int buffer;
+				for (const auto& p : n.second)
+				{
+					buffer = p.first;
+					fp.Write(&buffer, sizeof(int));
+					buffer = p.second;
+					fp.Write(&buffer, sizeof(int));
+				}
+				fp.Close();
+			}
+		}
+		TRACE("Sternum Verify Points Save Success ! \n");
+	}
+
+	// 儲存 Sternum Verify Line
+	if (!draw_sternum_line.empty())
+	{
+		CString save_path = save_path_root + "Verify_Sternum_Line\\";
+		CreateDirectory(save_path, NULL);
+		for (const auto& n : draw_sternum_line)
+		{
+			CString file;	file.Format("%d", n.first);
+			CString file_name = save_path + file;
+			if (fp.Open(file_name, CFile::modeCreate |
+				CFile::modeWrite | CFile::typeBinary))
+			{
+				int buffer;
+				for (const auto& p : n.second)
+				{
+					buffer = p.first;
+					fp.Write(&buffer, sizeof(int));
+					buffer = p.second;
+					fp.Write(&buffer, sizeof(int));
+				}
+				fp.Close();
+			}
+		}
+		TRACE("Sternum Verify Lines Save Success ! \n");
+	}
+
 }
 
 void C3DProcess::OnBnClickedButtonVerifyLoad()
@@ -1899,7 +1982,226 @@ void C3DProcess::OnBnClickedButtonVerifyLoad()
 	// TODO: Add your control notification handler code here
 	// Button : Load Lines (Verify Lines Load)
 	//
+	CString dir_path_name = m_pDoc->m_dir->DirPathName;
+	CString dir_file_name = m_pDoc->m_dir->DirFileName;
+	CString path = dir_path_name.Left(dir_path_name.Find(dir_file_name));
+	CString series_number = m_pDoc->m_dir->SeriesList[m_pDoc->displaySeries]->SeriesNumber;
+	CString save_path_root = path + "Data\\" + series_number;
 
+	CFile fp;
+	CFileFind finder;
+	CString save_path;	BOOL exist;
+	std::vector<CString> file_list;
+	if (!finder.FindFile(save_path_root)) return;
+	
+	// 讀取 Verify Spine Point
+	//
+	// 確認並搜索路徑底下的 Data
+	save_path = save_path_root + "\\Verify_Spine_Pt";
+	exist = finder.FindFile(save_path + "\\*.*");
+	while (exist)
+	{
+		exist = finder.FindNextFileA();
+		if (finder.IsDots()) continue;
+		file_list.push_back(finder.GetFileName());
+	}
+	// 開檔
+	if (!file_list.empty())
+	{
+		// 先清空並釋放記憶體
+		for (auto& n : draw_spine_pt)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		draw_spine_pt.swap(empty_map);
+		draw_spine_pt.clear();
+
+		// 逐一讀取每個檔案
+		for (const auto& n : file_list)
+		{
+			int s = atoi(n);
+			CString file_name = save_path + "\\" + n;
+			if (fp.Open(file_name, CFile::modeRead | 
+				CFile::typeBinary))
+			{
+				int buffer;
+				std::pair<int, int> pt;
+				auto size = fp.GetLength();
+				auto pos = fp.GetPosition();
+				while (pos < size)
+				{
+					fp.Read(&buffer, sizeof(int));
+					pt.first = buffer;
+					fp.Read(&buffer, sizeof(int));
+					pt.second = buffer;
+					draw_spine_pt[s].push_back(pt);
+					pos = fp.GetPosition();
+				}
+				fp.Close();
+			}
+		}
+		TRACE("Spine Verify Points Load Success ! \n");
+	}
+
+	// 讀取 Verify Spine Line
+	//
+	// 確認並搜索路徑底下的 Data
+	save_path = save_path_root + "\\Verify_Spine_Line";
+	exist = finder.FindFile(save_path + "\\*.*");
+	while (exist)
+	{
+		exist = finder.FindNextFileA();
+		if (finder.IsDots()) continue;
+		file_list.push_back(finder.GetFileName());
+	}
+	// 開檔
+	if (!file_list.empty())
+	{
+		// 先清空並釋放記憶體
+		for (auto& n : draw_spine_line)
+		{
+			n.second.clear();
+			std::set<std::pair<int, int>> empty_set;
+			n.second.swap(empty_set);
+		}
+		std::map<int, std::set<std::pair<int, int>>> empty_map;
+		draw_spine_line.swap(empty_map);
+		draw_spine_line.clear();
+
+		// 逐一讀取每個檔案
+		for (const auto& n : file_list)
+		{
+			int s = atoi(n);
+			CString file_name = save_path + "\\" + n;
+			if (fp.Open(file_name, CFile::modeRead |
+				CFile::typeBinary))
+			{
+				int buffer;
+				std::pair<int, int> pt;
+				auto size = fp.GetLength();
+				auto pos = fp.GetPosition();
+				while (pos < size)
+				{
+					fp.Read(&buffer, sizeof(int));
+					pt.first = buffer;
+					fp.Read(&buffer, sizeof(int));
+					pt.second = buffer;
+					draw_spine_line[s].insert(pt);
+					pos = fp.GetPosition();
+				}
+				fp.Close();
+			}
+		}
+		TRACE("Spine Verify Lines Load Success ! \n");
+	}
+
+	// 讀取 Verify Sternum Point
+	//
+	// 確認並搜索路徑底下的 Data
+	save_path = save_path_root + "\\Verify_Sternum_Pt";
+	exist = finder.FindFile(save_path + "\\*.*");
+	while (exist)
+	{
+		exist = finder.FindNextFileA();
+		if (finder.IsDots()) continue;
+		file_list.push_back(finder.GetFileName());
+	}
+	// 開檔
+	if (!file_list.empty())
+	{
+		// 先清空並釋放記憶體
+		for (auto& n : draw_sternum_pt)
+		{
+			n.second.clear();
+			n.second.shrink_to_fit();
+		}
+		std::map<int, std::vector<std::pair<int, int>>> empty_map;
+		draw_sternum_pt.swap(empty_map);
+		draw_sternum_pt.clear();
+
+		// 逐一讀取每個檔案
+		for (const auto& n : file_list)
+		{
+			int s = atoi(n);
+			CString file_name = save_path + "\\" + n;
+			if (fp.Open(file_name, CFile::modeRead |
+				CFile::typeBinary))
+			{
+				int buffer;
+				std::pair<int, int> pt;
+				auto size = fp.GetLength();
+				auto pos = fp.GetPosition();
+				while (pos < size)
+				{
+					fp.Read(&buffer, sizeof(int));
+					pt.first = buffer;
+					fp.Read(&buffer, sizeof(int));
+					pt.second = buffer;
+					draw_sternum_pt[s].push_back(pt);
+					pos = fp.GetPosition();
+				}
+				fp.Close();
+			}
+		}
+		TRACE("Sternum Verify Points Load Success ! \n");
+	}
+
+	// 讀取 Verify Sternum Line
+	//
+	// 確認並搜索路徑底下的 Data
+	save_path = save_path_root + "\\Verify_Sternum_Line";
+	exist = finder.FindFile(save_path + "\\*.*");
+	while (exist)
+	{
+		exist = finder.FindNextFileA();
+		if (finder.IsDots()) continue;
+		file_list.push_back(finder.GetFileName());
+	}
+	// 開檔
+	if (!file_list.empty())
+	{
+		// 先清空並釋放記憶體
+		for (auto& n : draw_sternum_line)
+		{
+			n.second.clear();
+			std::set<std::pair<int, int>> empty_set;
+			n.second.swap(empty_set);
+		}
+		std::map<int, std::set<std::pair<int, int>>> empty_map;
+		draw_sternum_line.swap(empty_map);
+		draw_sternum_line.clear();
+
+		// 逐一讀取每個檔案
+		for (const auto& n : file_list)
+		{
+			int s = atoi(n);
+			CString file_name = save_path + "\\" + n;
+			if (fp.Open(file_name, CFile::modeRead |
+				CFile::typeBinary))
+			{
+				int buffer;
+				std::pair<int, int> pt;
+				auto size = fp.GetLength();
+				auto pos = fp.GetPosition();
+				while (pos < size)
+				{
+					fp.Read(&buffer, sizeof(int));
+					pt.first = buffer;
+					fp.Read(&buffer, sizeof(int));
+					pt.second = buffer;
+					draw_sternum_line[s].insert(pt);
+					pos = fp.GetPosition();
+				}
+				fp.Close();
+			}
+		}
+		TRACE("Sternum Verify Lines Load Success ! \n");
+	}
+
+	finder.Close();
+	Draw2DImage(DisplaySlice);
 }
 
 void C3DProcess::OnBnClickedButtonIntensityPlus()
