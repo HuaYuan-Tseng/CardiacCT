@@ -206,6 +206,7 @@ copy "$(SolutionDir)Library\openGL\GLEW\bin\Release\$(PlatformTarget)\*.dll" "$(
     <ClInclude Include="CCTView.h" />
     <ClInclude Include="CDIB.h" />
     <ClInclude Include="CDirForm.h" />
+    <ClInclude Include="CPhantom.h" />
     <ClInclude Include="CProgress.h" />
     <ClInclude Include="CWait.h" />
     <ClInclude Include="DcmDir.h" />
@@ -224,6 +225,7 @@ copy "$(SolutionDir)Library\openGL\GLEW\bin\Release\$(PlatformTarget)\*.dll" "$(
     <ClCompile Include="CCTView.cpp" />
     <ClCompile Include="CDIB.cpp" />
     <ClCompile Include="CDirForm.cpp" />
+    <ClCompile Include="CPhantom.cpp" />
     <ClCompile Include="CProgress.cpp" />
     <ClCompile Include="CWait.cpp" />
     <ClCompile Include="DcmDir.cpp" />

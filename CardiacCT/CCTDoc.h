@@ -121,4 +121,5 @@ public:
 	afx_msg void OnToolButtonOpenDicomdir();
 	afx_msg void OnToolButtonDirContents();
 	afx_msg void OnToolButton3DProcess();
+	afx_msg void OnToolButtonPhantom();
 };

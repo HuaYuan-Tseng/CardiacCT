@@ -23,6 +23,7 @@
 #define IDD_DIALOG1                     321
 #define IDD_DIALOG_PROGRESSBAR          321
 #define IDD_DIALOG_WAIT                 323
+#define IDD_DIALOG_3DPHANTOM            325
 #define IDC_LIST1                       1000
 #define IDC_LIST3                       1002
 #define IDC_STATIC_2D                   1003
@@ -111,20 +112,21 @@
 #define IDC_BUTTON_VERIFY_RECORD        1075
 #define IDC_BUTTON_VERIFY_REUSE         1076
 #define IDC_BUTTON_VERIFY_SAVE          1077
-#define IDC_BUTTON6                     1078
 #define IDC_BUTTON_VERIFY_LOAD          1078
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
 #define ID_TOOLBTN_DIRCONTENTS          32774
 #define ID_TOOLBTN_3DPROCESS            32775
+#define ID_BUTTON_PHANTOM               32776
+#define ID_TOOLBTN_PHANTOM              32777
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        325
-#define _APS_NEXT_COMMAND_VALUE         32776
+#define _APS_NEXT_RESOURCE_VALUE        327
+#define _APS_NEXT_COMMAND_VALUE         32778
 #define _APS_NEXT_CONTROL_VALUE         1079
 #define _APS_NEXT_SYMED_VALUE           310
 #endif

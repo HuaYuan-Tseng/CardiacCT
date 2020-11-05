@@ -14,6 +14,7 @@
 #include "CDirForm.h"
 #include "CProgress.h"
 #include "C3DProcess.h"
+#include "CPhantom.h"
 #include "dcmtk/dcmimgle/dcmimage.h"
 #include <propkey.h>
 #include "CWait.h"
@@ -47,6 +48,7 @@ BEGIN_MESSAGE_MAP(CCTDoc, CDocument)
 	ON_COMMAND(ID_TOOLBTN_OPENDICOMDIR, &CCTDoc::OnToolButtonOpenDicomdir)
 	ON_COMMAND(ID_TOOLBTN_DIRCONTENTS, &CCTDoc::OnToolButtonDirContents)
 	ON_COMMAND(ID_TOOLBTN_3DPROCESS, &CCTDoc::OnToolButton3DProcess)
+	ON_COMMAND(ID_TOOLBTN_PHANTOM, &CCTDoc::OnToolButtonPhantom)
 END_MESSAGE_MAP()
 
 
@@ -417,6 +419,19 @@ void CCTDoc::OnToolButton3DProcess()
 	}
 }
 
+void CCTDoc::OnToolButtonPhantom()
+{
+	// TODO: Add your command handler code here
+	// ID : ID_TOOLBTN_PHANTOM
+	// DO : 開啟假影驗證畫面
+
+	CPhantom* phantom_dlg = new CPhantom();
+	if (phantom_dlg->DoModal() == IDOK)
+	{
+	}
+	delete phantom_dlg;
+}
+
 //======================//
 //   CCTDoc Functions   //
 //======================//
@@ -518,3 +533,4 @@ void* CCTDoc::new2Dmatrix(int h, int w, int size)
 
 	return p;
 }
+
