@@ -2336,7 +2336,7 @@ void C3DProcess::OnBnClickedButtonPlaneReset()
 
 	Draw3DImage(true);
 }
-
+ 
 void C3DProcess::OnBnClickedButton2dseedClear()
 {
 	// TODO: Add your control notification handler code here
