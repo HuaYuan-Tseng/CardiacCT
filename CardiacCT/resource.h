@@ -43,6 +43,7 @@
 #define IDC_EDIT_HU_DOWN_THRESHOLD      1013
 #define IDC_CHECK1                      1014
 #define IDC_CHECK_HU_THRESHOLD          1014
+#define IDC_CHECK_PHANTOM_3D_SEED       1014
 #define IDC_EDIT_INTENSITY              1015
 #define IDC_BUTTON_INTENSITY_PLUS       1016
 #define IDC_BUTTON_INTENSITY_MINUS      1017
@@ -74,11 +75,13 @@
 #define IDC_EDIT_POS7                   1040
 #define IDC_EDIT4                       1041
 #define IDC_EDIT_POS8                   1041
+#define IDC_EDIT_PHANTOM_4              1041
 #define IDC_BUTTON_PLANE_RESET          1042
 #define IDC_BUTTON_2DSEED_CLEAR         1043
 #define IDC_BUTTON_GROWING_CLEAR        1044
 #define IDC_EDIT1                       1045
 #define IDC_EDIT_RESULT                 1045
+#define IDC_EDIT_PHANTOM_1              1045
 #define IDC_BUTTON_DILATION             1046
 #define IDC_BUTTON_GROWING_REMOVE       1047
 #define IDC_BUTTON4                     1048
@@ -117,6 +120,11 @@
 #define IDC_STATIC_PHANTOM_2D           1079
 #define IDC_BUTTON_PHANTOM_OPEN         1080
 #define IDC_STATIC_PHANTOM_3D           1081
+#define IDC_EDIT_PHANTOM_2              1082
+#define IDC_EDIT_PHANTOM_3              1083
+#define IDC_EDIT_PHANTOM_5              1084
+#define IDC_BUTTON1                     1085
+#define IDC_BUTTON_PHANTOM_SEED_CLEAR   1085
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -130,7 +138,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        327
 #define _APS_NEXT_COMMAND_VALUE         32778
-#define _APS_NEXT_CONTROL_VALUE         1082
+#define _APS_NEXT_CONTROL_VALUE         1086
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

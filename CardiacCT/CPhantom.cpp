@@ -20,11 +20,17 @@
 IMPLEMENT_DYNAMIC(CPhantom, CDialogEx)
 
 CPhantom::CPhantom(CWnd* pParent /*=nullptr*/)
-	: CDialogEx(IDD_DIALOG_3DPHANTOM, pParent),
-	_display_slice(0),
-	_total_slice(0),
-	_row(512),
-	_col(512)
+	: CDialogEx(IDD_DIALOG_3DPHANTOM, pParent)
+	, _PHANTOM_3D_SEED(FALSE)
+	, _display_slice(0)
+	, _total_slice(0)
+	, _row(512)
+	, _col(512)
+	, _EDIT_1(_T(""))
+	, _EDIT_2(_T(""))
+	, _EDIT_3(_T(""))
+	, _EDIT_4(_T(""))
+	, _EDIT_5(_T(""))
 {
 	mode = ControlModes::ControlObject;
 
@@ -97,19 +103,30 @@ void CPhantom::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_SCROLLBAR_PHANTOM, _scroll_bar);
+
+	DDX_Check(pDX, IDC_CHECK_PHANTOM_3D_SEED, _PHANTOM_3D_SEED);
+
+	DDX_Text(pDX, IDC_EDIT_PHANTOM_1, _EDIT_1);
+	DDX_Text(pDX, IDC_EDIT_PHANTOM_2, _EDIT_2);
+	DDX_Text(pDX, IDC_EDIT_PHANTOM_3, _EDIT_3);
+	DDX_Text(pDX, IDC_EDIT_PHANTOM_4, _EDIT_4);
+	DDX_Text(pDX, IDC_EDIT_PHANTOM_5, _EDIT_5);
+
 }
 
 BEGIN_MESSAGE_MAP(CPhantom, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_VSCROLL()
+	ON_WM_MOUSEMOVE()
 	ON_WM_MOUSEWHEEL()
+	ON_WM_LBUTTONUP()
+	ON_WM_RBUTTONUP()
+	ON_WM_LBUTTONDOWN()
+	ON_WM_RBUTTONDOWN()
 	
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_OPEN, &CPhantom::OnBnClickedButtonPhantomOpen)
-	ON_WM_MOUSEMOVE()
-	ON_WM_LBUTTONDOWN()
-	ON_WM_LBUTTONUP()
-	ON_WM_RBUTTONDOWN()
-	ON_WM_RBUTTONUP()
+	ON_BN_CLICKED(IDC_CHECK_PHANTOM_3D_SEED, &CPhantom::OnBnClickedCheckPhantom3dSeed)
+	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_SEED_CLEAR, &CPhantom::OnBnClickedButtonPhantomSeedClear)
 END_MESSAGE_MAP()
 
 //===============================//
@@ -180,11 +197,7 @@ void CPhantom::OnPaint()
 			AfxMessageBox("This program requires 3D Texture support!");
 			return;
 		}
-		_get_GL_build = true;
-	}
 
-	if (!_get_GL_build)
-	{
 		if (::wglMakeCurrent(_hDC, _hRC) == FALSE)
 		{
 			AfxMessageBox("Fail to make current!");
@@ -192,12 +205,15 @@ void CPhantom::OnPaint()
 		}
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		_get_GL_build = true;
 	}
 
 	if (_get_2D_image)
 		Draw2DImage(_display_slice);
 	if (_get_3D_image)
 		Draw3DImage(true);
+
 }
 
 BOOL CPhantom::OnMouseWheel(UINT nFlags, short zDelta, CPoint pt)
@@ -328,64 +344,66 @@ void CPhantom::OnLButtonDown(UINT nFlags, CPoint point)
 	{
 		ActStart(nFlags, point.x - _3D_rect.left, point.y - _3D_rect.top);
 
-		//if (m_3Dseed == TRUE)
-		//{	// 點選3D種子點功能
-		//	if (_get_3D_seed == false)
-		//	{
-		//		GLfloat		win_x, win_y, win_z;
-		//		GLdouble	obj_x, obj_y, obj_z;
+		if (_PHANTOM_3D_SEED == TRUE)
+		{	// 點選3D種子點功能
+			if (_get_3D_seed == false)
+			{
+				GLfloat		win_x, win_y, win_z;
+				GLdouble	obj_x, obj_y, obj_z;
 
-		//		GLint* viewPort = new GLint[16];
-		//		GLdouble* modelView_matrix = new GLdouble[16];
-		//		GLdouble* projection_matrix = new GLdouble[16];
+				GLint* viewPort = new GLint[16];
+				GLdouble* modelView_matrix = new GLdouble[16];
+				GLdouble* projection_matrix = new GLdouble[16];
 
-		//		glGetIntegerv(GL_VIEWPORT, viewPort);
-		//		glGetDoublev(GL_MODELVIEW_MATRIX, modelView_matrix);
-		//		glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
+				glGetIntegerv(GL_VIEWPORT, viewPort);
+				glGetDoublev(GL_MODELVIEW_MATRIX, modelView_matrix);
+				glGetDoublev(GL_PROJECTION_MATRIX, projection_matrix);
 
-		//		win_x = (GLfloat)(point.x - _3D_rect.left);
-		//		win_y = (GLfloat)(viewPort[3] - (point.y - _3D_rect.top));
-		//		glReadPixels((int)win_x, (int)win_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &win_z);
-		//		gluUnProject(win_x, win_y, win_z, modelView_matrix, projection_matrix, viewPort, &obj_x, &obj_y, &obj_z);
+				win_x = (GLfloat)(point.x - _3D_rect.left);
+				win_y = (GLfloat)(viewPort[3] - (point.y - _3D_rect.top));
+				glReadPixels((int)win_x, (int)win_y, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &win_z);
+				gluUnProject(win_x, win_y, win_z, modelView_matrix, projection_matrix, viewPort, &obj_x, &obj_y, &obj_z);
 
-		//		_seed_gl.x = obj_z;						// x_axis
-		//		_seed_gl.y = obj_y;						// y_axis
-		//		_seed_gl.z = obj_x;						// slice
+				_seed_gl.x = obj_z;						// x_axis
+				_seed_gl.y = obj_y;						// y_axis
+				_seed_gl.z = obj_x;						// slice
 
-		//		_seed_img = coordiConvert(_seed_gl);		// 座標點與資料矩陣位置的轉換
+				_seed_img = coordiConvert(_seed_gl);		// 座標點與資料矩陣位置的轉換
 
-		//		if (_seed_img.z >= 0 && _seed_img.z <= _total_slice - 1)
-		//		{
-		//			if (_seed_img.y >= 0 && _seed_img.y <= _row - 1)
-		//			{
-		//				if (_seed_img.x >= 0 && _seed_img.x <= _col - 1)
-		//				{
-		//					_get_3D_seed = true;
-		//					_display_slice = _seed_img.z;
-		//					_scroll_bar.SetScrollPos(_display_slice);
+				if (_seed_img.z >= 0 && _seed_img.z <= _total_slice - 1)
+				{
+					if (_seed_img.y >= 0 && _seed_img.y <= _row - 1)
+					{
+						if (_seed_img.x >= 0 && _seed_img.x <= _col - 1)
+						{
+							_get_3D_seed = true;
+							_display_slice = _seed_img.z;
+							_scroll_bar.SetScrollPos(_display_slice);
 
-		//					GetDlgItem(IDC_BUTTON_3DSEED_CLEAR)->EnableWindow(TRUE);
-		//					GetDlgItem(IDC_BUTTON_REGION_GROWING)->EnableWindow(TRUE);
+							//--------------------------------------------------------------------------//
 
-		//					//--------------------------------------------------------------------------//
+							short pos_1 = _seed_img.x;
+							short pos_2 = _seed_img.y;
+							short pos_3 = _seed_img.z;
+							short pos_4 = _img[_seed_img.z][_seed_img.y * _col + _seed_img.x];
 
-		//					short Pos_5 = _seed_img.x;
-		//					short Pos_6 = _seed_img.y;
-		//					short Pos_7 = _seed_img.z;
-		//					short Pos_8 = _img[_seed_img.z][_seed_img.y * _col + _seed_img.x];
+							_EDIT_1.Format("%d", (int)pos_1);
+							_EDIT_2.Format("%d", (int)pos_2);
+							_EDIT_3.Format("%d", (int)pos_3);
+							_EDIT_4.Format("%d", (int)pos_4);
 
-		//				}
-		//			}
-		//		}
-		//		delete[] viewPort;
-		//		delete[] modelView_matrix;
-		//		delete[] projection_matrix;
+						}
+					}
+				}
+				delete[] viewPort;
+				delete[] modelView_matrix;
+				delete[] projection_matrix;
 
-		//		UpdateData(FALSE);
-		//		Draw3DImage(true);
-		//		Draw2DImage(_display_slice);
-		//	}
-		//}
+				UpdateData(FALSE);
+				Draw3DImage(true);
+				Draw2DImage(_display_slice);
+			}
+		}
 	}
 
 	CDialogEx::OnLButtonDown(nFlags, point);
@@ -538,6 +556,42 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 	
 }
 
+void CPhantom::OnBnClickedButtonPhantomSeedClear()
+{
+	// TODO: Add your control notification handler code here
+	// Button : 3D Seed Clear
+	//
+	if (_get_3D_seed)
+	{
+		_seed_gl.x = 0.0L;
+		_seed_gl.y = 0.0L;
+		_seed_gl.z = 0.0L;
+
+		_seed_img.x = 0;
+		_seed_img.y = 0;
+		_seed_img.z = 0;
+
+		_EDIT_1.Format("%3d", 0);
+		_EDIT_2.Format("%3d", 0);
+		_EDIT_3.Format("%3d", 0);
+		_EDIT_4.Format("%3d", 0);
+
+		_get_3D_seed = false;
+
+		UpdateData(FALSE);
+		Draw3DImage(true);
+		Draw2DImage(_display_slice);
+	}
+}
+
+void CPhantom::OnBnClickedCheckPhantom3dSeed()
+{
+	// TODO: Add your control notification handler code here
+	//
+	UpdateData(TRUE);
+	Draw3DImage(true);
+	Draw2DImage(_display_slice);
+}
 
 //========================//
 //   CPhantom Functions   //
@@ -1206,20 +1260,19 @@ void CPhantom::Draw3DImage(bool which)
 	}
 	glEnd();
 
-	// 顯示 3D seed
-	//
-	/*if (m_3Dseed == TRUE && get_3Dseed == true)
+	/* 顯示 3D seed */
+	if (_PHANTOM_3D_SEED == TRUE && _get_3D_seed == true)
 	{
 		glPointSize(5);
 		glBegin(GL_POINTS);
 		{
 			glColor3f(1.0f, 0.0f, 0.0f);
-			glVertex3f((GLfloat)seed_gl.z,
-				(GLfloat)seed_gl.y,
-				(GLfloat)seed_gl.x);
+			glVertex3f((GLfloat)_seed_gl.z,
+				(GLfloat)_seed_gl.y,
+				(GLfloat)_seed_gl.x);
 		}
 		glEnd();
-	}*/
+	}
 
 	SwapBuffers(_hDC);
 }
@@ -1233,6 +1286,28 @@ void CPhantom::Draw2DImage(const int& slice)
 	if (_img == nullptr) return;
 
 	_2D_dib->ShowInverseDIB(&dc, _img[slice]);
+
+	if (_PHANTOM_3D_SEED)
+	{
+		if (_get_3D_seed)
+		{
+			if (slice == _seed_img.z)
+			{
+				CPoint pt;
+				register int i, j;
+				for (i = -1; i <= 1; i++)
+				{
+					for (j = -1; j <= 1; j++)
+					{
+						pt.x = (LONG)_seed_img.x + j;
+						pt.y = (LONG)_seed_img.y + i;
+
+						dc.SetPixel(pt, RGB(255, 0, 0));
+					}
+				}
+			}
+		}
+	}
 
 	/* 寫字 (slice) */
 	CString str;
@@ -1443,4 +1518,5 @@ void* CPhantom::new2Dmatrix(int h, int w, int size)
 
 	return p;
 }
+
 

@@ -171,6 +171,15 @@ public:
 	enum { IDD = IDD_DIALOG_3DPHANTOM };
 #endif
 
+public:
+	BOOL		_PHANTOM_3D_SEED;
+
+	CString		_EDIT_1;
+	CString		_EDIT_2;
+	CString		_EDIT_3;
+	CString		_EDIT_4;
+	CString		_EDIT_5;
+
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
 
@@ -178,16 +187,18 @@ protected:
 
 public:
 	
+	afx_msg void OnPaint();
 	virtual BOOL OnInitDialog();
+	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
+	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
-	afx_msg void OnPaint();
 
 	afx_msg void OnBnClickedButtonPhantomOpen();
-
-	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
-	afx_msg void OnLButtonUp(UINT nFlags, CPoint point);
-	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
-	afx_msg void OnRButtonUp(UINT nFlags, CPoint point);
+	afx_msg void OnBnClickedCheckPhantom3dSeed();
+	
+	afx_msg void OnBnClickedButtonPhantomSeedClear();
 };
