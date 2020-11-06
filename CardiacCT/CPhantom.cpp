@@ -6,9 +6,11 @@
 #include "CardiacCT.h"
 #include "CPhantom.h"
 #include "CProgress.h"
+#include "CWait.h"
 #include "afxdialogex.h"
 
 #include <vector>
+#include <queue>
 
 #define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
 #define M_PI 3.1415
@@ -127,6 +129,7 @@ BEGIN_MESSAGE_MAP(CPhantom, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_OPEN, &CPhantom::OnBnClickedButtonPhantomOpen)
 	ON_BN_CLICKED(IDC_CHECK_PHANTOM_3D_SEED, &CPhantom::OnBnClickedCheckPhantom3dSeed)
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_SEED_CLEAR, &CPhantom::OnBnClickedButtonPhantomSeedClear)
+	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_REGION_GROWING, &CPhantom::OnBnClickedButtonPhantomRegionGrowing)
 END_MESSAGE_MAP()
 
 //===============================//
@@ -495,6 +498,7 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 
 	/* 逐一開啟bmp並存取像素資訊 */
 	CImage img;
+	unsigned long n = 0;
 	for (const auto& path : img_path_list)
 	{
 		img.Load(path.first);
@@ -512,6 +516,8 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 			{
 				_img[slice][j * width + i] =
 					*(img_dst + pitch_dst * j + i * bits_per_pix);
+				if (_img[slice][j * width + i] > 0)
+					n += 1;
 			}
 		}
 
@@ -519,6 +525,7 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 	}
 	img_path_list.clear();
 	img_path_list.shrink_to_fit();
+	TRACE1("Original volume = %d. \n", n);
 	
 	/* 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值 */
 	register int i, j;
@@ -593,9 +600,264 @@ void CPhantom::OnBnClickedCheckPhantom3dSeed()
 	Draw2DImage(_display_slice);
 }
 
+void CPhantom::OnBnClickedButtonPhantomRegionGrowing()
+{
+	// TODO: Add your control notification handler code here
+	// Button :3D Region Growing
+	//
+	if (!_get_3D_seed) return;
+	CWait* m_wait = new CWait();
+	m_wait->Create(IDD_DIALOG_WAIT);
+	m_wait->ShowWindow(SW_NORMAL);
+	m_wait->setDisplay("Region growing...");
+
+	// 宣告 成長標準 參數
+	//
+	_RG_term.seed = _seed_img;
+	_RG_term.s_kernel = 3;
+	_RG_term.n_kernel = 3;
+	_RG_term.pix_thresh = 50.0;
+	_RG_term.sd_thresh = 20.0;
+	_RG_term.sd_coeffi = 1.5;
+
+	RG_3D_ConfidenceConnected(_judge, _RG_term);
+
+	_get_region_grow = true;
+
+	_volume = Calculate_volume(_judge);
+	_EDIT_5.Format("%f", _volume);
+	TRACE1("Growing volume = %f. \n", _volume);
+
+	PrepareVolume();
+	UpdateData(FALSE);
+	Draw3DImage(true);
+	Draw2DImage(_display_slice);
+	m_wait->DestroyWindow();
+	delete m_wait;
+
+}
+
 //========================//
 //   CPhantom Functions   //
 //========================//
+
+void CPhantom::RG_3D_GlobalAvgConnected(short** src, RG_factor& factor)
+{
+	//	DO : 3D 區域成長 
+	//	利用「當前已成長的全域平均值」來界定成長標準，並用「目前的像素強度」來判斷
+	//
+	int obj = 1;
+	const int row = _row;
+	const int col = _col;
+	const int totalSlice = _total_slice;
+	const int range = (factor.s_kernel - 1) / 2;	// 判斷範圍
+	const double threshold = factor.pix_thresh;
+	Seed_s seed = factor.seed;						// 初始seed
+
+	double avg;
+	unsigned long long cnt = 1;						// 計數成長的pixel數量
+
+	Seed_s temp;									// 當前 判斷的周圍seed
+	Seed_s current;									// 當前 判斷的中心seed
+	std::queue<double> avg_que;						// 暫存某點成長判斷完，當下已成長區域的整體avg
+	std::queue<Seed_s> sed_que;						// 暫存成長判斷為種子點的像素位置
+
+	avg = _img[seed.z][(seed.y) * col + (seed.x)];
+	src[seed.z][(seed.y) * col + (seed.x)] = obj;
+	sed_que.push(seed);
+	avg_que.push(avg);
+
+	while (!sed_que.empty())
+	{
+		avg = avg_que.front();
+		current = sed_que.front();
+
+		// 判斷周圍區域是否符合成長標準
+		// 並同時計算「已成長區域」的總平均
+		register int i, j, k;
+		for (k = -range; k <= range; ++k)
+		{
+			for (j = -range; j <= range; ++j)
+			{
+				for (i = -range; i <= range; ++i)
+				{
+					if ((current.x + i) < (col) && (current.x + i) >= 0 &&
+						(current.y + j) < (row) && (current.y + j) >= 0 &&
+						(current.z + k) < (totalSlice) && (current.z + k) >= 0)
+					{
+						if (src[current.z + k][(current.y + j) * col + (current.x + i)] == 0)
+						{
+							short n_pixel =
+								_img[current.z + k][(current.y + j) * col + (current.x + i)];
+
+							if (abs(n_pixel - avg) <= threshold)
+							{
+								temp.x = current.x + i;
+								temp.y = current.y + j;
+								temp.z = current.z + k;
+								sed_que.push(temp);
+
+								src[current.z + k][(current.y + j) * col + (current.x + i)] = obj;
+
+								avg = (avg * cnt + n_pixel) / (cnt + 1);
+								avg_que.push(avg);
+								cnt += 1;
+							}
+							else
+								src[current.z + k][(current.y + j) * col + (current.x + i)] = -obj;
+						}
+					}
+				}
+			}
+		}
+		avg_que.pop();
+		sed_que.pop();
+	}
+
+}
+
+void CPhantom::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
+{
+	// DO : 3D 區域成長
+	// 利用當前區域的「平均值」與「標準差」界定成長標準，並以「像素強度」來判斷
+	//
+	int obj = 1;
+	const int row = _row;
+	const int col = _col;
+	const int totalSlice = _total_slice;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	const double sd_coeffi = factor.sd_coeffi;
+	const double sd_thresh = factor.sd_thresh;
+	const double pix_thresh = factor.pix_thresh;
+	Seed_s	seed = factor.seed;
+
+	Seed_s	n_site;
+	Seed_s	s_current;
+	std::queue<Seed_s> sed_que;
+	std::queue<double> avg_que;
+
+	double	s_avg;
+	unsigned long long	s_cnt = 0;
+	unsigned long long  n_pixel = 0, s_pixel = 0;
+
+	s_avg = _img[seed.z][seed.y * col + seed.x];
+	src[seed.z][seed.y * col + seed.x] = obj;
+	avg_que.push(s_avg);
+	sed_que.push(seed);
+	s_cnt += 1;
+
+	auto outOfImg = [=](int px, int py, int pz)
+	{	// 判斷有無超出影像邊界
+		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
+			return false;
+		else
+			return true;
+	};
+
+	while (!sed_que.empty())
+	{
+		register int si, sj, sk;
+		s_avg = avg_que.front();
+		s_current = sed_que.front();
+
+		// 計算 總合 與 平均
+		double sum = 0, cnt = 0;
+		double n_avg = 0, n_sd = 0;
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_current.x + si, s_current.y + sj, s_current.z + sk))
+					{
+						sum +=
+							_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+						cnt += 1;
+					}
+				}
+			}
+		}
+		n_avg = sum / cnt;
+
+		// 計算 標準差
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_current.x + si, s_current.y + sj, s_current.z + sk))
+					{
+						n_pixel =
+							_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+						n_sd += pow((n_pixel - n_avg), 2);
+					}
+				}
+			}
+		}
+		n_sd = sqrt(n_sd / cnt);
+
+		// 制定、修正成長標準的上下限
+		double up_limit = n_avg + (sd_coeffi * n_sd);
+		double down_limit = n_avg - (sd_coeffi * n_sd);
+
+		// 判斷是否符合成長標準
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_current.x + si, s_current.y + sj, s_current.z + sk))
+					{
+						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] == 0)
+						{
+							n_pixel =
+								_img[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+
+							if ((n_sd <= sd_thresh && abs(n_pixel - s_avg) <= pix_thresh))
+							{
+								n_site.x = s_current.x + si;
+								n_site.y = s_current.y + sj;
+								n_site.z = s_current.z + sk;
+								sed_que.push(n_site);
+
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = obj;
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
+							}
+							else
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj;
+						}
+					}
+				}
+			}
+		}
+		sed_que.pop();
+		avg_que.pop();
+	}
+
+}
+
+double CPhantom::Calculate_volume(short** src)
+{
+	int obj = 1;
+	register int i, j;
+	const int totalXY = _col * _row;
+	const int totalSlice = _total_slice;
+	double n = 0;							// 計數成長的pixel數量
+	for (j = 0; j < totalSlice; ++j)
+	{
+		for (i = 0; i < totalXY; ++i)
+		{
+			if (src[j][i] == obj)
+				n += 1;
+		}
+	}
+	return n;
+}
 
 BOOL CPhantom::SetupPixelFormat(HDC hDC)
 {
@@ -1303,6 +1565,23 @@ void CPhantom::Draw2DImage(const int& slice)
 						pt.y = (LONG)_seed_img.y + i;
 
 						dc.SetPixel(pt, RGB(255, 0, 0));
+					}
+				}
+			}
+		}
+		if (_get_region_grow)
+		{
+			CPoint pt;
+			register int i, j;
+			for (j = 0; j < _row; ++j)
+			{
+				for (i = 0; i < _col; ++i)
+				{
+					if (_judge[slice][j * _col + i] == 1)
+					{
+						pt.x = i;
+						pt.y = j;
+						dc.SetPixel(pt, RGB(255, 120, 190));
 					}
 				}
 			}

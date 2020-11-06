@@ -127,6 +127,9 @@ public:
 	short**			_judge;				// 記錄區域成長結果(成長判定)
 	BYTE			_image0[256 * 256 * 256][4];
 
+	RG_factor		_RG_term;			// 3D區域成長 : 條件因子
+	double			_volume;			// 3D區域成長 : 體積
+
 ///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
 
 
@@ -155,6 +158,15 @@ public:
 	void	pointToVector(int x, int y, int width, int height, float vec[3]);
 
 	Seed_s	coordiConvert(Seed_d& pt);					// openGL coordinate -> data array site
+
+///------------- ↓ 實驗區 ↓ -------------///
+
+	double	Calculate_volume(short** src);
+
+	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均)
+	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);	// 3D 區域成長(當前區域標準差與全域平均) 
+
+///------------- ↑ 實驗區 ↑ -------------///
 
 //================//
 // Implementation //
@@ -186,7 +198,6 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 public:
-	
 	afx_msg void OnPaint();
 	virtual BOOL OnInitDialog();
 	afx_msg void OnMouseMove(UINT nFlags, CPoint point);
@@ -201,4 +212,5 @@ public:
 	afx_msg void OnBnClickedCheckPhantom3dSeed();
 	
 	afx_msg void OnBnClickedButtonPhantomSeedClear();
+	afx_msg void OnBnClickedButtonPhantomRegionGrowing();
 };

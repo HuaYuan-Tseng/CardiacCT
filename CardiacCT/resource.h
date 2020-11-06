@@ -61,6 +61,7 @@
 #define IDC_BUTTON_SLICES_PLUS          1027
 #define IDC_BUTTON2                     1028
 #define IDC_BUTTON_SLICES_MINUS         1028
+#define IDC_BUTTON_PHANTOM_REGION_GROWING 1028
 #define IDC_CHECK_3D_SEED               1029
 #define IDC_EDIT_POS1                   1030
 #define IDC_EDIT_POS2                   1031
@@ -123,7 +124,6 @@
 #define IDC_EDIT_PHANTOM_2              1082
 #define IDC_EDIT_PHANTOM_3              1083
 #define IDC_EDIT_PHANTOM_5              1084
-#define IDC_BUTTON1                     1085
 #define IDC_BUTTON_PHANTOM_SEED_CLEAR   1085
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
