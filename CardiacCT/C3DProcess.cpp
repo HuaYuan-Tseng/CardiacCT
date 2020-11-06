@@ -6692,7 +6692,3 @@ double C3DProcess::Calculate_Volume(short** src)
 	}
 */
 
-
-
-
-

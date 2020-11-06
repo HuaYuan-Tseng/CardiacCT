@@ -29,6 +29,7 @@
 #define IDC_STATIC_2D                   1003
 #define IDC_SCROLLBAR1                  1004
 #define IDC_SCROLLBAR_2D                1004
+#define IDC_SCROLLBAR_PHANTOM           1004
 #define IDC_PROGRESS1                   1005
 #define IDC_STATIC_3D                   1006
 #define IDC_CHECK_Object                1007
@@ -114,7 +115,6 @@
 #define IDC_BUTTON_VERIFY_SAVE          1077
 #define IDC_BUTTON_VERIFY_LOAD          1078
 #define IDC_STATIC_PHANTOM_2D           1079
-#define IDC_BUTTON1                     1080
 #define IDC_BUTTON_PHANTOM_OPEN         1080
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
