@@ -116,6 +116,7 @@
 #define IDC_BUTTON_VERIFY_LOAD          1078
 #define IDC_STATIC_PHANTOM_2D           1079
 #define IDC_BUTTON_PHANTOM_OPEN         1080
+#define IDC_STATIC_PHANTOM_3D           1081
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -129,7 +130,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        327
 #define _APS_NEXT_COMMAND_VALUE         32778
-#define _APS_NEXT_CONTROL_VALUE         1081
+#define _APS_NEXT_CONTROL_VALUE         1082
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif
