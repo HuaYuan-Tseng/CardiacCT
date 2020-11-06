@@ -55,7 +55,7 @@ CPhantom::CPhantom(CWnd* pParent /*=nullptr*/)
 	_x_index = 0.5F;
 	_y_index = 0.5F;
 	_z_index = 0.7F;
-	_scale_x = 0.25F;
+	_scale_x = 0.5F;
 	_scale_y = 0.5F;
 	_scale_z = 0.5F;
 	_density = 0.000F;
@@ -552,6 +552,13 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 	}
 
 	_mat_offset = (512 - _total_slice) / 2;
+
+	_x_index = (2.0F / 511.0F) * (_col / 2.0F) / 2;
+	_x_index = _x_index / _scale_y;
+	_y_index = (2.0F / 511.0F) * (_row / 2.0F) / 2;
+	_y_index = _y_index / _scale_z;
+	_z_index = (2.0F / 511.0F) * (_total_slice / 2.0F) / 2;
+	_z_index = _z_index / _scale_x;
 
 	/* ³]©wScrollBarªº½d³ò */
 	_scroll_bar.SetScrollRange(0, _total_slice - 1);
