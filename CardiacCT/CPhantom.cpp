@@ -461,10 +461,8 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 	// Button : Open (Open Phantom Folder)
 	//
 
-	BOOL isOpen = TRUE;							// TRUE:Open；FALSE:Save
-	CString initName = "";						// 初始開檔文件名
-	CString initDir = "C:\\";					// 初始開檔路徑
-	CString filter = "All Files(*.*)|*.*||";	// 文件過濾類型
+	/* 設定開檔初始路徑 */
+	CString initDir = "C:\\Users\\HuaYuan\\Desktop\\";
 
 	CFolderPickerDialog open_folder_dlg(initDir, 0, NULL, 0);
 	
@@ -1472,7 +1470,7 @@ void CPhantom::Draw3DImage(bool which)
 	glLineWidth(2);
 	glBegin(GL_LINES);
 	{
-		glColor4f(0.902f, 1.0f, 1.0f, 0.1f);
+		glColor4f((120/255.0f), (200 / 255.0f), (255 / 255.0f), 0.8f);
 
 		glVertex3f(1.0f, 1.0f, 1.0f);
 		glVertex3f(1.0f, 1.0f, -1.0f);
