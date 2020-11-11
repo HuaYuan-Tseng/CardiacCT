@@ -2982,7 +2982,26 @@ void C3DProcess::Spine_process()
 		}
 		return sum / avg_cnt;
 	};
-	auto avgFilter = [&](int start_slice)
+	auto medianKernel = [=](BYTE* img, int x, int y)
+	{
+		std::vector<BYTE> temp;
+		temp.reserve(9);
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				if (!outOfImg(i, j))
+				{
+					temp.push_back(img[j * col + i]);
+				}
+			}
+		}
+		std::sort(temp.begin(), temp.end());
+		auto len = temp.size();
+		return temp[len / 2];
+	};
+
+	auto lowFilter = [&](int start_slice)
 	{
 		std::map<int, std::vector<int>>::iterator it;
 		int s = start_slice;
@@ -3001,7 +3020,8 @@ void C3DProcess::Spine_process()
 			{
 				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
 				{
-					pro[s][j * col + i] = avgKernel(tmp, i, j);
+					//pro[s][j * col + i] = avgKernel(tmp, i, j);
+					pro[s][j * col + i] = medianKernel(tmp, i, j);
 				}
 			}
 			delete[] tmp;
@@ -3011,16 +3031,16 @@ void C3DProcess::Spine_process()
 		else TRACE("Avg Filter : Odd Slice Success ! \n");
 	};
 
-	thread th_8(avgFilter, 0);
-	thread th_9(avgFilter, 1);
+	thread th_8(lowFilter, 0);
+	thread th_9(lowFilter, 1);
 	th_8.join(); th_9.join();
 
 	// 高通 濾波 (laplace filter)
 	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
-	std::vector<int> sharp_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
-	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
+	std::vector<int> laplace_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
+	const int weight = (laplace_coef[4] > 0) ? 1 : -1;
 
-	auto sharpKernel = [=](BYTE* img, int x, int y)
+	auto laplaceKernel = [=](BYTE* img, int x, int y)
 	{
 		int sum = 0, n = 0;
 		for (int j = y - 1; j <= y + 1; ++j)
@@ -3029,14 +3049,14 @@ void C3DProcess::Spine_process()
 			{
 				if (!outOfImg(i, j))
 				{
-					sum += (sharp_coef[n] * img[j * col + i]);
+					sum += (laplace_coef[n] * img[j * col + i]);
 					n += 1;
 				}
 			}
 		}
 		return sum;
 	};
-	auto sharpFilter = [&](int start_slice)
+	auto laplaceFilter = [&](int start_slice)
 	{
 		std::map<int, std::vector<int>>::iterator it;
 		int s = start_slice, pixel = 0;
@@ -3055,7 +3075,7 @@ void C3DProcess::Spine_process()
 			{
 				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
 				{
-					pixel = weight * sharpKernel(tmp, i, j);
+					pixel = weight * laplaceKernel(tmp, i, j);
 					pixel = tmp[j * col + i] + pixel;
 					if (pixel > 255)	pixel = 255;
 					else if (pixel < 0) pixel = 0;
@@ -3069,8 +3089,8 @@ void C3DProcess::Spine_process()
 		else TRACE("High Filter : Odd Slice Success!\n");
 	};
 
-	thread th_10(sharpFilter, 0);
-	thread th_11(sharpFilter, 1);
+	thread th_10(laplaceFilter, 0);
+	thread th_11(laplaceFilter, 1);
 	th_10.join(); th_11.join();
 	
 }
@@ -3574,8 +3594,7 @@ void C3DProcess::Sternum_process()
 		}
 		return sum / avg_cnt;
 	};
-
-	auto avgFilter = [&](int start_slice)
+	auto lowFilter = [&](int start_slice)
 	{
 		std::map<int, std::vector<int>>::iterator it;
 		int s = start_slice;
@@ -3604,16 +3623,16 @@ void C3DProcess::Sternum_process()
 		else TRACE("Avg Filter : Odd Slice Success ! \n");
 	};
 
-	thread th_6(avgFilter, 0);
-	thread th_7(avgFilter, 1);
+	thread th_6(lowFilter, 0);
+	thread th_7(lowFilter, 1);
 	th_6.join();	th_7.join();
 
 	// 高通 濾波 (laplace filter)
 	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
-	std::vector<int> sharp_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
-	const int weight = (sharp_coef[4] > 0) ? 1 : -1;
+	std::vector<int> laplace_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
+	const int weight = (laplace_coef[4] > 0) ? 1 : -1;
 
-	auto sharpKernel = [=](BYTE* img, int x, int y)
+	auto laplaceKernel = [=](BYTE* img, int x, int y)
 	{
 		int sum = 0, n = 0;
 		for (int j = y - 1; j <= y + 1; ++j)
@@ -3622,7 +3641,7 @@ void C3DProcess::Sternum_process()
 			{
 				if (!outOfImg(i, j))
 				{
-					sum += (sharp_coef[n] * img[j * col + i]);
+					sum += (laplace_coef[n] * img[j * col + i]);
 					n += 1;
 				}
 			}
@@ -3630,7 +3649,7 @@ void C3DProcess::Sternum_process()
 		return sum;
 	};
 
-	auto sharpFilter = [&](int start_slice)
+	auto laplaceFilter = [&](int start_slice)
 	{
 		std::map<int, std::vector<int>>::iterator it;
 		int s = start_slice, pixel = 0;
@@ -3649,7 +3668,7 @@ void C3DProcess::Sternum_process()
 			{
 				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
 				{
-					pixel = weight * sharpKernel(tmp, i, j);
+					pixel = weight * laplaceKernel(tmp, i, j);
 					pixel = tmp[j * col + i] + pixel;
 					if (pixel > 255)	pixel = 255;
 					else if (pixel < 0) pixel = 0;
@@ -3663,8 +3682,8 @@ void C3DProcess::Sternum_process()
 		else TRACE("High Filter : Odd Slice Success!\n");
 	};
 
-	thread th_8(sharpFilter, 0);
-	thread th_9(sharpFilter, 1);
+	thread th_8(laplaceFilter, 0);
+	thread th_9(laplaceFilter, 1);
 	th_8.join();	th_9.join();
 
 }
