@@ -508,13 +508,14 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 		int bits_per_pix = img.GetBPP() / 8;		// 每一像素的位元數
 		BYTE* img_dst = (BYTE*)(img.GetBits());		// 像素數據的開始指標
 
+		BYTE pixel = 0;
 		for (int j = 0; j < height; ++j)
 		{
 			for (int i = 0; i < width; ++i)
 			{
-				_img[slice][j * width + i] =
-					*(img_dst + pitch_dst * j + i * bits_per_pix);
-				if (_img[slice][j * width + i] > 0)
+				pixel = *(img_dst + pitch_dst * j + i * bits_per_pix);
+				_img[slice][j * width + i] = pixel;
+				if (pixel > 0)
 					n += 1;
 			}
 		}
@@ -549,6 +550,7 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 		}
 	}
 
+	/* 設定OpenGL矩陣與影像參數 */
 	_mat_offset = (512 - _total_slice) / 2;
 
 	_x_index = (2.0F / 511.0F) * (_col / 2.0F) / 2;

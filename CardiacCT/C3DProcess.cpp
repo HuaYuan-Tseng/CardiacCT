@@ -2808,8 +2808,8 @@ void C3DProcess::Spine_process()
 	{
 		if (spine_vertex.find(n) != spine_vertex.end())
 		{
-			if (abs(spine_vertex[n][0].first - spine_vertex[n - 1][0].first) > 5 ||
-				abs(spine_vertex[n][0].second - spine_vertex[n - 1][0].second) > 5)
+			if (abs(spine_vertex[n][0].first - spine_vertex[n - 1][0].first) > 10 ||
+				abs(spine_vertex[n][0].second - spine_vertex[n - 1][0].second) > 10)
 			{
 				spine_vertex[n][0].first = spine_vertex[n - 1][0].first;
 				spine_vertex[n][0].second = spine_vertex[n - 1][0].second;
@@ -2951,9 +2951,9 @@ void C3DProcess::Spine_process()
 		else TRACE("Pixel Process : Odd Slice Success ! \n");
 	};
 
-	thread th_6(pixProcess, 0);
+	/*thread th_6(pixProcess, 0);
 	thread th_7(pixProcess, 1);
-	th_6.join(); th_7.join();
+	th_6.join(); th_7.join();*/
 
 	// §C³q Âoªi (mean filter)
 	//std::vector<int> avg_coef = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
