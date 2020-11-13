@@ -125,6 +125,11 @@
 #define IDC_EDIT_PHANTOM_3              1083
 #define IDC_EDIT_PHANTOM_5              1084
 #define IDC_BUTTON_PHANTOM_SEED_CLEAR   1085
+#define IDC_BUTTON_SALT_PEPPER_NOISE    1086
+#define IDC_EDIT_NOISE_RATIO            1087
+#define IDC_BUTTON_PHANTOM_GROWING_CLEAR 1088
+#define IDC_BUTTON3                     1089
+#define IDC_BUTTON_NOISE_CLEAR          1089
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -138,7 +143,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        327
 #define _APS_NEXT_COMMAND_VALUE         32778
-#define _APS_NEXT_CONTROL_VALUE         1086
+#define _APS_NEXT_CONTROL_VALUE         1090
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

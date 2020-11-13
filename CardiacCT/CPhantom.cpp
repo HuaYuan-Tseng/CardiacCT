@@ -8,6 +8,8 @@
 #include "CProgress.h"
 #include "CWait.h"
 #include "afxdialogex.h"
+#include <cstdlib>
+#include <ctime>
 
 #include <vector>
 #include <queue>
@@ -28,6 +30,7 @@ CPhantom::CPhantom(CWnd* pParent /*=nullptr*/)
 	, _total_slice(0)
 	, _row(512)
 	, _col(512)
+	, _NOISE_RATIO(_T("0"))
 	, _EDIT_1(_T(""))
 	, _EDIT_2(_T(""))
 	, _EDIT_3(_T(""))
@@ -37,12 +40,15 @@ CPhantom::CPhantom(CWnd* pParent /*=nullptr*/)
 	mode = ControlModes::ControlObject;
 
 	_img = nullptr;
+	_imgOrg = nullptr;
+
 	_judge = nullptr;
 	_2D_dib = nullptr;
 	_2D_frame = nullptr;
 	_3D_frame = nullptr;
 	gl_3DTexture = FALSE;
 
+	_get_noise = false;
 	_get_2D_seed = false;
 	_get_3D_seed = false;
 	_act_rotate = false;
@@ -52,6 +58,10 @@ CPhantom::CPhantom(CWnd* pParent /*=nullptr*/)
 	_get_3D_image = false;
 	_get_GL_build = true;
 	
+	_org_volume = 0;
+	_growing_volume = 0;
+	_after_noise_volume = 0;
+
 	_x_index = 0.5F;
 	_y_index = 0.5F;
 	_z_index = 0.7F;
@@ -86,6 +96,8 @@ CPhantom::~CPhantom()
 		delete _2D_dib;
 	if (_img != nullptr)
 		delete[] _img;
+	if (_imgOrg != nullptr)
+		delete[] _imgOrg;
 	if (_user_plane != nullptr)
 		delete[] _user_plane;
 	if (_glVertexPt != nullptr)
@@ -113,7 +125,8 @@ void CPhantom::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_PHANTOM_3, _EDIT_3);
 	DDX_Text(pDX, IDC_EDIT_PHANTOM_4, _EDIT_4);
 	DDX_Text(pDX, IDC_EDIT_PHANTOM_5, _EDIT_5);
-
+	DDX_Text(pDX, IDC_EDIT_NOISE_RATIO, _NOISE_RATIO);
+	DDV_MinMaxInt(pDX, atoi(_NOISE_RATIO), 0, 100);
 }
 
 BEGIN_MESSAGE_MAP(CPhantom, CDialogEx)
@@ -125,11 +138,17 @@ BEGIN_MESSAGE_MAP(CPhantom, CDialogEx)
 	ON_WM_RBUTTONUP()
 	ON_WM_LBUTTONDOWN()
 	ON_WM_RBUTTONDOWN()
-	
+
+	ON_EN_CHANGE(IDC_EDIT_NOISE_RATIO, &CPhantom::OnEnChangeEditNoiseRatio)
+
+	ON_BN_CLICKED(IDC_BUTTON_NOISE_CLEAR, &CPhantom::OnBnClickedButtonNoiseClear)
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_OPEN, &CPhantom::OnBnClickedButtonPhantomOpen)
 	ON_BN_CLICKED(IDC_CHECK_PHANTOM_3D_SEED, &CPhantom::OnBnClickedCheckPhantom3dSeed)
+	ON_BN_CLICKED(IDC_BUTTON_SALT_PEPPER_NOISE, &CPhantom::OnBnClickedButtonSaltPepperNoise)
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_SEED_CLEAR, &CPhantom::OnBnClickedButtonPhantomSeedClear)
+	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_GROWING_CLEAR, &CPhantom::OnBnClickedButtonPhantomGrowingClear)
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_REGION_GROWING, &CPhantom::OnBnClickedButtonPhantomRegionGrowing)
+	
 END_MESSAGE_MAP()
 
 //===============================//
@@ -408,7 +427,34 @@ void CPhantom::OnLButtonDown(UINT nFlags, CPoint point)
 			}
 		}
 	}
+	else if (point.x < _2D_rect.right && point.x > _2D_rect.left && point.y < _2D_rect.bottom && point.y > _2D_rect.top)
+	{
+		if (_PHANTOM_3D_SEED == TRUE)
+		{
+			if (!_get_3D_seed)
+			{
+				_seed_img.x = (short)(point.x - _2D_rect.left);
+				_seed_img.y = (short)(point.y - _2D_rect.top);
+				_seed_img.z = _display_slice;
 
+				short pos_1 = _seed_img.x;
+				short pos_2 = _seed_img.y;
+				short pos_3 = _seed_img.z;
+				short pos_4 = _img[_seed_img.z][_seed_img.y * _col + _seed_img.x];
+
+				_EDIT_1.Format("%d", (int)pos_1);
+				_EDIT_2.Format("%d", (int)pos_2);
+				_EDIT_3.Format("%d", (int)pos_3);
+				_EDIT_4.Format("%d", (int)pos_4);
+
+				_get_3D_seed = true;
+
+				UpdateData(FALSE);
+				Draw3DImage(true);
+				Draw2DImage(_display_slice);
+			}
+		}
+	}
 	CDialogEx::OnLButtonDown(nFlags, point);
 }
 
@@ -490,9 +536,12 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 	/* 預先分配空間，等等來存bmp的像素資訊 */
 	if (_img != nullptr)
 		delete[] _img;
+	if (_imgOrg != nullptr)
+		delete[] _imgOrg;
 
 	_total_slice = static_cast<int>(img_path_list.size());
 	_img = New2Dmatrix(_total_slice, _row*_col, BYTE);
+	_imgOrg = New2Dmatrix(_total_slice, _row*_col, BYTE);
 
 	/* 逐一開啟bmp並存取像素資訊 */
 	CImage img;
@@ -515,16 +564,19 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 			{
 				pixel = *(img_dst + pitch_dst * j + i * bits_per_pix);
 				_img[slice][j * width + i] = pixel;
-				if (pixel > 0)
+				_imgOrg[slice][j * width + i] = pixel;
+				if (pixel > 0 && pixel < 255)
 					n += 1;
 			}
 		}
 
 		img.Destroy();
 	}
+	_org_volume = n;
 	img_path_list.clear();
 	img_path_list.shrink_to_fit();
 	TRACE1("Original volume = %d. \n", n);
+	_EDIT_5.Format("%d", n);
 	
 	/* 初始化紋理矩陣以及區域成長判定的矩陣大小和初始值 */
 	register int i, j;
@@ -567,7 +619,117 @@ void CPhantom::OnBnClickedButtonPhantomOpen()
 	_get_2D_image = true;
 	_get_3D_image = true;
 	Invalidate();
-	
+	UpdateData(FALSE);
+}
+
+void CPhantom::OnEnChangeEditNoiseRatio()
+{
+	// TODO:  If this is a RICHEDIT control, the control will not
+	// send this notification unless you override the CDialogEx::OnInitDialog()
+	// function and call CRichEditCtrl().SetEventMask()
+	// with the ENM_CHANGE flag ORed into the mask.
+
+	// TODO:  Add your control notification handler code here
+	UpdateData(TRUE);
+}
+
+void CPhantom::OnBnClickedButtonSaltPepperNoise()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Salt-Pepper Noise
+	//
+	const int row = _row;
+	const int col = _col;
+	const int total_slice = _total_slice;
+	register int i, j, k;
+
+	// 設定雜訊比例(%)
+	srand(static_cast<unsigned int>(time(nullptr)));
+	double ratio = atof(_NOISE_RATIO);
+	double salt = (ratio / 2.0) / 100.0;
+	double pepper = 1.0 - salt;
+	int d = 999; // digits
+	TRACE2("Salt = %f, Pepper = %f. \n", salt, pepper);
+
+	// 參雜 Salt-Pepper Noise
+	k = 0;
+	while (k < total_slice)
+	{
+		for (j = 0; j < row; ++j)
+		{
+			for (i = 0; i < col; ++i)
+			{
+				double val = rand() % (d + 1) / (double)(d + 1);
+				if (val < salt)
+					_img[k][j * col + i] = 0;
+				else if (val > pepper)
+					_img[k][j * col + i] = 255;
+			}
+		}
+		k += 1;
+	}
+	k = 0;
+	unsigned long n = 0;
+	while (k < total_slice)
+	{
+		for (j = 0; j < row; ++j)
+		{
+			for (i = 0; i < col; ++i)
+			{
+				if (_img[k][j * col + i] != 0 &&
+					_img[k][j * col + i] != 255)
+					n += 1;
+			}
+		}
+		k += 1;
+	}
+	_get_noise = true;
+	_after_noise_volume = n;
+	_EDIT_5.Format("%d", _after_noise_volume);
+	TRACE1("After Noise. Remain Volume : %d. \n", _after_noise_volume);
+
+	UpdateData(FALSE);
+	PrepareVolume();
+	Draw3DImage(true);
+	Draw2DImage(_display_slice);
+}
+
+void CPhantom::OnBnClickedButtonNoiseClear()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Noise Clear
+	//
+	if (!_get_noise) return;
+
+	const int row = _row;
+	const int col = _col;
+	const int total_slice = _total_slice;
+	register int i, j, k;
+
+	k = 0;
+	while (k < total_slice)
+	{
+		for (j = 0; j < row; ++j)
+		{
+			for (i = 0; i < col; ++i)
+			{
+				_img[k][j * col + i] = _imgOrg[k][j * col + i];
+			}
+		}
+		k += 1;
+	}
+	_get_noise = false;
+
+	if (_get_region_grow)
+		_EDIT_5.Format("%d", _growing_volume);
+	else
+		_EDIT_5.Format("%d", _org_volume);
+
+	UpdateData(FALSE);
+	PrepareVolume();
+	Draw3DImage(true);
+	Draw2DImage(_display_slice);
+
 }
 
 void CPhantom::OnBnClickedButtonPhantomSeedClear()
@@ -631,9 +793,9 @@ void CPhantom::OnBnClickedButtonPhantomRegionGrowing()
 
 	_get_region_grow = true;
 
-	_volume = Calculate_volume(_judge);
-	_EDIT_5.Format("%f", _volume);
-	TRACE1("Growing volume = %f. \n", _volume);
+	_growing_volume = Calculate_volume(_judge);
+	_EDIT_5.Format("%d", _growing_volume);
+	TRACE1("Growing volume = %d. \n", _growing_volume);
 
 	PrepareVolume();
 	UpdateData(FALSE);
@@ -642,6 +804,67 @@ void CPhantom::OnBnClickedButtonPhantomRegionGrowing()
 	m_wait->DestroyWindow();
 	delete m_wait;
 
+}
+
+void CPhantom::OnBnClickedButtonPhantomGrowingClear()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Growing Clear
+	//
+	if (!_get_region_grow) return;
+
+	_growing_volume = 0;
+	_get_region_grow = false;
+	if (_get_noise)
+		_EDIT_5.Format("%d", _after_noise_volume);
+	else
+		_EDIT_5.Format("%d", _org_volume);
+	
+	float pixel;
+	register int i, j, k;
+
+	const int row = _row;
+	const int col = _col;
+	const int totalSlice = _total_slice;
+	const int sample_start = 0 + _mat_offset;
+	const int sample_end = 0 + _mat_offset + totalSlice;
+	
+	i = 0, j = 0, k = 0;
+	while (k < 512)
+	{
+		if (k > sample_start && k <= sample_end)
+		{
+			for (j = 2; j < row - 2; j += 2)
+			{
+				for (i = 2; i < col - 2; i += 2)
+				{
+					pixel = _img[k - (_mat_offset + 1)][j * col + i];
+
+					getRamp(&_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+						pixel / 255.0F, 0);
+				}
+			}
+		}
+		k += 2;
+	}
+
+	k = 0;
+	while (k < totalSlice)
+	{
+		for (j = 0; j < row; ++j)
+		{
+			for (i = 0; i < col; ++i)
+			{
+				_judge[k][j * col + i] = 0;
+			}
+		}
+		k += 1;
+	}
+
+	LoadVolume();
+	UpdateData(FALSE);
+	Draw3DImage(true);
+	Draw2DImage(_display_slice);
 }
 
 //========================//
@@ -848,13 +1071,13 @@ void CPhantom::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 
 }
 
-double CPhantom::Calculate_volume(short** src)
+unsigned long CPhantom::Calculate_volume(short** src)
 {
 	int obj = 1;
 	register int i, j;
 	const int totalXY = _col * _row;
 	const int totalSlice = _total_slice;
-	double n = 0;							// 計數成長的pixel數量
+	unsigned long n = 0;							// 計數成長的pixel數量
 	for (j = 0; j < totalSlice; ++j)
 	{
 		for (i = 0; i < totalXY; ++i)
@@ -1804,5 +2027,4 @@ void* CPhantom::new2Dmatrix(int h, int w, int size)
 
 	return p;
 }
-
 

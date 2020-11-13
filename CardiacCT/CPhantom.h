@@ -47,7 +47,8 @@ public:
 
 ///-------------------------↓ 2D影像 設定參數 ↓----------------------------------------///
 
-	BYTE**			_img;				// 原始灰階資訊
+	BYTE**			_imgOrg;
+	BYTE**			_img;				// 用來判斷和處理的灰階資訊
 
 	bool			_get_2D_image;
 	int				_display_slice;		// 顯示的切片
@@ -127,12 +128,14 @@ public:
 	short**			_judge;				// 記錄區域成長結果(成長判定)
 	BYTE			_image0[256 * 256 * 256][4];
 
-	RG_factor		_RG_term;			// 3D區域成長 : 條件因子
-	double			_volume;			// 3D區域成長 : 體積
+	RG_factor		_RG_term;					// 3D區域成長 : 條件因子
+	unsigned long	_org_volume;				// 3D區域成長 : 原始體積
+	unsigned long	_growing_volume;			// 3D區域成長 : 成長後體積
 
 ///-------------------------↑ 3D seed 宣告參數 ↑---------------------------------------///
-
-
+	
+	bool			_get_noise;					// 是否參雜了雜訊
+	unsigned long	_after_noise_volume;		// 參雜雜訊後剩餘的體積
 
 //================//
 //   Operations   //
@@ -161,7 +164,7 @@ public:
 
 ///------------- ↓ 實驗區 ↓ -------------///
 
-	double	Calculate_volume(short** src);
+	unsigned long	Calculate_volume(short** src);
 
 	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均)
 	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);	// 3D 區域成長(當前區域標準差與全域平均) 
@@ -191,6 +194,7 @@ public:
 	CString		_EDIT_3;
 	CString		_EDIT_4;
 	CString		_EDIT_5;
+	CString		_NOISE_RATIO;
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
@@ -208,9 +212,13 @@ public:
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 
+	afx_msg void OnEnChangeEditNoiseRatio();
+	afx_msg void OnBnClickedButtonNoiseClear();
 	afx_msg void OnBnClickedButtonPhantomOpen();
 	afx_msg void OnBnClickedCheckPhantom3dSeed();
-	
+	afx_msg void OnBnClickedButtonSaltPepperNoise();
 	afx_msg void OnBnClickedButtonPhantomSeedClear();
+	afx_msg void OnBnClickedButtonPhantomGrowingClear();
 	afx_msg void OnBnClickedButtonPhantomRegionGrowing();
+	
 };
