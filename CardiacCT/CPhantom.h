@@ -194,6 +194,9 @@ public:
 	CString		_EDIT_3;
 	CString		_EDIT_4;
 	CString		_EDIT_5;
+	CString		_EDIT_SD_TH;
+	CString		_EDIT_SD_CO;
+	CString		_EDIT_PIX_TH;
 	CString		_NOISE_RATIO;
 
 protected:
@@ -211,6 +214,10 @@ public:
 	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
 	afx_msg BOOL OnMouseWheel(UINT nFlags, short zDelta, CPoint pt);
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+
+	afx_msg void OnEnChangeEditPhantomSdCo();
+	afx_msg void OnEnChangeEditPhantomSdTh();
+	afx_msg void OnEnChangeEditPhantomPixTh();
 
 	afx_msg void OnEnChangeEditNoiseRatio();
 	afx_msg void OnBnClickedButtonNoiseClear();

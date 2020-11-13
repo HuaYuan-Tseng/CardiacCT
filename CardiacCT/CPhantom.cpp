@@ -30,12 +30,15 @@ CPhantom::CPhantom(CWnd* pParent /*=nullptr*/)
 	, _total_slice(0)
 	, _row(512)
 	, _col(512)
-	, _NOISE_RATIO(_T("0"))
+	, _NOISE_RATIO(_T("5"))
 	, _EDIT_1(_T(""))
 	, _EDIT_2(_T(""))
 	, _EDIT_3(_T(""))
 	, _EDIT_4(_T(""))
 	, _EDIT_5(_T(""))
+	, _EDIT_PIX_TH(_T("50.0"))
+	, _EDIT_SD_TH(_T("20.0"))
+	, _EDIT_SD_CO(_T("1.0"))
 {
 	mode = ControlModes::ControlObject;
 
@@ -125,8 +128,12 @@ void CPhantom::DoDataExchange(CDataExchange* pDX)
 	DDX_Text(pDX, IDC_EDIT_PHANTOM_3, _EDIT_3);
 	DDX_Text(pDX, IDC_EDIT_PHANTOM_4, _EDIT_4);
 	DDX_Text(pDX, IDC_EDIT_PHANTOM_5, _EDIT_5);
+	DDX_Text(pDX, IDC_EDIT_PHANTOM_SD_TH, _EDIT_SD_TH);
+	DDX_Text(pDX, IDC_EDIT_PHANTOM_SD_CO, _EDIT_SD_CO);
+	DDX_Text(pDX, IDC_EDIT_PHANTOM_PIX_TH, _EDIT_PIX_TH);
 	DDX_Text(pDX, IDC_EDIT_NOISE_RATIO, _NOISE_RATIO);
 	DDV_MinMaxInt(pDX, atoi(_NOISE_RATIO), 0, 100);
+	
 }
 
 BEGIN_MESSAGE_MAP(CPhantom, CDialogEx)
@@ -140,6 +147,9 @@ BEGIN_MESSAGE_MAP(CPhantom, CDialogEx)
 	ON_WM_RBUTTONDOWN()
 
 	ON_EN_CHANGE(IDC_EDIT_NOISE_RATIO, &CPhantom::OnEnChangeEditNoiseRatio)
+	ON_EN_CHANGE(IDC_EDIT_PHANTOM_SD_CO, &CPhantom::OnEnChangeEditPhantomSdCo)
+	ON_EN_CHANGE(IDC_EDIT_PHANTOM_SD_TH, &CPhantom::OnEnChangeEditPhantomSdTh)
+	ON_EN_CHANGE(IDC_EDIT_PHANTOM_PIX_TH, &CPhantom::OnEnChangeEditPhantomPixTh)
 
 	ON_BN_CLICKED(IDC_BUTTON_NOISE_CLEAR, &CPhantom::OnBnClickedButtonNoiseClear)
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_OPEN, &CPhantom::OnBnClickedButtonPhantomOpen)
@@ -501,6 +511,42 @@ void CPhantom::OnRButtonUp(UINT nFlags, CPoint point)
 	CDialogEx::OnRButtonUp(nFlags, point);
 }
 
+void CPhantom::OnEnChangeEditPhantomPixTh()
+{
+	// TODO:  If this is a RICHEDIT control, the control will not
+	// send this notification unless you override the CDialogEx::OnInitDialog()
+	// function and call CRichEditCtrl().SetEventMask()
+	// with the ENM_CHANGE flag ORed into the mask.
+
+	// TODO:  Add your control notification handler code here
+	UpdateData(TRUE);
+	_RG_term.pix_thresh = atof(_EDIT_PIX_TH);
+}
+
+void CPhantom::OnEnChangeEditPhantomSdTh()
+{
+	// TODO:  If this is a RICHEDIT control, the control will not
+	// send this notification unless you override the CDialogEx::OnInitDialog()
+	// function and call CRichEditCtrl().SetEventMask()
+	// with the ENM_CHANGE flag ORed into the mask.
+
+	// TODO:  Add your control notification handler code here
+	UpdateData(TRUE);
+	_RG_term.sd_thresh = atof(_EDIT_SD_TH);
+}
+
+void CPhantom::OnEnChangeEditPhantomSdCo()
+{
+	// TODO:  If this is a RICHEDIT control, the control will not
+	// send this notification unless you override the CDialogEx::OnInitDialog()
+	// function and call CRichEditCtrl().SetEventMask()
+	// with the ENM_CHANGE flag ORed into the mask.
+
+	// TODO:  Add your control notification handler code here
+	UpdateData(TRUE);
+	_RG_term.sd_coeffi = atof(_EDIT_SD_CO);
+}
+
 void CPhantom::OnBnClickedButtonPhantomOpen()
 {
 	// TODO: Add your control notification handler code here
@@ -649,7 +695,7 @@ void CPhantom::OnBnClickedButtonSaltPepperNoise()
 	double salt = (ratio / 2.0) / 100.0;
 	double pepper = 1.0 - salt;
 	int d = 999; // digits
-	TRACE2("Salt = %f, Pepper = %f. \n", salt, pepper);
+	//TRACE2("Salt = %f, Pepper = %f. \n", salt, pepper);
 
 	// 把馒 Salt-Pepper Noise
 	k = 0;
@@ -772,7 +818,7 @@ void CPhantom::OnBnClickedCheckPhantom3dSeed()
 void CPhantom::OnBnClickedButtonPhantomRegionGrowing()
 {
 	// TODO: Add your control notification handler code here
-	// Button :3D Region Growing
+	// Button : 3D Region Growing
 	//
 	if (!_get_3D_seed) return;
 	CWait* m_wait = new CWait();
@@ -782,12 +828,13 @@ void CPhantom::OnBnClickedButtonPhantomRegionGrowing()
 
 	//  Θ夹非 把计
 	//
+	UpdateData(TRUE);
 	_RG_term.seed = _seed_img;
 	_RG_term.s_kernel = 3;
 	_RG_term.n_kernel = 3;
-	_RG_term.pix_thresh = 50.0;
-	_RG_term.sd_thresh = 20.0;
-	_RG_term.sd_coeffi = 1.5;
+	_RG_term.pix_thresh = atof(_EDIT_PIX_TH);
+	_RG_term.sd_thresh = atof(_EDIT_SD_TH);
+	_RG_term.sd_coeffi = atof(_EDIT_SD_CO);
 
 	RG_3D_ConfidenceConnected(_judge, _RG_term);
 
