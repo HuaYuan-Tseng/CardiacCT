@@ -10,9 +10,14 @@
 #include "afxdialogex.h"
 #include <cstdlib>
 #include <ctime>
+#include <thread>
+#include <numeric>
+#include <algorithm>
 
-#include <vector>
+#include <map>
 #include <queue>
+#include <vector>
+#include <unordered_map>
 
 #define New2Dmatrix(H, W, TYPE)	(TYPE**)new2Dmatrix(H, W, sizeof(TYPE))
 #define M_PI 3.1415
@@ -154,6 +159,7 @@ BEGIN_MESSAGE_MAP(CPhantom, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_NOISE_CLEAR, &CPhantom::OnBnClickedButtonNoiseClear)
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_OPEN, &CPhantom::OnBnClickedButtonPhantomOpen)
 	ON_BN_CLICKED(IDC_CHECK_PHANTOM_3D_SEED, &CPhantom::OnBnClickedCheckPhantom3dSeed)
+	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_FILTER, &CPhantom::OnBnClickedButtonPhantomFilter)
 	ON_BN_CLICKED(IDC_BUTTON_SALT_PEPPER_NOISE, &CPhantom::OnBnClickedButtonSaltPepperNoise)
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_SEED_CLEAR, &CPhantom::OnBnClickedButtonPhantomSeedClear)
 	ON_BN_CLICKED(IDC_BUTTON_PHANTOM_GROWING_CLEAR, &CPhantom::OnBnClickedButtonPhantomGrowingClear)
@@ -689,7 +695,7 @@ void CPhantom::OnBnClickedButtonSaltPepperNoise()
 	const int total_slice = _total_slice;
 	register int i, j, k;
 
-	// 設定雜訊比例(%)
+	/* 設定雜訊比例(%) */
 	srand(static_cast<unsigned int>(time(nullptr)));
 	double ratio = atof(_NOISE_RATIO);
 	double salt = (ratio / 2.0) / 100.0;
@@ -697,7 +703,7 @@ void CPhantom::OnBnClickedButtonSaltPepperNoise()
 	int d = 999; // digits
 	//TRACE2("Salt = %f, Pepper = %f. \n", salt, pepper);
 
-	// 參雜 Salt-Pepper Noise
+	/* 參雜 Salt-Pepper Noise */
 	k = 0;
 	while (k < total_slice)
 	{
@@ -714,6 +720,8 @@ void CPhantom::OnBnClickedButtonSaltPepperNoise()
 		}
 		k += 1;
 	}
+
+	/* 計算參雜 Noise 之後的體積 */
 	k = 0;
 	unsigned long n = 0;
 	while (k < total_slice)
@@ -778,6 +786,161 @@ void CPhantom::OnBnClickedButtonNoiseClear()
 
 }
 
+void CPhantom::OnBnClickedButtonPhantomFilter()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Filter
+	//
+	if (_imgOrg == nullptr || _img == nullptr) return;
+
+	const int row = _row;
+	const int col = _col;
+	const int total_slice = _total_slice;
+
+	/* 低通 濾波 (mean filter) */
+	//std::vector<int> avg_coef = { 1, 2, 1, 2, 4, 2, 1, 2, 1 };
+	std::vector<int> avg_coef = { 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+	int avg_cnt = std::accumulate(avg_coef.begin(), avg_coef.end(), 0);
+
+	auto outOfImg = [=](int px, int py)			// 影像邊界
+	{
+		if (px < col && px >= 0 && py < row && py >= 0)
+			return false;
+		else return true;
+	};
+	auto avgKernel = [=](BYTE* img, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				sum += (avg_coef[n] * img[j * col + i]);
+				n += 1;
+			}
+		}
+		return sum / avg_cnt;
+	};
+	auto medianKernel = [=](BYTE* img, int x, int y)
+	{
+		std::vector<BYTE> temp;
+		temp.reserve(9);
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				temp.push_back(img[j * col + i]);
+			}
+		}
+		std::sort(temp.begin(), temp.end());
+		auto len = temp.size();
+		return temp[len / 2];
+	};
+
+	auto lowFilter = [&](int start_slice)
+	{
+		int s = start_slice;
+		while (s < total_slice)
+		{
+			BYTE* tmp = new BYTE[row * col];
+			std::memcpy(tmp, _img[s], sizeof(BYTE) * row * col);
+			for (int j = 1; j < row-1; ++j)
+			{
+				for (int i = 1; i < col-1; ++i)
+				{
+					//_img[s][j * col + i] = avgKernel(tmp, i, j);
+					_img[s][j * col + i] = medianKernel(tmp, i, j);
+				}
+			}
+			delete[] tmp;
+			s += 4;
+		}
+	};
+
+	std::thread th0_1(lowFilter, 0);
+	std::thread th0_2(lowFilter, 1);
+	std::thread th0_3(lowFilter, 2);
+	std::thread th0_4(lowFilter, 3);
+	th0_1.join(); th0_2.join();
+	th0_3.join(); th0_4.join();
+
+	/* 高通 濾波 (laplace filter) */
+	//std::vector<int> sharp_coef = {1, 1, 1, 1, -8, 1, 1, 1, 1};
+	std::vector<int> laplace_coef = { 0, 1, 0, 1, -4, 1, 0, 1, 0 };
+	const int weight = (laplace_coef[4] > 0) ? 1 : -1;
+
+	auto laplaceKernel = [=](BYTE* img, int x, int y)
+	{
+		int sum = 0, n = 0;
+		for (int j = y - 1; j <= y + 1; ++j)
+		{
+			for (int i = x - 1; i <= x + 1; ++i)
+			{
+				sum += (laplace_coef[n] * img[j * col + i]);
+				n += 1;
+			}
+		}
+		return sum;
+	};
+	auto laplaceFilter = [&](int start_slice)
+	{
+		int s = start_slice, pixel = 0;
+		while (s < total_slice)
+		{
+			BYTE* tmp = new BYTE[row * col];
+			std::memcpy(tmp, _img[s], sizeof(BYTE) * row * col);
+			for (int j = 1; j < row-1; ++j)
+			{
+				for (int i = 1; i < col-1; ++i)
+				{
+					pixel = weight * laplaceKernel(tmp, i, j);
+					pixel = tmp[j * col + i] + pixel;
+					if (pixel > 255)	pixel = 255;
+					else if (pixel < 0) pixel = 0;
+					_img[s][j * col + i] = pixel;
+				}
+			}
+			delete[] tmp;
+			s += 4;
+		}
+	};
+
+	std::thread th1_1(laplaceFilter, 0);
+	std::thread th1_2(laplaceFilter, 1);
+	std::thread th1_3(laplaceFilter, 2);
+	std::thread th1_4(laplaceFilter, 3);
+	th1_1.join(); th1_2.join();
+	th1_3.join(); th1_4.join();
+
+	register int i, j, k;
+	k = 0;
+	unsigned long n = 0;
+	while (k < total_slice)
+	{
+		for (j = 0; j < row; ++j)
+		{
+			for (i = 0; i < col; ++i)
+			{
+				if (_img[k][j * col + i] != 0 &&
+					_img[k][j * col + i] != 255)
+					n += 1;
+			}
+		}
+		k += 1;
+	}
+	
+	//_get_noise = false;
+	_after_filter_volume = n;
+	_EDIT_5.Format("%d", _after_filter_volume);
+	TRACE1("After Filter volume = %d. \n", _after_filter_volume);
+
+	PrepareVolume();
+	UpdateData(FALSE);
+	Draw3DImage(true);
+	Draw2DImage(_display_slice);
+
+}
+
 void CPhantom::OnBnClickedButtonPhantomSeedClear()
 {
 	// TODO: Add your control notification handler code here
@@ -826,8 +989,7 @@ void CPhantom::OnBnClickedButtonPhantomRegionGrowing()
 	m_wait->ShowWindow(SW_NORMAL);
 	m_wait->setDisplay("Region growing...");
 
-	// 宣告 成長標準 參數
-	//
+	/* 宣告 成長標準 參數 */
 	UpdateData(TRUE);
 	_RG_term.seed = _seed_img;
 	_RG_term.s_kernel = 3;
@@ -836,13 +998,15 @@ void CPhantom::OnBnClickedButtonPhantomRegionGrowing()
 	_RG_term.sd_thresh = atof(_EDIT_SD_TH);
 	_RG_term.sd_coeffi = atof(_EDIT_SD_CO);
 
-	RG_3D_ConfidenceConnected(_judge, _RG_term);
+	//RG_3D_ConfidenceConnected(_judge, _RG_term);
+	RG_3D_GlobalAvgConnected(_judge, _RG_term);
 
 	_get_region_grow = true;
 
 	_growing_volume = Calculate_volume(_judge);
 	_EDIT_5.Format("%d", _growing_volume);
-	TRACE1("Growing volume = %d. \n", _growing_volume);
+	TRACE2("SD_TH = %f, Growing volume = %d. \n", 
+		_RG_term.sd_thresh, _growing_volume);
 
 	PrepareVolume();
 	UpdateData(FALSE);
@@ -876,6 +1040,7 @@ void CPhantom::OnBnClickedButtonPhantomGrowingClear()
 	const int sample_start = 0 + _mat_offset;
 	const int sample_end = 0 + _mat_offset + totalSlice;
 	
+	/* 恢復OpenGL三維陣列 */
 	i = 0, j = 0, k = 0;
 	while (k < 512)
 	{
@@ -895,6 +1060,7 @@ void CPhantom::OnBnClickedButtonPhantomGrowingClear()
 		k += 2;
 	}
 
+	/* 恢復成長判定陣列 */
 	k = 0;
 	while (k < totalSlice)
 	{

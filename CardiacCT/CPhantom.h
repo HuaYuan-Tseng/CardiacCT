@@ -136,6 +136,7 @@ public:
 	
 	bool			_get_noise;					// 是否參雜了雜訊
 	unsigned long	_after_noise_volume;		// 參雜雜訊後剩餘的體積
+	unsigned long	_after_filter_volume;		// 濾波後剩餘的體積
 
 //================//
 //   Operations   //
@@ -223,6 +224,7 @@ public:
 	afx_msg void OnBnClickedButtonNoiseClear();
 	afx_msg void OnBnClickedButtonPhantomOpen();
 	afx_msg void OnBnClickedCheckPhantom3dSeed();
+	afx_msg void OnBnClickedButtonPhantomFilter();
 	afx_msg void OnBnClickedButtonSaltPepperNoise();
 	afx_msg void OnBnClickedButtonPhantomSeedClear();
 	afx_msg void OnBnClickedButtonPhantomGrowingClear();
