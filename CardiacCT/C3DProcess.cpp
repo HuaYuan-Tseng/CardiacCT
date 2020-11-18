@@ -441,6 +441,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_SD_TH, &C3DProcess::OnEnChangeEditSdTh)
 	ON_EN_CHANGE(IDC_EDIT_SD_CO, &C3DProcess::OnEnChangeEditSdCo)
 	
+	ON_BN_CLICKED(IDC_BUTTON_GROWING_CAPTURE, &C3DProcess::OnBnClickedButtonGrowingCapture)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -4075,6 +4076,56 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 	Draw3DImage(true);
 }
 
+void C3DProcess::OnBnClickedButtonGrowingCapture()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Growing Capture
+	//
+	if (!get_regionGrow) return;
+
+	const int row = ROW;
+	const int col = COL;
+	const int total_slice = Total_Slice;
+	const int sample_start = 0 + Mat_Offset;
+	const int sample_end = 0 + Mat_Offset + total_slice;
+	register int i, j, k;
+	int obj1 = 1, obj2 = 2;
+	int obj3 = 3, obj4 = 4;
+	float pixel;
+
+	k = 0;
+	while (k < 512)
+	{
+		if (k > sample_start && k <= sample_end)
+		{
+			for (j = 2; j < row - 2; j += 2)
+			{
+				for (i = 2; i < col - 2; i += 2)
+				{
+					pixel = m_pDoc->m_img[k - (Mat_Offset + 1)][j * col + i];
+
+					if (judge[k - (Mat_Offset + 1)][j * col + i] > 0)
+					{
+						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+							pixel / 255.0F, 0);
+					}
+					else
+					{
+						getRamp(&m_image0[(i / 2) * 256 * 256 + (j / 2) * 256 + (k / 2)][0],
+							0, 0);
+					}
+
+				}
+			}
+		}
+		k += 2;
+	}
+
+	LoadVolume();
+	Draw3DImage(true);
+
+}
+
 void C3DProcess::OnBnClickedButtonGrowingRecovery()
 {
 	// TODO: Add your control notification handler code here
@@ -6710,4 +6761,5 @@ double C3DProcess::Calculate_Volume(short** src)
 		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	}
 */
+
 

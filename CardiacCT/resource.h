@@ -132,8 +132,9 @@
 #define IDC_EDIT_PHANTOM_PIX_TH         1090
 #define IDC_EDIT_PHANTOM_SD_TH          1091
 #define IDC_EDIT_PHANTOM_SD_CO          1092
-#define IDC_BUTTON1                     1094
 #define IDC_BUTTON_PHANTOM_FILTER       1094
+#define IDC_BUTTON1                     1095
+#define IDC_BUTTON_GROWING_CAPTURE      1095
 #define ID_Menu                         32771
 #define ID_OPENDICOMDIR                 32772
 #define ID_TOOLBTN_OPENDICOMDIR         32773
@@ -147,7 +148,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        327
 #define _APS_NEXT_COMMAND_VALUE         32778
-#define _APS_NEXT_CONTROL_VALUE         1095
+#define _APS_NEXT_CONTROL_VALUE         1096
 #define _APS_NEXT_SYMED_VALUE           310
 #endif
 #endif

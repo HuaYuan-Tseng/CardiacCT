@@ -349,6 +349,7 @@ public:
 	afx_msg void OnBnClickedButtonIntensityMinus();
 	afx_msg void OnBnClickedButtonRegionGrowing();
 	afx_msg void OnBnClickedButtonGrowingRecovery();
+	afx_msg void OnBnClickedButtonGrowingCapture();
 	afx_msg void OnBnClickedButtonGrowingRemove();
 	afx_msg void OnBnClickedButtonGrowingClear();
 	afx_msg void OnBnClickedButtonRecordLimit();
