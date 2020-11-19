@@ -2634,7 +2634,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 		RG2_3D_Spine_process(judge, RG_term);
 
 		Dilation_3D(judge, 26);
-		Spine_process_fix();
+		//Spine_process_fix();
 		spine_volume = Calculate_Volume(judge);
 		m_result.Format("%lf", spine_volume);
 	}
@@ -2651,7 +2651,7 @@ void C3DProcess::OnBnClickedButtonDilation()
 		RG2_3D_Sternum_process(judge, RG_term);
 
 		//Dilation_3D(judge, 26);
-		Sternum_process_fix();
+		//Sternum_process_fix();
 		sternum_volume = Calculate_Volume(judge);
 		m_result.Format("%lf", sternum_volume);
 	}
@@ -2688,8 +2688,8 @@ void C3DProcess::Spine_process()
 		int s = start_slice;
 		std::vector<int> x_pos;
 		std::vector<int> y_pos;
-		x_pos.reserve(15000);
-		y_pos.reserve(15000);
+		x_pos.reserve(20000);
+		y_pos.reserve(20000);
 
 		while (s < totalSlice)
 		{
@@ -3297,8 +3297,8 @@ void C3DProcess::Sternum_process()
 		int s = start_slice;
 		std::vector<int> x_pos;
 		std::vector<int> y_pos;
-		x_pos.reserve(15000);
-		y_pos.reserve(15000);
+		x_pos.reserve(20000);
+		y_pos.reserve(20000);
 
 		while (s < totalSlice)
 		{
