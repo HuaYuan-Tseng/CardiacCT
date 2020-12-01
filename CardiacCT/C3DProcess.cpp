@@ -3021,8 +3021,8 @@ void C3DProcess::Spine_process()
 			{
 				for (int i = it->second.at(0); i <= it->second.at(1); ++i)
 				{
-					//pro[s][j * col + i] = avgKernel(tmp, i, j);
-					pro[s][j * col + i] = medianKernel(tmp, i, j);
+					pro[s][j * col + i] = avgKernel(tmp, i, j);
+					//pro[s][j * col + i] = medianKernel(tmp, i, j);
 				}
 			}
 			delete[] tmp;
@@ -5226,9 +5226,9 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		CPoint pt;
 	
 		// ㄴ쨁헕
-		for (i = -1; i <= 1; i++)
+		for (i = -3; i <= 3; i++)
 		{
-			for (j = -1; j <= 1; j++)
+			for (j = -3; j <= 3; j++)
 			{
 				pt.x = (LONG)it->second.at(0).first + i;
 				pt.y = (LONG)it->second.at(0).second + j;
@@ -5238,9 +5238,9 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		}
 
 		// ⅹ짾헕
-		for (i = -1; i <= 1; i++)
+		for (i = -3; i <= 3; i++)
 		{
-			for (j = -1; j <= 1; j++)
+			for (j = -3; j <= 3; j++)
 			{
 				pt.x = (LONG)it->second.at(1).first + i;
 				pt.y = (LONG)it->second.at(1).second + j;
@@ -5250,9 +5250,9 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		}
 
 		// 쩵짾헕
-		for (i = -1; i <= 1; i++)
+		for (i = -3; i <= 3; i++)
 		{
-			for (j = -1; j <= 1; j++)
+			for (j = -3; j <= 3; j++)
 			{
 				pt.x = (LONG)it->second.at(2).first + i;
 				pt.y = (LONG)it->second.at(2).second + j;
@@ -5268,9 +5268,9 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		CPoint pt;
 
 		// ㄴ쨁헕
-		for (i = -1; i <= 1; i++)
+		for (i = -3; i <= 3; i++)
 		{
-			for (j = -1; j <= 1; j++)
+			for (j = -3; j <= 3; j++)
 			{
 				pt.x = (LONG)it->second.at(0).first + i;
 				pt.y = (LONG)it->second.at(0).second + j;
@@ -5280,9 +5280,9 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		}
 
 		// ⅹ짾헕
-		for (i = -1; i <= 1; i++)
+		for (i = -3; i <= 3; i++)
 		{
-			for (j = -1; j <= 1; j++)
+			for (j = -3; j <= 3; j++)
 			{
 				pt.x = (LONG)it->second.at(1).first + i;
 				pt.y = (LONG)it->second.at(1).second + j;
@@ -5292,9 +5292,9 @@ void C3DProcess::Draw2DImage(unsigned short& slice)
 		}
 
 		// 쩵짾헕
-		for (i = -1; i <= 1; i++)
+		for (i = -3; i <= 3; i++)
 		{
-			for (j = -1; j <= 1; j++)
+			for (j = -3; j <= 3; j++)
 			{
 				pt.x = (LONG)it->second.at(2).first + i;
 				pt.y = (LONG)it->second.at(2).second + j;
