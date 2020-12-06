@@ -184,6 +184,9 @@ PFNGLTEXIMAGE3DPROC glTexImage3D;		// Address of an openGL extension function.
 	bool	get_verify_reference;
 
 
+	std::vector<int> spine_interpolate_slice;							// 紀錄用來內插驗證線的切片
+	std::vector<int> sternum_interpolate_slice;							// 紀錄用來內插驗證線的切片
+
 	std::map<int, std::vector<std::pair<int, int>>> draw_spine_pt;		// 畫線時，點擊繪製的點
 	std::map<int, std::vector<std::pair<int, int>>> draw_sternum_pt;	// 畫線時，點擊繪製的點
 

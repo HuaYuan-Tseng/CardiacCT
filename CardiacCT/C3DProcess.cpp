@@ -947,6 +947,13 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 			{
 				if (m_spine_verify)
 				{
+					// 紀錄有畫線的切片且不重複紀錄(QQ，發現應該要用set，可是懶的改)
+					auto it = find_if(spine_interpolate_slice.begin(), 
+						spine_interpolate_slice.end(),
+						[&](const int& p) {return p == s; });
+					if (it == spine_interpolate_slice.end())
+						spine_interpolate_slice.push_back(s);
+
 					auto len = draw_spine_pt[s].size();
 
 					// 透過內插的方式，把點補齊，連成線
@@ -975,6 +982,13 @@ void C3DProcess::OnLButtonDown(UINT nFlags, CPoint point)
 				}
 				else if (m_sternum_verify)
 				{
+					// 紀錄有畫線的切片且不重複紀錄(QQ，發現應該要用set，可是懶的改)
+					auto it = find_if(sternum_interpolate_slice.begin(),
+						sternum_interpolate_slice.end(),
+						[&](const int p) {return p == s; });
+					if (it == sternum_interpolate_slice.end())
+						sternum_interpolate_slice.push_back(s);
+
 					auto len = draw_sternum_pt[s].size();
 
 					// 透過內插的方式，把點補齊，連成線
@@ -1543,6 +1557,16 @@ void C3DProcess::OnBnClickedButtonVerifyLineErase()
 				draw_spine_line[s].clear();
 			}
 		}
+		std::vector<int>::iterator it;
+		for (it = spine_interpolate_slice.begin(); 
+			it < spine_interpolate_slice.end(); ++it)
+		{
+			if (*it == s)
+			{
+				spine_interpolate_slice.erase(it);
+				break;
+			}
+		}
 	}
 	else if (m_sternum_verify)
 	{
@@ -1558,6 +1582,16 @@ void C3DProcess::OnBnClickedButtonVerifyLineErase()
 			if (draw_sternum_line.find(s) != draw_sternum_line.end())
 			{
 				draw_sternum_line[s].clear();
+			}
+		}
+		std::vector<int>::iterator it;
+		for (it = sternum_interpolate_slice.begin();
+			it < sternum_interpolate_slice.end(); ++it)
+		{
+			if (*it == s)
+			{
+				sternum_interpolate_slice.erase(it);
+				break;
 			}
 		}
 	}
@@ -1585,6 +1619,7 @@ void C3DProcess::OnBnClickedButtonVerifyLineClear()
 		{
 			draw_spine_line.clear();
 		}
+		spine_interpolate_slice.clear();
 	}
 	else if (m_sternum_verify)
 	{
@@ -1596,6 +1631,7 @@ void C3DProcess::OnBnClickedButtonVerifyLineClear()
 		{
 			draw_sternum_line.clear();
 		}
+		sternum_interpolate_slice.clear();
 	}
 	draw_pt_cnt = 0;
 	verify_reference_slice = 0;
@@ -1646,6 +1682,191 @@ void C3DProcess::OnBnClickedButtonVerifyInterpolation()
 	// TODO: Add your control notification handler code here
 	// Button : Calculate - Interpolation
 	//
+	const int row = ROW;
+	const int col = COL;
+	const int total_slice = Total_Slice;
+	
+	// 先判斷切片有無繪製驗證線
+	if (m_spine_verify)
+	{
+		if (spine_interpolate_slice.size() <= 1) return;
+	}
+	else if (m_sternum_verify)
+	{
+		if (sternum_interpolate_slice.size() <= 1) return;
+	}
+
+	clock_t start, end;
+	start = clock();
+
+	// 將有畫限制線的切片的線延伸到影像邊界
+	if (m_spine_verify)
+	{
+		// 檢查每一張有畫spine_line的切片
+		for (auto& n : spine_interpolate_slice)
+		{
+			int x_start = draw_spine_line[n].begin()->first;
+			int y_start = draw_spine_line[n].begin()->second;
+			int x_end = draw_spine_line[n].rbegin()->first;
+			int y_end = draw_spine_line[n].rbegin()->second;
+
+			if (x_start != 0)
+			{
+				for (int i = 0; i <= x_start; ++i)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = y_start;
+					draw_spine_line[n].insert(pt);
+				}
+			}
+			if (x_end != 511)
+			{
+				for (int i = x_end; i <= 511; ++i)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = y_end;
+					draw_spine_line[n].insert(pt);
+				}
+			}
+			std::pair<int, int> pt;
+			for (int i = 0; i < 511; ++i)
+			{
+				auto it = std::find_if(draw_spine_line[n].begin(), draw_spine_line[n].end(),
+					[&](const pair<int, int>& p) {return p.first == i; });
+				if (it == draw_spine_line[n].end())
+				{
+					std::pair<int, int> new_pt;
+					new_pt.first = i;
+					new_pt.second = pt.second;
+					draw_spine_line[n].insert(new_pt);
+				}
+				else
+					pt = *it;
+			}
+		}
+	}
+	else if (m_sternum_verify)
+	{
+		// 檢查每一張有畫sternum_line的切片
+		for (auto& n : sternum_interpolate_slice)
+		{
+			int x_start = draw_sternum_line[n].begin()->first;
+			int y_start = draw_sternum_line[n].begin()->second;
+			int x_end = draw_sternum_line[n].rbegin()->first;
+			int y_end = draw_sternum_line[n].rbegin()->second;
+
+			if (x_start != 0)
+			{
+				for (int i = 0; i <= x_start; ++i)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = y_start;
+					draw_sternum_line[n].insert(pt);
+				}
+			}
+			if (x_end != 511)
+			{
+				for (int i = x_end; i <= 511; ++i)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = y_end;
+					draw_sternum_line[n].insert(pt);
+				}
+			}
+			std::pair<int, int> pt;
+			for (int i = 0; i < 511; ++i)
+			{
+				auto it = std::find_if(draw_sternum_line[n].begin(), draw_sternum_line[n].end(),
+					[&](const pair<int, int>& p) {return p.first == i; });
+				if (it == draw_sternum_line[n].end())
+				{
+					std::pair<int, int> new_pt;
+					new_pt.first = i;
+					new_pt.second = pt.second;
+					draw_sternum_line[n].insert(new_pt);
+				}
+				else
+					pt = *it;
+			}
+		}
+	}
+
+	// 內插切片與切片之間的線
+	if (m_spine_verify)
+	{
+		// 從第一個紀錄的切片開始，依序與後一個紀錄的切片之間進行內插
+		auto len = spine_interpolate_slice.size();
+		for (int n = 0; n < len - 1; ++n)
+		{
+			// 從左到右，0~511，依序在每一張切片內插
+			for (int i = 0; i < row; ++i)
+			{
+				// 計算現在的切片與後一個切片之間，Y 的距離
+				int start = spine_interpolate_slice[n];
+				int end = spine_interpolate_slice[n + 1];
+
+				auto it_start = std::find_if(draw_spine_line[start].begin(), draw_spine_line[start].end(),
+					[&](const pair<int, int>& p) {return p.first == i; });
+				auto it_end= std::find_if(draw_spine_line[end].begin(), draw_spine_line[end].end(),
+					[&](const pair<int, int>& p) {return p.first == i; });
+
+				int y_start = (*it_start).second;
+				int y_end = (*it_end).second;
+				double y_seg = static_cast<double>(y_end - y_start) / static_cast<double>(end - start);
+
+				// 內插每一張切片上，某一 X 行上的 Y 點
+				for (int s = start + 1; s < end; ++s)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = static_cast<int>(y_start + (s - start) * y_seg);
+					draw_spine_line[s].insert(pt);
+				}
+			}
+		}
+	}
+	else if (m_sternum_verify)
+	{
+		// 從第一個紀錄的切片開始，依序與後一個紀錄的切片之間進行內插
+		auto len = sternum_interpolate_slice.size();
+		for (int n = 0; n < len - 1; ++n)
+		{
+			// 從左到右，0~511，依序在每一張切片內插
+			for (int i = 0; i < row; ++i)
+			{
+				// 計算現在的切片與後一個切片之間，Y 的距離
+				int start = sternum_interpolate_slice[n];
+				int end = sternum_interpolate_slice[n + 1];
+
+				auto it_start = std::find_if(draw_sternum_line[start].begin(), draw_sternum_line[start].end(),
+					[&](const pair<int, int>& p) {return p.first == i; });
+				auto it_end = std::find_if(draw_sternum_line[end].begin(), draw_sternum_line[end].end(),
+					[&](const pair<int, int>& p) {return p.first == i; });
+
+				int y_start = (*it_start).second;
+				int y_end = (*it_end).second;
+				double y_seg = static_cast<double>(y_end - y_start) / static_cast<double>(end - start);
+
+				// 內插每一張切片上，某一 X 行上的 Y 點
+				for (int s = start + 1; s < end; ++s)
+				{
+					std::pair<int, int> pt;
+					pt.first = i;
+					pt.second = static_cast<int>(y_start + (s - start) * y_seg);
+					draw_sternum_line[s].insert(pt);
+				}
+			}
+		}
+	}
+
+	end = clock();
+	TRACE1("Verify Interpolation Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
+
+	Draw2DImage(DisplaySlice);
 
 }
 
@@ -1654,6 +1875,7 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 	// TODO: Add your control notification handler code here
 	// Button : Calculate - Verify volume calculate
 	//
+	clock_t start, end;
 	size_t spine_line_size = draw_spine_line.size();
 	size_t sternum_line_size = draw_sternum_line.size();
 	size_t totalSlice = static_cast<size_t>(Total_Slice);
@@ -1665,6 +1887,7 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 		return;
 	}
 
+	start = clock();
 	double volume = 0.0;
 	const int row = ROW;
 	const int col = COL;
@@ -1815,12 +2038,14 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 		TRACE1("Sternum Verify Volume = %lf. \n", volume);
 	}
 
+	end = clock();
 	draw_pt_cnt = 0;
 	verify_reference_slice = 0;
 	get_verify_reference = false;
 	m_result_2.Format("%lf", volume);
 	GetDlgItem(IDC_BUTTON_VERIFY_LINE_REFERENCE)->EnableWindow(TRUE);
 	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
+	TRACE1("Verify Calculate Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	Draw2DImage(DisplaySlice);
 	UpdateData(FALSE);
 }
