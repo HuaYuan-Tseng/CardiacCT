@@ -319,6 +319,16 @@ C3DProcess::~C3DProcess()
 		draw_sternum_line.swap(empty_map);
 		draw_sternum_line.clear();
 	}
+	if (spine_interpolate_slice.empty() != true)
+	{
+		spine_interpolate_slice.clear();
+		spine_interpolate_slice.shrink_to_fit();
+	}
+	if (sternum_interpolate_slice.empty() != true)
+	{
+		sternum_interpolate_slice.clear();
+		sternum_interpolate_slice.shrink_to_fit();
+	}
 
 	glDeleteTextures(ImageFrame, textureName);
 }
@@ -1828,6 +1838,7 @@ void C3DProcess::OnBnClickedButtonVerifyInterpolation()
 				}
 			}
 		}
+		TRACE1("Verify Interpolation Slice Count : %d. \n", len);
 	}
 	else if (m_sternum_verify)
 	{
@@ -1861,6 +1872,7 @@ void C3DProcess::OnBnClickedButtonVerifyInterpolation()
 				}
 			}
 		}
+		TRACE1("Verify Interpolation Slice Count : %d. \n", len);
 	}
 
 	end = clock();
@@ -1883,7 +1895,7 @@ void C3DProcess::OnBnClickedButtonVerifyCalculate()
 	if (spine_line_size != totalSlice &&
 		sternum_line_size != totalSlice )
 	{
-		MessageBox("Please draw the line completely !!");
+		MessageBox("Please interpolation or draw the line completely !!");
 		return;
 	}
 
