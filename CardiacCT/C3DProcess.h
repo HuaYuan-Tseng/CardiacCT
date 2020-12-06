@@ -236,8 +236,9 @@ public:
 	void	RG2_3D_Sternum_process(short** src, RG_factor& factor);		// 胸骨二次成長 - 限制線與全域平均
 	void	RG_3D_Sternum_process(short** src, RG_factor& factor);		// 胸骨一次成長 - 限制線與標準差
 	
+	void	RG_3D_ProposedMethod(short**src, RG_factor& factor);		// 3D 區域成長(當前區域標準差與全域平均)
 	void	RG_3D_GlobalAvgConnected(short** src, RG_factor& factor);	// 3D 區域成長(全域平均)
-	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);	// 3D 區域成長(當前區域標準差與全域平均) 
+	void	RG_3D_ConfidenceConnected(short** src, RG_factor& factor);	// 3D 區域成長(當前區域標準差與平均) 
 	
 
 ///------------- ↑ 實驗區 ↑ -------------///
@@ -363,6 +364,7 @@ public:
 	afx_msg void OnBnClickedButtonVerifyCalculate();
 	afx_msg void OnBnClickedButtonVerifyLineErase();
 	afx_msg void OnBnClickedButtonVerifyLineClear();
+	afx_msg void OnBnClickedButtonVerifyInterpolation();
 	afx_msg void OnBnClickedButtonVerifyLineReference();
 	afx_msg void OnBnClickedButtonVerifyLineCancelReference();
 	

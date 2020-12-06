@@ -129,11 +129,11 @@ C3DProcess::C3DProcess(CWnd* pParent /*=nullptr*/)
 	pixel_up_threshold = atoi(m_pixel_up_threshold);
 	pixel_down_threshold = atoi(m_pixel_down_threshold);
 
-	RG_term.s_kernel = 3;
-	RG_term.n_kernel = 3;
-	RG_term.pix_thresh = 50.0;
-	RG_term.sd_thresh = 20.0;
-	RG_term.sd_coeffi = 1.5;
+	RG_term.s_kernel = atoi(m_sKernel);
+	RG_term.n_kernel = atoi(m_nKernel);
+	RG_term.pix_thresh = atof(m_pix_th);
+	RG_term.sd_thresh = atof(m_SDth);
+	RG_term.sd_coeffi = atof(m_SDco);
 
 	seed_pt = { 0, 0, 0 };
 	seed_img = { 0, 0, 0 };
@@ -411,6 +411,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_PLUS, &C3DProcess::OnBnClickedButtonIntensityPlus)
 	ON_BN_CLICKED(IDC_BUTTON_INTENSITY_MINUS, &C3DProcess::OnBnClickedButtonIntensityMinus)
 	ON_BN_CLICKED(IDC_BUTTON_REGION_GROWING, &C3DProcess::OnBnClickedButtonRegionGrowing)
+	ON_BN_CLICKED(IDC_BUTTON_GROWING_CAPTURE, &C3DProcess::OnBnClickedButtonGrowingCapture)
 	ON_BN_CLICKED(IDC_BUTTON_GROWING_RECOVERY, &C3DProcess::OnBnClickedButtonGrowingRecovery)
 	ON_BN_CLICKED(IDC_BUTTON_GROWING_REMOVE, &C3DProcess::OnBnClickedButtonGrowingRemove)
 	ON_BN_CLICKED(IDC_BUTTON_GROWING_CLEAR, &C3DProcess::OnBnClickedButtonGrowingClear)
@@ -427,6 +428,7 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_CALCULATE, &C3DProcess::OnBnClickedButtonVerifyCalculate)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_ERASE, &C3DProcess::OnBnClickedButtonVerifyLineErase)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_CLEAR, &C3DProcess::OnBnClickedButtonVerifyLineClear)
+	ON_BN_CLICKED(IDC_BUTTON_VERIFY_INTERPOLATION, &C3DProcess::OnBnClickedButtonVerifyInterpolation)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_REFERENCE, &C3DProcess::OnBnClickedButtonVerifyLineReference)
 	ON_BN_CLICKED(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE, &C3DProcess::OnBnClickedButtonVerifyLineCancelReference)
 
@@ -441,7 +443,6 @@ BEGIN_MESSAGE_MAP(C3DProcess, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_SD_TH, &C3DProcess::OnEnChangeEditSdTh)
 	ON_EN_CHANGE(IDC_EDIT_SD_CO, &C3DProcess::OnEnChangeEditSdCo)
 	
-	ON_BN_CLICKED(IDC_BUTTON_GROWING_CAPTURE, &C3DProcess::OnBnClickedButtonGrowingCapture)
 END_MESSAGE_MAP()
 
 //=================================//
@@ -1640,6 +1641,14 @@ void C3DProcess::OnBnClickedButtonVerifyLineCancelReference()
 	GetDlgItem(IDC_BUTTON_VERIFY_LINE_CANCEL_REFERENCE)->EnableWindow(FALSE);
 }
 
+void C3DProcess::OnBnClickedButtonVerifyInterpolation()
+{
+	// TODO: Add your control notification handler code here
+	// Button : Calculate - Interpolation
+	//
+
+}
+
 void C3DProcess::OnBnClickedButtonVerifyCalculate()
 {
 	// TODO: Add your control notification handler code here
@@ -2573,6 +2582,8 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		if (!spine_line.empty())
 			RG_3D_Spine_process(judge, RG_term);
 		else
+			//RG_3D_ProposedMethod(judge, RG_term);
+			//RG_3D_GlobalAvgConnected(judge, RG_term);
 			RG_3D_ConfidenceConnected(judge, RG_term);
 		end = clock();
 		spine_volume = Calculate_Volume(judge);
@@ -5735,7 +5746,136 @@ void C3DProcess::RG_3D_ConfidenceConnected(short** src, RG_factor& factor)
 							n_pixel =
 								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
 
-							if ( (n_sd <= sd_thresh && abs(n_pixel - s_avg) <= pix_thresh) )
+							if (n_pixel <= up_limit && n_pixel >= down_limit)
+							{
+								n_site.x = s_current.x + si;
+								n_site.y = s_current.y + sj;
+								n_site.z = s_current.z + sk;
+								sed_que.push(n_site);
+
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = obj;
+								s_avg = (s_avg * s_cnt + n_pixel) / (s_cnt + 1);
+								avg_que.push(s_avg);
+								s_cnt += 1;
+							}
+							else
+								src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] = -obj;
+						}
+					}
+				}
+			}
+		}
+		sed_que.pop();
+		avg_que.pop();
+	}
+
+}
+
+void C3DProcess::RG_3D_ProposedMethod(short** src, RG_factor& factor)
+{
+	// DO : 3D 區域成長
+	// 利用當前區域的「標準差」與「全域平均值」界定成長標準，並以「像素強度」來判斷
+	//
+	int obj;
+	if (m_spine) obj = 1;
+	else if (m_sternum) obj = 3;
+	const int row = ROW;
+	const int col = COL;
+	const int totalSlice = Total_Slice;
+	const int s_range = (factor.s_kernel - 1) / 2;
+	const double sd_coeffi = factor.sd_coeffi;
+	const double sd_thresh = factor.sd_thresh;
+	const double pix_thresh = factor.pix_thresh;
+	Seed_s	seed = factor.seed;
+	BYTE**& img = m_pDoc->m_img;
+	BYTE**& imgPro = m_pDoc->m_imgPro;
+
+	Seed_s	n_site;
+	Seed_s	s_current;
+	std::queue<Seed_s> sed_que;
+	std::queue<double> avg_que;
+
+	double	s_avg;
+	unsigned long long	s_cnt = 0;
+	unsigned long long  n_pixel = 0, s_pixel = 0;
+
+	s_avg = imgPro[seed.z][seed.y * col + seed.x];
+	src[seed.z][seed.y * col + seed.x] = obj;
+	avg_que.push(s_avg);
+	sed_que.push(seed);
+	s_cnt += 1;
+
+	auto outOfImg = [=](int px, int py, int pz)
+	{	// 判斷有無超出影像邊界
+		if (px < col && px >= 0 && py < row && py >= 0 && pz < totalSlice && pz >= 0)
+			return false;
+		else
+			return true;
+	};
+
+	while (!sed_que.empty())
+	{
+		register int si, sj, sk;
+		s_avg = avg_que.front();
+		s_current = sed_que.front();
+
+		// 計算 總合 與 平均
+		double sum = 0, cnt = 0;
+		double n_avg = 0, n_sd = 0;
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_current.x + si, s_current.y + sj, s_current.z + sk))
+					{
+						sum +=
+							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+						cnt += 1;
+					}
+				}
+			}
+		}
+		n_avg = sum / cnt;
+
+		// 計算 標準差
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_current.x + si, s_current.y + sj, s_current.z + sk))
+					{
+						n_pixel =
+							imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+						n_sd += pow((n_pixel - n_avg), 2);
+					}
+				}
+			}
+		}
+		n_sd = sqrt(n_sd / cnt);
+
+		// 制定、修正成長標準的上下限
+		double up_limit = n_avg + (sd_coeffi * n_sd);
+		double down_limit = n_avg - (sd_coeffi * n_sd);
+
+		// 判斷是否符合成長標準
+		for (sk = -s_range; sk <= s_range; ++sk)
+		{
+			for (sj = -s_range; sj <= s_range; ++sj)
+			{
+				for (si = -s_range; si <= s_range; ++si)
+				{
+					if (!outOfImg(s_current.x + si, s_current.y + sj, s_current.z + sk))
+					{
+						if (src[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)] == 0)
+						{
+							n_pixel =
+								imgPro[s_current.z + sk][(s_current.y + sj) * col + (s_current.x + si)];
+
+							if ((n_sd <= sd_thresh && abs(n_pixel - s_avg) <= pix_thresh))
 							{
 								n_site.x = s_current.x + si;
 								n_site.y = s_current.y + sj;
@@ -6761,5 +6901,4 @@ double C3DProcess::Calculate_Volume(short** src)
 		TRACE1("Sharp Time : %f (s) \n\n", (double)(end - start) / CLOCKS_PER_SEC);
 	}
 */
-
 
