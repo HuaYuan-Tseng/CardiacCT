@@ -2819,9 +2819,9 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 		if (!spine_line.empty())
 			RG_3D_Spine_process(judge, RG_term);
 		else
-			//RG_3D_ProposedMethod(judge, RG_term);
+			RG_3D_ProposedMethod(judge, RG_term);
 			//RG_3D_GlobalAvgConnected(judge, RG_term);
-			RG_3D_ConfidenceConnected(judge, RG_term);
+			//RG_3D_ConfidenceConnected(judge, RG_term);
 		end = clock();
 		spine_volume = Calculate_Volume(judge);
 		m_result.Format("%lf", spine_volume);
@@ -2831,7 +2831,8 @@ void C3DProcess::OnBnClickedButtonRegionGrowing()
 	else if (m_sternum)
 	{
 		start = clock();
-		RG_3D_ConfidenceConnected(judge, RG_term);
+		RG_3D_ProposedMethod(judge, RG_term);
+		//RG_3D_ConfidenceConnected(judge, RG_term);
 		//RG_3D_GlobalAvgConnected(judge, RG_term);
 		end = clock();
 		sternum_volume = Calculate_Volume(judge);
@@ -4156,11 +4157,11 @@ void C3DProcess::OnBnClickedButtonGrowingRemove()
 						y++;
 					for (j = y; j < row - 2; j += 1)
 					{
-						for (int nk = -1; nk <= 1; ++nk)
+						for (int nk = -3; nk <= 3; ++nk)
 						{
-							for (int nj = -1; nj <= 1; ++nj)
+							for (int nj = -2; nj <= 2; ++nj)
 							{
-								for (int ni = -1; ni <= 1; ++ni)
+								for (int ni = -2; ni <= 2; ++ni)
 								{
 									getRamp(&m_image0[((i + ni) / 2) * 256 * 256 + ((j + nj) / 2) * 256 + ((k + nk) / 2)][0],
 										0, 0);
